@@ -10,11 +10,11 @@ from sklearn.linear_model import LinearRegression
 from cachetools import TTLCache
 from web3 import AsyncWeb3
 
-fromutils import getLogger
-fromapi_config import API_Config
-fromconfiguration import Configuration
-
-logger = getLogger("0xBuilder")
+from utils import getLogger
+from api_config import API_Config
+from configuration import Configuration
+import logging
+logger = getLogger("0xBuilder", level=logging.INFO)
 
 class Market_Monitor:
     """Advanced market monitoring system for real-time analysis and prediction."""
