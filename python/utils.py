@@ -36,7 +36,7 @@ class CustomFormatter(logging.Formatter):
         return super().format(record)
 
 # Configure the logging once
-def configure_logging(level: int = logging.DEBUG) -> None:
+def configure_logging(level: int = logging.INFO) -> None:  # Change default level to INFO
     """Configures logging with a colored formatter."""
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(CustomFormatter("%(asctime)s [%(levelname)s] %(message)s"))
@@ -47,7 +47,7 @@ def configure_logging(level: int = logging.DEBUG) -> None:
     )
 
 # Factory function to get a logger instance
-def getLogger(name: Optional[str] = None, level: int = logging.DEBUG) -> logging.Logger:
+def getLogger(name: Optional[str] = None, level: int = logging.INFO) -> logging.Logger:
     """Returns a logger instance, configuring logging if it hasn't been yet."""
     if not logging.getLogger().hasHandlers():
         configure_logging(level)
