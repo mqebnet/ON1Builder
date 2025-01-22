@@ -17,8 +17,8 @@ from configuration import Configuration
 from market_monitor import Market_Monitor
 from nonce_core import Nonce_Core
 from safety_net import Safety_Net
-
-logger = getLogger("0xBuilder")
+import logging
+logger = getLogger("0xBuilder", level=logging.INFO)
 
 class Mempool_Monitor:
     """
