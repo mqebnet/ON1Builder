@@ -129,7 +129,7 @@ class ABIRegistry {
 
     _functionSignatureTo4ByteSelector(signature) {
         const web3 = require('web3');
-        return web3.utils.sha3(signature).slice(0, 10); // Getting the first 4 bytes
+        return web3utils.sha3(signature).slice(0, 10); // Getting the first 4 bytes
     }
 
     getAbi(abiType) {
