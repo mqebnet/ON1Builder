@@ -10,18 +10,18 @@ from web3.middleware import ExtraDataToPOAMiddleware
 from web3 import AsyncIPCProvider, AsyncHTTPProvider, WebSocketProvider
 from eth_account import Account
 
-fromutils import getLogger
-fromabi_registry import ABI_Registry
-fromapi_config import API_Config
-fromconfiguration import Configuration
-frommarket_monitor import Market_Monitor
-frommempool_monitor import Mempool_Monitor
-fromnonce_core import Nonce_Core
-fromsafety_net import Safety_Net
-fromstrategy_net import Strategy_Net
-fromtransaction_core import Transaction_Core
-
-logger = getLogger("0xBuilder")
+from utils import getLogger
+from abi_registry import ABI_Registry
+from api_config import API_Config
+from configuration import Configuration
+from market_monitor import Market_Monitor
+from mempool_monitor import Mempool_Monitor
+from nonce_core import Nonce_Core
+from safety_net import Safety_Net
+from strategy_net import Strategy_Net
+from transaction_core import Transaction_Core
+import logging
+logger = getLogger("0xBuilder", level=logging.INFO)
 
 MEMORY_CHECK_INTERVAL = 300
 
@@ -56,7 +56,7 @@ class Main_Core:
             'transaction_core': None,
             'strategy_net': None,
         }
-        logger.info("Starting 0xBuilder...")
+        logger.info("initializing 0xBuilder...")
 
     async def _initialize_components(self) -> None:
         """Initialize all components in the correct dependency order."""
@@ -64,14 +64,14 @@ class Main_Core:
             # 1. First initialize configuration and load ABIs
             logger.debug("Loading Configuration...")
             await self._load_configuration()
-            logger.debug("Configuration loaded ✅ ")
-            
+            logger.info("Configuration initialized ✅")
+            time.sleep(1)
             # Initialize ABI Registry and load ABIs
             logger.debug("Initializing ABI Registry...")
             abi_registry = ABI_Registry()
             await abi_registry.initialize(self.configuration.BASE_PATH)
-            logger.debug("ABI Registry initialized ✅")
-            
+            logger.info("ABI Registry initialized ✅")
+            time.sleep(1)
             # Load and validate ERC20 ABI
             erc20_abi = await self._load_abi(self.configuration.ERC20_ABI, abi_registry)
             if not erc20_abi:
@@ -79,18 +79,22 @@ class Main_Core:
             
             logger.debug("Initializing Web3...")
             self.web3 = await self._initialize_web3()
+            logger.info("Web3 initialized ✅")
             if not self.web3:
                 raise RuntimeError("Failed to initialize Web3 connection")
+            else:
+                time.sleep(1)
             
             self.account = Account.from_key(self.configuration.WALLET_KEY)
             await self._check_account_balance()
-            logger.debug("Account loaded ✅ ")
-            
+            logger.info("Account {self.account.address} initialized ✅")
+            time.sleep(1)
             # 2. Initialize API config
             logger.debug("Initializing API_Config...")
             self.components['api_config'] = API_Config(self.configuration)
             await self.components['api_config'].initialize()
-            logger.debug("API_Config initialized ✅ ")
+            logger.info("API_Config initialized ✅")
+            time.sleep(1)
             
             # 3. Initialize nonce core
             logger.debug("Initializing Nonce_Core...")
@@ -100,7 +104,7 @@ class Main_Core:
                 self.configuration
             )
             await self.components['nonce_core'].initialize()
-            logger.debug("Nonce_Core initialized ✅ ")
+            logger.info(f"Nonce_Core initialized with nonce {Nonce_Core.get_nonce}✅")
            
             # 4. Initialize safety net
             logger.debug("Initializing Safety_Net...")
@@ -112,7 +116,7 @@ class Main_Core:
                  market_monitor = self.components.get('market_monitor')
             )
             await self.components['safety_net'].initialize()
-            logger.debug("Safety_Net initialized ✅ ")
+            logger.info("Safety_Net initialized ✅ ")
             
             # 5. Initialize transaction core
             logger.debug("Initializing Transaction_Core...")
@@ -129,7 +133,7 @@ class Main_Core:
                 configuration=self.configuration
             )
             await self.components['transaction_core'].initialize()
-            logger.debug("Transaction_Core initialized ✅ ")
+            logger.info("Transaction_Core initialized ✅ ")
 
              # 6. Initialize market monitor
             logger.debug("Initializing Market_Monitor...")
@@ -140,7 +144,7 @@ class Main_Core:
                 transaction_core=self.components['transaction_core']
             )
             await self.components['market_monitor'].initialize()
-            logger.debug("Market_Monitor initialized ✅ ")
+            logger.info("Market_Monitor initialized ✅ ")
             
             # 7. Initialize mempool monitor with validated ABI
             logger.debug("Initializing Mempool_Monitor...")
@@ -155,7 +159,7 @@ class Main_Core:
                 market_monitor=self.components['market_monitor']
             )
             await self.components['mempool_monitor'].initialize()
-            logger.debug("Mempool_Monitor initialized ✅ ")
+            logger.info("Mempool_Monitor initialized ✅ ")
             
             # 8. Finally initialize strategy net
             logger.debug("Initializing Strategy_Net...")
@@ -166,7 +170,7 @@ class Main_Core:
                  self.components['api_config']
             )
             await self.components['strategy_net'].initialize()
-            logger.debug("Strategy_Net initialized ✅")
+            logger.info("Strategy_Net initialized ✅")
             
             logger.info("All components initialized successfully ✅")
 
@@ -187,7 +191,7 @@ class Main_Core:
             for stat in top_stats[:3]:
                 logger.debug(str(stat))
 
-            logger.debug("Main Core initialization complete ✅")
+            logger.info("Main Core initialization complete ✅")
             
         except Exception as e:
             logger.critical(f"Main Core initialization failed: {e}")
@@ -221,7 +225,7 @@ class Main_Core:
                          async with async_timeout.timeout(10):
                              if await web3.is_connected():
                                  chain_id = await web3.eth.chain_id
-                                 logger.debug(f"Connected to network via {provider_name} (Chain ID: {chain_id})")
+                                 logger.info(f"Connected to network via {provider_name} (Chain ID: {chain_id})")
                                  await self._add_middleware(web3)
                                  return web3
                     except asyncio.TimeoutError:
@@ -294,9 +298,9 @@ class Main_Core:
             chain_id = await web3.eth.chain_id
             if (chain_id in {99, 100, 77, 7766, 56}):  # POA networks
                 web3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
-                logger.debug(f"Injected POA middleware.")
+                logger.info(f"Injected POA middleware.")
             elif chain_id in {1, 3, 4, 5, 42, 420}:  # ETH networks
-                logger.debug(f"ETH network.")
+                logger.info(f"ETH network.")
                 pass
             else:
                 logger.warning(f"Unknown network; no middleware injected.")
@@ -314,7 +318,7 @@ class Main_Core:
             balance_eth = self.web3.from_wei(balance, 'ether')
             
             logger.debug(f"Account {self.account.address} initialized ")
-            logger.debug(f"Balance: {balance_eth:.4f} ETH")
+            logger.info(f"Balance: {balance_eth:.4f} ETH")
 
             if balance_eth < 0.01:
                 logger.warning(f"Low account balance (<0.01 ETH)")
@@ -347,7 +351,7 @@ class Main_Core:
 
     async def run(self) -> None:
         """Main execution loop with improved task management."""
-        logger.debug("Starting 0xBuilder...")
+        logger.info("Starting 0xBuilder...")
         self.running = True
 
         try:
