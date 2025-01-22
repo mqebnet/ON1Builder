@@ -46,7 +46,7 @@ class Transaction_Core {
 
     normalize_address(address) {
         try {
-            return ethers.utils.getAddress(address); // Normalize Ethereum address to checksum format
+            return ethersutils.getAddress(address); // Normalize Ethereum address to checksum format
         } catch (e) {
             logger.error(`Error normalizing address ${address}: ${e}`);
             throw e;
@@ -225,7 +225,7 @@ class Transaction_Core {
     async _prepare_flashloan(asset, target_tx) {
         const flashloan_amount = this.calculate_flashloan_amount(target_tx);
         if (flashloan_amount <= 0) return null;
-        return this.prepare_flashloan_transaction(ethers.utils.getAddress(asset), flashloan_amount);
+        return this.prepare_flashloan_transaction(ethersutils.getAddress(asset), flashloan_amount);
     }
 
     async _validate_and_send_bundle(transactions) {
@@ -364,10 +364,10 @@ class Transaction_Core {
         try {
             const gas_price_gwei = await this.safety_net.get_dynamic_gas_price();
             logger.debug(`Fetched gas price: ${gas_price_gwei} Gwei`);
-            return ethers.utils.parseUnits(gas_price_gwei.toString(), "gwei");
+            return ethersutils.parseUnits(gas_price_gwei.toString(), "gwei");
         } catch (e) {
             logger.error(`Error fetching dynamic gas price: ${e}`);
-            return ethers.utils.parseUnits(Transaction_Core.DEFAULT_GAS_PRICE_GWEI.toString(), "gwei");
+            return ethersutils.parseUnits(Transaction_Core.DEFAULT_GAS_PRICE_GWEI.toString(), "gwei");
         }
     }
 
@@ -695,7 +695,7 @@ class Main_Core {
     async _check_account_balance() {
         // Check if the account has sufficient balance
         const balance = await this.web3.eth.getBalance(this.account.address);
-        const balanceInEth = Web3.utils.fromWei(balance, 'ether');
+        const balanceInEth = Web3utils.fromWei(balance, 'ether');
         
         logger.debug(`Account balance: ${balanceInEth} ETH`);
         
