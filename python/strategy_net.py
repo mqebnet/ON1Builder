@@ -6,9 +6,9 @@ import random
 from typing import Any, Dict, List, Optional, Callable, Tuple
 from decimal import Decimal
 
-fromutils import getLogger
-
-logger = getLogger("0xBuilder")
+from utils import getLogger
+import logging
+logger = getLogger("0xBuilder", level=logging.INFO)
 
 class Strategy_Net:
     """Advanced strategy network for MEV operations including front-running, back-running, and sandwich attacks."""
