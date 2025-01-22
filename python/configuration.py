@@ -7,10 +7,9 @@ from eth_utils import function_signature_to_4byte_selector
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-fromutils import getLogger
-
-# Initialize logger (this can be moved to a dedicated logging module later)
-logger = getLogger("0xBuilder")
+from utils import getLogger
+import logging
+logger = getLogger("0xBuilder", level=logging.INFO)
 
 class Configuration:
     """
@@ -198,7 +197,7 @@ class Configuration:
              
          # Extract addresses from dictionary keys
          addresses = list(data.keys())
-         logger.debug(f"Loaded {len(addresses)} token addresses")
+         logger.info(f"Loaded {len(addresses)} token addresses")
          return addresses
 
     async def get_token_symbols(self) -> Dict[str, str]:
