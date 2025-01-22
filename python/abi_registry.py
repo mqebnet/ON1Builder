@@ -5,7 +5,7 @@ from eth_utils import function_signature_to_4byte_selector
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-fromutils import getLogger
+from utils import getLogger
 
 logger = getLogger("0xBuilder")
 
@@ -61,7 +61,7 @@ class ABI_Registry:
                 abi = await self._load_abi_from_path(abi_path, abi_type)
                 self.abis[abi_type] = abi
                 self._extract_signatures(abi, abi_type)
-                logger.debug(f"Loaded and validated {abi_type} ABI from {abi_path}")
+                logger.info(f"Loaded and validated {abi_type} ABI from {abi_path}")
             except FileNotFoundError:
                 logger.error(f"ABI file not found for {abi_type}: {abi_path}")
                 if abi_type in critical_abis:
