@@ -5,7 +5,7 @@ from eth_utils import function_signature_to_4byte_selector
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .utils import getLogger
+fromutils import getLogger
 
 logger = getLogger("0xBuilder")
 

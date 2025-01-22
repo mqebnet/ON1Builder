@@ -3,9 +3,9 @@ import tracemalloc
 
 from typing import Optional
 
-from .main_core import Main_Core
-from .configuration import Configuration
-from .utils import getLogger # Moved logging setup to utils
+from python.main_core import Main_Core
+from python.configuration import Configuration
+from python.utils import getLogger # Moved logging setup to utils
 
 # Initialize the logger before everything else
 logger = getLogger("0xBuilder")

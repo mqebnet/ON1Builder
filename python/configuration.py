@@ -7,7 +7,7 @@ from eth_utils import function_signature_to_4byte_selector
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .utils import getLogger
+fromutils import getLogger
 
 # Initialize logger (this can be moved to a dedicated logging module later)
 logger = getLogger("0xBuilder")
@@ -90,7 +90,7 @@ class Configuration:
         self.USDT_ADDRESS: str = "0xdAC17F958D2ee523a2206206994597C13D831ec7"  # Mainnet USDT
 
     def _load_env(self) -> None:
-        """Load environment variables from .env file."""
+        """Load environment variables fromenv file."""
         dotenv.load_dotenv(dotenv_path=self.env_path)
         logger.debug(f"Environment variables loaded from: {self.env_path}")
 

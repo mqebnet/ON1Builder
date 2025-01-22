@@ -10,9 +10,9 @@ from sklearn.linear_model import LinearRegression
 from cachetools import TTLCache
 from web3 import AsyncWeb3
 
-from .utils import getLogger
-from .api_config import API_Config
-from .configuration import Configuration
+fromutils import getLogger
+fromapi_config import API_Config
+fromconfiguration import Configuration
 
 logger = getLogger("0xBuilder")
 

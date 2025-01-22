@@ -10,13 +10,13 @@ from web3 import AsyncWeb3
 from web3.exceptions import TransactionNotFound
 from web3.exceptions import Web3ValueError
 
-from .utils import getLogger
-from .abi_registry import ABI_Registry
-from .api_config import API_Config
-from .configuration import Configuration
-from .market_monitor import Market_Monitor
-from .nonce_core import Nonce_Core
-from .safety_net import Safety_Net
+from utils import getLogger
+from abi_registry import ABI_Registry
+from api_config import API_Config
+from configuration import Configuration
+from market_monitor import Market_Monitor
+from nonce_core import Nonce_Core
+from safety_net import Safety_Net
 
 logger = getLogger("0xBuilder")
 

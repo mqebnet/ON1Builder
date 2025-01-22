@@ -8,9 +8,9 @@ from typing import Any, Dict, List, Optional, Callable, Union
 from decimal import Decimal
 from cachetools import TTLCache
 
-from .utils import getLogger
-from .abi_registry import ABI_Registry
-from .configuration import Configuration
+fromutils import getLogger
+fromabi_registry import ABI_Registry
+fromconfiguration import Configuration
 
 logger = getLogger("0xBuilder")
 

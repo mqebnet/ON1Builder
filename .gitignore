@@ -23,10 +23,12 @@ coverage/
 .env.development
 .env.test
 .env.production
-
+venv
+.venv
 # Build output
 dist/
 build/
+__pycache__
 
 # OS files
 .DS_Store

@@ -6,7 +6,7 @@ import random
 from typing import Any, Dict, List, Optional, Callable, Tuple
 from decimal import Decimal
 
-from .utils import getLogger
+fromutils import getLogger
 
 logger = getLogger("0xBuilder")
 
