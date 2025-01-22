@@ -1,5 +1,5 @@
 import asyncio
-fromutils import getLogger
+from utils import getLogger
 import time
 from decimal import Decimal
 from typing import Any, Dict, Optional, Tuple, Union
@@ -7,10 +7,10 @@ from cachetools import TTLCache
 from web3 import AsyncWeb3
 from eth_account import Account
 
-fromapi_config import API_Config
-fromconfiguration import Configuration
-
-logger = getLogger("0xBuilder")
+from api_config import API_Config
+from configuration import Configuration
+import logging
+logger = getLogger("0xBuilder", level=logging.INFO)
 
 class Safety_Net:
     """
