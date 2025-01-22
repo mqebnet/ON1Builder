@@ -5,10 +5,11 @@ from cachetools import TTLCache
 from web3 import AsyncWeb3
 from web3.exceptions import Web3ValueError
 
-fromutils import getLogger
-fromconfiguration import Configuration
+from utils import getLogger
+from configuration import Configuration
 
-logger = getLogger("0xBuilder")
+import logging
+logger = getLogger("0xBuilder", level=logging.INFO)
 
 
 class Nonce_Core:
