@@ -5,19 +5,13 @@
 [![License](https://img.shields.io/badge/license-MIT-white.svg)](LICENSE)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-white.svg)](CONTRIBUTING.md)
 ##
-[![Python Version](https://img.shields.io/badge/Python-3.12.*-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![Python Version](https://img.shields.io/badge/Python-3.11.*-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![geth](https://img.shields.io/badge/Geth-v1.14.*-blue.svg)](https://geth.ethereum.org/)
 [![Remix](https://img.shields.io/badge/Remix-IDE-blue.svg)](https://remix.ethereum.org/) 
 ##
 [![AAVE](https://img.shields.io/badge/Aave-v3-orange.svg)](https://aave.com/)
 [![Uniswap](https://img.shields.io/badge/Uniswap-v2.0-orange.svg)](https://uniswap.org/)
-[![Sushiswap](https://img.shields.io/badge/Sushiswap-v2-orange.svg)](https://sushiswap.fi/)
-##
-[![Infura](https://img.shields.io/badge/Infura-API-red.svg)](https://infura.io/)
-[![CoinGecko](https://img.shields.io/badge/Coingecko-API-red.svg)](https://www.coingecko.com/en/api)
-[![CoinMarketCap](https://img.shields.io/badge/CoinMarketcap-API-red.svg)](https://coinmarketcap.com/api/)
-[![CryptoCompare](https://img.shields.io/badge/Cryptocompare-API-red.svg)](https://min-api.cryptocompare.com/)
-[![Etherscan](https://img.shields.io/badge/Etherscan-API-red.svg)](https://etherscan.io/apis)
+
 
 ## Table of Contents
 
@@ -144,24 +138,21 @@ Ensure the following before running 0xBuilder:
 
 ### System Requirements
 
-- **OS**: Ubuntu 22.04 LTS or later (Windows 11 and macOS Ventura supported)
-- **Python**: 3.12+
-- **Node.js**: 18 LTS+
+- **OS**: Linux, Windows 10/11 and macOS
+- **Python**: 3.11+
 - **Geth**: Latest stable version
-- **Internet**: Minimum 50Mbps
+- **Internet**: Minimum 50Mbps (100Mbps recommended)
 - **Hardware**:
-  - RAM: 16GB (32GB recommended)
-  - Storage: 2TB NVMe SSD
-  - Network: Low-latency ethernet
+  - RAM: Minimum 16GB (32GB recommended)
+  - Storage: Minimum 1.3TB NVMe SSD (2TB recommended)
 
 ### Software Dependencies
 
 - **Execution Client**: Geth, Nethermind, or Besu
 - **Consensus Client**: Prysm or Lighthouse
+
 - **Development Tools**:
-  - solc
   - web3.py
-  - ethers.js
   - Python packages from `requirements.txt`
 
 Additional:
