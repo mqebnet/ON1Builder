@@ -1,15 +1,18 @@
 import asyncio
 import tracemalloc
-import logging  # Add this import
+import logging as logger  # Add this import
 
 from typing import Optional
 
 from main_core import Main_Core
 from configuration import Configuration
-from utils import getLogger # Moved logging setup to utils
 
-# Initialize the logger before everything else
-logger = getLogger("0xBuilder", level=logging.INFO)  # Set level to INFO
+import logging as logger
+from main_core import setup_logging
+
+setup_logging()
+
+logger = logger.getLogger(__name__)
 
 async def run_bot():
     """Run the bot with graceful shutdown handling."""
