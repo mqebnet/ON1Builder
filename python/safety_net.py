@@ -9,9 +9,13 @@ from eth_account import Account
 
 from api_config import API_Config
 from configuration import Configuration
-import logging
-logger = getLogger("0xBuilder", level=logging.INFO)
+import logging as logger
+from main_core import setup_logging
 
+setup_logging()
+
+logger = logger.getLogger(__name__)
+ 
 class Safety_Net:
     """
     Enhanced safety system for risk management and transaction validation.
