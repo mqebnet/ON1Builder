@@ -1,16 +1,12 @@
 # 0xBuilder MEV Bot
 
-<a href="https://www.buymeacoffee.com/John0n1" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+[![License](https://img.shields.io/badge/License-MIT-red.svg)](LICENSE)
+[![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-red.svg)](CONTRIBUTING.md)
+##
+[![Python Version](https://img.shields.io/badge/Python-3.12.*-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![Geth Version](https://img.shields.io/badge/Geth-v1.14.*-blue.svg)](https://geth.ethereum.org/)
 
-[![License](https://img.shields.io/badge/license-MIT-white.svg)](LICENSE)
-[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-white.svg)](CONTRIBUTING.md)
-##
-[![Python Version](https://img.shields.io/badge/Python-3.11.*-blue.svg)](https://www.python.org/downloads/release/python-3110/)
-[![geth](https://img.shields.io/badge/Geth-v1.14.*-blue.svg)](https://geth.ethereum.org/)
-[![Remix](https://img.shields.io/badge/Remix-IDE-blue.svg)](https://remix.ethereum.org/) 
-##
-[![AAVE](https://img.shields.io/badge/Aave-v3-orange.svg)](https://aave.com/)
-[![Uniswap](https://img.shields.io/badge/Uniswap-v2.0-orange.svg)](https://uniswap.org/)
+![Status](https://img.shields.io/badge/Status-Work%20in%20Progress-orange.svg)
 
 
 ## Table of Contents
@@ -44,27 +40,36 @@
 
 ## Introduction
 
-**0xBuilder** is an advanced Ethereum trading bot for high-frequency trading and MEV opportunities. It implements strategies like front-running, back-running, sandwich attacks, and flashloan executions using Python, Geth, Remix, and Web3.py. The bot monitors the Ethereum mempool for profitable transactions and executes trades automatically.
+***0xBuilder***  **is an advanced Ethereum trading bot for high-frequency trading and MEV opportunities. It implements strategies like front-running, back-running, sandwich attacks, and flashloan executions using various DeFi protocols.**
+**The bot monitors the Ethereum mempool for arbitrage opportunities, executes transactions, and interacts with smart contracts.**
 
-**Note:** 0xBuilder is a work in progress.
+**It uses flashloans for capital efficiency and dynamic gas pricing optimal transaction fees. It is highly configurable, supports multiple wallets, tokens, and trading pairs, and provides detailed logging for analysis. It integrates with various APIs for blockchain and market data, enabling real-time market analysis and strategy execution.**
+**0xBuilder is designed for traders, developers, and researchers looking to leverage MEV opportunities in the Ethereum ecosystem.**
+
+***Note:*** ***0xBuilder is a work in progress.***
 
 [![](https://mermaid.ink/img/pako:eNp1kttu2zAMhl-FELBdNUBPF2uArcg5aZe0WHLTysbA2YotRJYMWd7qJtmzj5GdwNkwX8j-yU808ZNbFplYsC5LLOYprIaBBnp6_PKtX0oVCwtLh9aF0Ol8gT6faekkKvkudQIDo9cyCesrfU8MOAW1iNwhPxEuBU31G2TgkSGfiyw3RsHcUDVjCW2AoQdGvKdRVe8CVhZ1gVTM6KJBRh4Zb5-tWUuHP5SApzw31pVUq7rf11R9jg_s7kUUO5jwAaqoVOgbQx3D6E1EpVdzUzho1Vs6i04kVdiusjBtZgdkVJ2e-IamV3xsjXadb6UOzxLXvI_R5t_4DV9SG79klELPOUJCOMvf8l78E3Uk4r8bqs_pledmfKywSJVBfd_kp9d1plE3Z-r2qGo98_KBP-VOZvVUF4Z-Ch9hgkfPHzz0SA2vhau-L4Sjycg8J68GqYg2RePM55UtBfyGu8vO3acPzeXH_9l3SsJXXg9DFO2J1yt38rn9ZhcsEzZDGdPmbg_xgLlUZCJgXfqM0W4CFug9cVg6s6x0xLqOmrtg1pRJyrprVAWpMo_J2aFEWv_sFM1Rvxpz1Ps_TBb5rA?type=png)](https://mermaid.live/edit#pako:eNp1kttu2zAMhl-FELBdNUBPF2uArcg5aZe0WHLTysbA2YotRJYMWd7qJtmzj5GdwNkwX8j-yU808ZNbFplYsC5LLOYprIaBBnp6_PKtX0oVCwtLh9aF0Ol8gT6faekkKvkudQIDo9cyCesrfU8MOAW1iNwhPxEuBU31G2TgkSGfiyw3RsHcUDVjCW2AoQdGvKdRVe8CVhZ1gVTM6KJBRh4Zb5-tWUuHP5SApzw31pVUq7rf11R9jg_s7kUUO5jwAaqoVOgbQx3D6E1EpVdzUzho1Vs6i04kVdiusjBtZgdkVJ2e-IamV3xsjXadb6UOzxLXvI_R5t_4DV9SG79klELPOUJCOMvf8l78E3Uk4r8bqs_pledmfKywSJVBfd_kp9d1plE3Z-r2qGo98_KBP-VOZvVUF4Z-Ch9hgkfPHzz0SA2vhau-L4Sjycg8J68GqYg2RePM55UtBfyGu8vO3acPzeXH_9l3SsJXXg9DFO2J1yt38rn9ZhcsEzZDGdPmbg_xgLlUZCJgXfqM0W4CFug9cVg6s6x0xLqOmrtg1pRJyrprVAWpMo_J2aFEWv_sFM1Rvxpz1Ps_TBb5rA)
 
 ## Features
 
-- **Mempool Monitoring**: Tracks the Ethereum mempool for arbitrage and profit opportunities.
-- **Strategy Execution**: Implements front-running, back-running, sandwich attacks, and flashloan executions.
-- **Flashloan Integration**: Utilizes flashloans for capital efficiency without initial capital.
-- **Market Analysis**: Analyzes market conditions using multiple APIs.
-- **Dynamic Gas Pricing**: Adjusts gas prices based on network conditions.
-- **Nonce Management**: Manages nonces to prevent transaction failures.
-- **Safety Mechanisms**: Includes safety checks to manage risks.
-- **Smart Contract Interactions**: Interacts with DeFi protocols like Uniswap, Aave, Sushiswap, PancakeSwap, and Balancer.
-- **Transaction Bundling**: Groups multiple transactions for efficiency.
-- **API Integration**: Connects to various APIs for blockchain and market data.
-- **Configurable Parameters**: Allows adjustment of parameters, strategies, and risk levels.
-- **Detailed Logging**: Provides logs of activities, transactions, and strategies.
-- **Customizable**: Supports multiple wallets, tokens, and trading pairs.
+### Trading Capabilities
+- **Mempool Monitoring**: Tracks the Ethereum mempool for arbitrage and profit opportunities
+- **Strategy Execution**: Implements front-running, back-running, sandwich attacks, and flashloan executions
+- **Flashloan Integration**: Utilizes flashloans for capital efficiency without initial capital
+- **Market Analysis**: Analyzes market conditions using multiple APIs
+
+### Technical Features
+- **Dynamic Gas Pricing**: Adjusts gas prices based on network conditions
+- **Nonce Management**: Manages nonces to prevent transaction failures
+- **Safety Mechanisms**: Includes safety checks to manage risks
+- **Transaction Bundling**: Groups multiple transactions for efficiency
+
+### Integration & Customization
+- **Smart Contract Interactions**: Interacts with DeFi protocols like Uniswap, Aave, Sushiswap, PancakeSwap, and Balancer
+- **API Integration**: Connects to various APIs for blockchain and market data
+- **Configurable Parameters**: Allows adjustment of parameters, strategies, and risk levels
+- **Detailed Logging**: Provides logs of activities, transactions, and strategies
+- **Customizable**: Supports multiple wallets, tokens, and trading pairs
 
 ## Project Structure
 
@@ -72,51 +77,37 @@
 /0xBuilder/
 ├── abi/
 │   ├── uniswap_abi.json
-│   ├── sushiswap_abi.json
-│   ├── pancakeswap_abi.json
 │   ├── erc20_abi.json
-│   ├── balancer_abi.json
 │   └── aave_pool_abi.json
 ├── contracts/
 │   ├── SimpleFlashloan.sol
 │   └── IERC20.sol
-├── javascript/
-│   ├── nonce.js
-│   ├── net.js
-│   ├── monitor.js
-│   ├── main.js
-│   ├── core.js
-│   ├── configuration.js
-│   ├── colorformatter.js
-│   ├── abi_registry.js
-│   └── jsutils/
-│       ├── strategyperformancemetrics.js
-│       ├── strategyexecutionerror.js
-│       ├── strategyconfiguration.js
-│       └── colorformatter.html
 ├── linear_regression/
 │   ├── training_data.csv
 │   └── price_model.joblib
 ├── python/
-│   ├── nonce.py
-│   ├── net.py
-│   ├── monitor.py
+│   ├── safety_net.py
+│   ├── strategy_net.py
+│   ├── mempool_monitor.py
+│   ├── market_monitor.py
 │   ├── main.py
-│   ├── core.py
-│   ├── constants.py
+│   ├── transaction_core.py
+│   ├── main_core.py
+│   ├── nonce_core.py
+│   ├── api_config.py
 │   ├── configuration.py
-│   └── abi_registry.py
+|   ├── abi_registry.py
+│   ├── 0xBuilder.log
+|   ├── __init__.py
 │   └── pyutils/
-│       ├── strategyexecutionerror.py
-│       ├── strategyconfiguration.py
-│       └── colorformatter.py
+│    ├── strategyexecutionerror.py
+│    ├── strategyconfiguration.py
+│    └── colorformatter.py
 ├── utils/
 │   ├── token_addresses.json
 │   ├── erc20_signatures.json
 │   └── token_symbols.json
-├── Logs/
-│   └── 0xBuilder_log.txt
-├── .env.example
+├── .env
 └── requirements.txt
 ```
 
@@ -124,12 +115,10 @@
 
 - **abi/**: Contains JSON files for various smart contract ABIs.
 - **contracts/**: Includes Solidity smart contracts.
-- **javascript/**: Holds JavaScript files related to the project.
 - **linear_regression/**: Contains data and models for regression analysis.
 - **python/**: Contains Python scripts forming the core functionality.
 - **utils/**: Stores utility JSON files for token data.
 - **Logs/**: Maintains log files for tracking activities.
-- **.env.example**: Example environment variables file.
 - **requirements.txt**: Lists Python dependencies.
 
 ## Prerequisites
@@ -138,31 +127,30 @@ Ensure the following before running 0xBuilder:
 
 ### System Requirements
 
-- **OS**: Linux, Windows 10/11 and macOS
-- **Python**: 3.11+
-- **Geth**: Latest stable version
-- **Internet**: Minimum 50Mbps (100Mbps recommended)
+- **Operating System**:
+  - Linux (Ubuntu 20.04+ recommended)
+  - Windows 10/11
+  - macOS 12+
+- **Network**:
+  - Internet: Minimum 50Mbps (100Mbps recommended)
 - **Hardware**:
+  - CPU: 4+ cores, 3.0GHz+ (Intel i7/Ryzen 7 or better recommended)
   - RAM: Minimum 16GB (32GB recommended)
   - Storage: Minimum 1.3TB NVMe SSD (2TB recommended)
 
 ### Software Dependencies
 
-- **Execution Client**: Geth, Nethermind, or Besu
-- **Consensus Client**: Prysm or Lighthouse
-
+- **Execution Client**: execution client compatible with Ethereum, see [Ethereum Node Setup](#ethereum-node-setup)
 - **Development Tools**:
-  - web3.py
-  - Python packages from `requirements.txt`
+    - web3.py
+    - Python packages from `requirements.txt`
 
-Additional:
+### Additional Optional Tools
 - **Git**: Latest stable version
 - **Docker**: Optional for containerization
 - **Build Tools**: make, gcc, platform-specific compilers
 
 ### Ethereum Node Setup
-
-![node-setup](node.png)
 
 Choose and set up an execution client compatible with Ethereum:
 
@@ -181,37 +169,38 @@ Choose and set up an execution client compatible with Ethereum:
    Follow the official [Geth installation guide](https://geth.ethereum.org/docs/install-and-build/installing-geth).
 
 2. **Launch Node**:
-   ```bash
-   geth --mainnet \
-     --syncmode "snap" \
-     --http \
-     --http.api "eth,net,admin,web3,txpool" \
-     --ws \
-     --ws.api "eth,net,admin,web3,txpool" \
-     --maxpeers 100 \
-     --cache 12192 \
-     --ipcpath "/preferred/path/to/geth.ipc"
-   ```
+```bash
+./geth --mainnet --syncmode snap --http --http.api eth,net,admin,web3,txpool --ws --ws.api eth,net,admin,web3,txpool --maxpeers 100 --cache 16000 --ipcpath ~/0xBuilder/geth.ipc --allow-insecure-unlock --http.corsdomain "*" 
+```
 
 3. **Monitor Sync**:
-   ```bash
+```bash
    # Connect to node
    geth attach ipc:/path/to/geth.ipc
 
    # Check sync status
    > eth.syncing
-   ```
+```
 
 #### Beacon Node Setup
 
+1. **Installation**:
+   Follow the official [Prysm installation guide](https://docs.prylabs.network/docs/install/install-with-script).
+
+```bash 
+   curl https://raw.githubusercontent.com/prysmaticlabs/prysm/master/prysm.sh --output prysm.sh
+   chmod +x prysm.sh
+```
+2. **Launch Node**:
+```bash
+./prysm.sh beacon-chain --accept-terms-of-use --execution-endpoint ~/0xBuilder/geth.ipc --mainnet --checkpoint-sync-url https://beaconstate.info --genesis-beacon-api-url https://beaconstate.info
+``` 
 Install either:
 
 - [Prysm](https://docs.prylabs.network/docs/getting-started)
 - [Lighthouse](https://lighthouse-book.sigmaprime.io/installation.html)
 
 ## Installation
-
-
 
 ### Cloning the Repository
 
@@ -229,13 +218,6 @@ For Linux/MacOS:
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-```
-
-For Windows:
-
-```powershell
-python -m venv venv
-.\venv\Scripts\activate
 ```
 
 ### Installing Dependencies
@@ -320,8 +302,6 @@ Ensure JSON files in `utils` are properly formatted:
 
 ## Deploying the Flashloan Contract
 
-![Deployment](https://github.com/user-attachments/assets/e64a5b0b-cccb-4226-9cf6-01c5581d7d85)
-
 Deploy a flashloan contract compatible with Aave V3.
 
 ### Deployment Options
@@ -335,35 +315,8 @@ Deploy a flashloan contract compatible with Aave V3.
 5. Deploy via MetaMask
 6. Update `.env` with contract address
 
-#### Using Development Frameworks
-
-1. Install framework:
-   ```bash
-   npm install --save-dev hardhat
-   ```
-2. Compile contract:
-   ```bash
-   npx hardhat compile
-   ```
-3. Deploy:
-   ```bash
-   npx hardhat run scripts/deploy.js --network yourNetwork
-   ```
-4. Update `.env` with deployed address
-
-### Detailed Setup with Hardhat
-
-1. **Install Dependencies**:
-   ```bash
-   npm install --save-dev hardhat
-   ```
-
-2. **Initialize Hardhat Project**:
-   ```bash
-   npx hardhat
-   ```
-
-3. **Create Flashloan Contract**:
+#
+3. **Example Flashloan Contract AAVE V3**:
    ```solidity
    // SPDX-License-Identifier: MIT
    pragma solidity ^0.8.20;
@@ -421,37 +374,6 @@ Deploy a flashloan contract compatible with Aave V3.
    }
    ```
 
-4. **Compile Contract**:
-   ```bash
-   npx hardhat compile
-   ```
-
-5. **Deploy Contract**:
-   ```javascript
-   // scripts/deploy.js
-   async function main() {
-       const [deployer] = await ethers.getSigners();
-       console.log("Deploying contracts with the account:", deployer.address);
-
-       const SimpleFlashLoan = await ethers.getContractFactory("SimpleFlashLoan");
-       const flashLoan = await SimpleFlashLoan.deploy("0xYourAavePoolAddressesProviderAddress");
-
-       console.log("SimpleFlashLoan deployed to:", flashLoan.address);
-   }
-
-   main()
-       .then(() => process.exit(0))
-       .catch((error) => {
-           console.error(error);
-           process.exit(1);
-       });
-   ```
-
-   Deploy:
-   ```bash
-   npx hardhat run scripts/deploy.js --network yourNetwork
-   ```
-
 6. **Update Configuration**:
    ```ini
    AAVE_ADDRESS=0xYourDeployedContract
@@ -466,6 +388,7 @@ Register and obtain API keys from:
 3. [CoinGecko](https://www.coingecko.com/en/api)
 4. [CoinMarketCap](https://coinmarketcap.com/api/)
 5. [CryptoCompare](https://min-api.cryptocompare.com/)
+6. [Binance](https://www.binance.com/en/support/faq/) (optional)
 
 Store all API keys securely.
 
@@ -479,6 +402,8 @@ Store all API keys securely.
 - Active beacon node
 - Configured environment variables
 - Valid API keys
+- Deployed flashloan contract
+- Wallet with with balance sufficient for gas fees
 
 ### Launch Sequence
 
@@ -494,7 +419,7 @@ Store all API keys securely.
 
 ### Monitoring
 
-- Check `Logs/0xBuilder_log.txt` for logs
+- Check `python/0xBuilder.log` for logs
 - Monitor console for real-time status
 - Use `Ctrl+C` to shutdown gracefully
 
@@ -527,18 +452,17 @@ Store all API keys securely.
 
 ## Logging
 
-Logs are maintained in `Logs/0xBuilder_log.txt`, including:
+Logs are maintained in `python/0xBuilder.log`, including:
 
 - Transaction detections
 - Strategy executions
 - Errors and exceptions
 - Transaction results
 
-Configure logging in `python/main.py` via `setup_logging()`.
+Configure logging in `python/main_core.py` via `setup_logging()`.
 
 ## Troubleshooting
 
-![Troubleshooting](https://github.com/user-attachments/assets/c80265f5-76f8-4dbe-8522-023e99d4a1ff)
 
 ### Common Issues
 
@@ -560,6 +484,7 @@ Configure logging in `python/main.py` via `setup_logging()`.
 ## Contributing
 
 Review [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions are most welcome! ❤️❤️
 
 ### Contribution Process
 
@@ -575,7 +500,7 @@ Licensed under the [MIT License](LICENSE). See LICENSE file for details.
 
 ## Disclaimer
 
-**IMPORTANT**: For educational and research purposes only. Use at your own risk.
+**IMPORTANT**: Me the author, and the project contributors, are not responsible for any financial losses or damages incurred by using 0xBuilder. Use at your own risk. Not in any instance should any contributor, author, or the project be held liable for any financial losses or damages. Use 0xBuilder at your own risk and discretion. 
 
 ### Risk Factors
 
@@ -583,9 +508,13 @@ Licensed under the [MIT License](LICENSE). See LICENSE file for details.
 - Cryptocurrency trading carries financial risks
 - Smart contracts may have vulnerabilities
 
-### Security Notice
+## Acknowledgements
 
-- Protect private keys
-- Test with small amounts first
-- Consider regulatory compliance
-````
+Thanks to the following projects creating the foundation of many projects including this one: 
+
+- ❤️ [Aave](https://github.com/aave/aave-v3-core) for Flashloan integration
+- ❤️ [Uniswap](https://github.com/uniswap/uniswap-v2-core) for DEX integration
+- ❤️ [Geth](https://github.com/ethereum/go-ethereum) for Ethereum node
+- ❤️ [Remix](https://remix.ethereum.org/) for Solidity IDE
+- ❤️ [Web3.py](https://github.com/ethereum/web3.py) for Python integration
+
