@@ -6,6 +6,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Callable, Union
 from decimal import Decimal
 from cachetools import TTLCache
+import joblib
+import pandas as pd
+from sklearn.linear_model import LinearRegression
 
 from abi_registry import ABI_Registry
 from configuration import Configuration
@@ -753,6 +756,7 @@ class API_Config:
 
             if valid_updates:
                 await self._write_training_data(valid_updates)
+                await self.train_price_model()
 
         except Exception as e:
              logger.error(f"Error updating training data: {e}")
@@ -803,3 +807,57 @@ class API_Config:
                   await file.write(df.to_csv(index=False))
         except Exception as e:
             logger.error(f"Error cleaning up old data: {e}")
+
+    async def train_price_model(self) -> None:
+        """Train price prediction model using training data."""
+        try:
+            training_data_path = Path(self.configuration.TRAINING_DATA_PATH)
+            model_path = Path(self.configuration.MODEL_PATH)
+            
+            if not training_data_path.exists():
+                logger.warning("No training data found")
+                return
+
+            df = pd.read_csv(training_data_path)
+            if len(df) < self.configuration.MIN_TRAINING_SAMPLES:
+                logger.warning(f"Insufficient training data: {len(df)} samples")
+                return
+
+            # Features for training
+            features = ['price_usd', 'volume_24h', 'market_cap', 'volatility', 
+                       'liquidity_ratio', 'price_momentum']
+            X = df[features].fillna(0)
+            y = df['price_usd'].fillna(0)
+
+            # Train model
+            model = LinearRegression()
+            model.fit(X, y)
+            
+            # Save model
+            joblib.dump(model, model_path)
+            logger.info(f"Price model trained and saved to {model_path}")
+
+        except Exception as e:
+            logger.error(f"Error training price model: {e}")
+
+    async def predict_price(self, token: str) -> float:
+        """Predict price using saved model."""
+        try:
+            model_path = Path(self.configuration.MODEL_PATH)
+            if not model_path.exists():
+                await self.train_price_model()
+                if not model_path.exists():
+                    return 0.0
+
+            model = joblib.load(model_path)
+            market_data = await self._fetch_market_data(token)
+            if not market_data:
+                return 0.0
+
+            features = pd.DataFrame([market_data])
+            prediction = model.predict(features)[0]
+            return float(prediction)
+
+        except Exception as e:
+            logger.error(f"Error predicting price: {e}")
+            return 0.0
