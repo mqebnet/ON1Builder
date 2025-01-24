@@ -8,7 +8,6 @@ from eth_account import Account
 from typing import Any, Dict, List, Optional
 from decimal import Decimal
 
-from utils import getLogger
 from abi_registry import ABI_Registry
 from api_config import API_Config
 from configuration import Configuration
@@ -16,8 +15,12 @@ from market_monitor import Market_Monitor
 from mempool_monitor import Mempool_Monitor
 from nonce_core import Nonce_Core
 from safety_net import Safety_Net
-import logging
-logger = getLogger("0xBuilder", level=logging.INFO)
+import logging as logger
+from main_core import setup_logging
+
+setup_logging()
+
+logger = logger.getLogger(__name__)
 
 class Transaction_Core:
     """
