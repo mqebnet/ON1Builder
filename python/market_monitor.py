@@ -204,44 +204,17 @@ class Market_Monitor:
         return market_conditions
 
     # Price Analysis Methods
-    async def predict_price_movement(
-        self, 
-        token_symbol: str
-    ) -> float:
-        """
-        Predict future price movement using linear regression model.
-        
-        Args:
-            token_symbol: Token symbol to analyze
-            
-        Returns:
-            Predicted price value
-        """
+    async def predict_price_movement(self, token_symbol: str) -> float:
+        """Predict future price movement."""
         try:
-            # Use API-specific symbol format
-            api_symbol = self.api_config._normalize_symbol(token_symbol)
-            cache_key = f"prediction_{api_symbol}"
-            
+            cache_key = f"prediction_{token_symbol}"
             if cache_key in self.prediction_cache:
                 return self.prediction_cache[cache_key]
 
-            # Check if model needs retraining
-            if time.time() - self.last_training_time > self.RETRAINING_INTERVAL:
-                await self._train_model()
-
-            # Get market data using API-specific symbol
-            market_data = await self._get_market_features(api_symbol)
-            if not market_data:
-                return 0.0
-
-            # Make prediction
-            features = ['market_cap', 'volume_24h', 'percent_change_24h', 'total_supply', 'circulating_supply', 'volatility', 'liquidity_ratio', 'avg_transaction_value', 
-                        'trading_pairs', 'exchange_count', 'price_momentum', 'buy_sell_ratio', 'smart_money_flow']
-            X = pd.DataFrame([market_data], columns=features)
-            prediction = self.price_model.predict(X)[0]
-
+            # Use API_Config's prediction method
+            prediction = await self.api_config.predict_price(token_symbol)
             self.prediction_cache[cache_key] = prediction
-            return float(prediction)
+            return prediction
 
         except Exception as e:
             logger.error(f"Error predicting price movement: {e}")
