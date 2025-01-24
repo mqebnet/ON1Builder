@@ -1,13 +1,15 @@
 import json
 import aiofiles
-
 from eth_utils import function_signature_to_4byte_selector
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from utils import getLogger
+import logging as logger
+from main_core import setup_logging
 
-logger = getLogger("0xBuilder")
+setup_logging()
+
+logger = logger.getLogger(__name__)
 
 class ABI_Registry:
     """
