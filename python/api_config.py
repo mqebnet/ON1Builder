@@ -1,3 +1,14 @@
+"""
+API Configuration and Data Management Module
+
+This module handles:
+1. Multi-source API integration for cryptocurrency data
+2. Caching and rate limiting mechanisms
+3. Data normalization and validation
+4. Price prediction model training
+5. Market metrics calculations
+"""
+
 import asyncio
 import time
 import aiohttp
@@ -23,7 +34,18 @@ logger = logger.getLogger(__name__)
  
 class API_Config:
     """
-    Manages interactions with various external APIs for price and market data.
+    Cryptocurrency API Integration and Data Management System
+    
+    Features:
+    - Multi-source data aggregation (Binance, CoinGecko, CoinMarketCap, etc.)
+    - Intelligent caching with TTL
+    - Automatic rate limiting and retry mechanisms
+    - Price prediction model training and inference
+    - Market metrics calculations
+    
+    Configuration:
+    - MAX_REQUEST_ATTEMPTS: Maximum retry attempts for failed requests
+    - REQUEST_BACKOFF_FACTOR: Exponential backoff multiplier for retries
     """
 
     MAX_REQUEST_ATTEMPTS: int = 5
@@ -266,7 +288,22 @@ class API_Config:
             return None
 
     async def get_real_time_price(self, token: str, vs_currency: str = "eth") -> Optional[Decimal]:
-        """Get real-time price using symbol."""
+        """
+        Fetch real-time token price with multi-source aggregation.
+        
+        Strategy:
+        1. Check cache for recent price
+        2. Query multiple sources in parallel
+        3. Weight results by source reliability
+        4. Update source success rates
+        
+        Args:
+            token: Token symbol or address
+            vs_currency: Quote currency (default: eth)
+            
+        Returns:
+            Decimal: Weighted average price across sources
+        """
         if token.startswith('0x'):  # If address is provided, convert to symbol
             token = self.token_address_to_symbol.get(token.lower())
             if not token:
@@ -599,7 +636,20 @@ class API_Config:
             return None
 
     def _calculate_volatility(self, price_history: List[float]) -> float:
-        """Calculate price volatility using standard deviation of returns."""
+        """
+        Calculate price volatility using standard deviation of returns.
+        
+        Method:
+        1. Calculate price returns series
+        2. Compute standard deviation
+        3. Handle edge cases (insufficient data)
+        
+        Args:
+            price_history: List of historical prices
+            
+        Returns:
+            float: Volatility metric between 0 and 1
+        """
         if not price_history or len(price_history) < 2:
             return 0.0
         
@@ -809,7 +859,24 @@ class API_Config:
             logger.error(f"Error cleaning up old data: {e}")
 
     async def train_price_model(self) -> None:
-        """Train price prediction model using training data."""
+        """
+        Train linear regression model for price prediction.
+        
+        Process:
+        1. Load historical training data
+        2. Validate data quality and quantity
+        3. Prepare feature matrix (price, volume, market cap, etc.)
+        4. Train LinearRegression model
+        5. Save model for inference
+        
+        Features used:
+        - Historical prices
+        - Trading volume
+        - Market capitalization
+        - Volatility metrics
+        - Liquidity ratios
+        - Price momentum
+        """
         try:
             training_data_path = Path(self.configuration.TRAINING_DATA_PATH)
             model_path = Path(self.configuration.MODEL_PATH)
