@@ -10,11 +10,14 @@ from sklearn.linear_model import LinearRegression
 from cachetools import TTLCache
 from web3 import AsyncWeb3
 
-from utils import getLogger
 from api_config import API_Config
 from configuration import Configuration
-import logging
-logger = getLogger("0xBuilder", level=logging.INFO)
+import logging as logger
+from main_core import setup_logging
+
+setup_logging()
+
+logger = logger.getLogger(__name__)
 
 class Market_Monitor:
     """Advanced market monitoring system for real-time analysis and prediction."""
@@ -164,32 +167,39 @@ class Market_Monitor:
             "low_liquidity": False,
         }
         
-        # Get symbol from address
-        token_symbol = await self.api_config.get_token_symbol(token_address)
-        if not token_symbol:
+        # Get symbol from address using API_Config's method
+        symbol = self.api_config.get_token_symbol(token_address)
+        if not symbol:
             logger.debug(f"Cannot get token symbol for address {token_address}")
             return market_conditions
 
-        # Use symbol for API calls
-        prices = await self.get_token_price(token_symbol, data_type='historical', timeframe=1)
-        if len(prices) < 2:
-            logger.debug(f"Not enough price data to analyze market conditions for {token_symbol}")
-            return market_conditions
+        try:
+            # Get the API-specific ID for the token
+            api_symbol = self.api_config._normalize_symbol(symbol)
+            
+            # Use API-specific symbol for all API calls
+            prices = await self.get_token_price(api_symbol, data_type='historical', timeframe=1)
+            if len(prices) < 2:
+                logger.debug(f"Not enough price data to analyze market conditions for {symbol}")
+                return market_conditions
 
-        volatility = self._calculate_volatility(prices)
-        if volatility > self.VOLATILITY_THRESHOLD:
-            market_conditions["high_volatility"] = True
-        logger.debug(f"Calculated volatility for {token_symbol}: {volatility}")
+            volatility = self._calculate_volatility(prices)
+            if volatility > self.VOLATILITY_THRESHOLD:
+                market_conditions["high_volatility"] = True
+            logger.debug(f"Calculated volatility for {symbol}: {volatility}")
 
-        moving_average = np.mean(prices)
-        if prices[-1] > moving_average:
-            market_conditions["bullish_trend"] = True
-        elif prices[-1] < moving_average:
-            market_conditions["bearish_trend"] = True
+            moving_average = np.mean(prices)
+            if prices[-1] > moving_average:
+                market_conditions["bullish_trend"] = True
+            elif prices[-1] < moving_average:
+                market_conditions["bearish_trend"] = True
 
-        volume = await self.get_token_volume(token_symbol)
-        if volume < self.LIQUIDITY_THRESHOLD:
-            market_conditions["low_liquidity"] = True
+            volume = await self.get_token_volume(api_symbol)
+            if volume < self.LIQUIDITY_THRESHOLD:
+                market_conditions["low_liquidity"] = True
+
+        except Exception as e:
+            logger.error(f"Error checking market conditions for {symbol}: {e}")
 
         return market_conditions
 
@@ -208,7 +218,10 @@ class Market_Monitor:
             Predicted price value
         """
         try:
-            cache_key = f"prediction_{token_symbol}"
+            # Use API-specific symbol format
+            api_symbol = self.api_config._normalize_symbol(token_symbol)
+            cache_key = f"prediction_{api_symbol}"
+            
             if cache_key in self.prediction_cache:
                 return self.prediction_cache[cache_key]
 
@@ -216,8 +229,8 @@ class Market_Monitor:
             if time.time() - self.last_training_time > self.RETRAINING_INTERVAL:
                 await self._train_model()
 
-            # Get current market data
-            market_data = await self._get_market_features(token_symbol)
+            # Get market data using API-specific symbol
+            market_data = await self._get_market_features(api_symbol)
             if not market_data:
                 return 0.0
 
@@ -237,13 +250,16 @@ class Market_Monitor:
     async def _get_market_features(self, token_symbol: str) -> Optional[Dict[str, float]]:
         """Get current market features for prediction with enhanced metrics."""
         try:
-             # Gather data concurrently
+            # Use API-specific symbol format
+            api_symbol = self.api_config._normalize_symbol(token_symbol)
+            
+            # Gather data concurrently using API-specific symbol
             price, volume, supply_data, market_data, prices = await asyncio.gather(
-                self.api_config.get_real_time_price(token_symbol),
-                self.api_config.get_token_volume(token_symbol),
-                self.api_config.get_token_supply_data(token_symbol),
-                self._get_trading_metrics(token_symbol),
-                self.get_token_price(token_symbol, data_type='historical', timeframe=1),
+                self.api_config.get_real_time_price(api_symbol),
+                self.api_config.get_token_volume(api_symbol),
+                self.api_config.get_token_supply_data(api_symbol),
+                self._get_trading_metrics(api_symbol),
+                self.get_token_price(api_symbol, data_type='historical', timeframe=1),
                 return_exceptions=True
             )
 
@@ -696,10 +712,11 @@ class Market_Monitor:
             return self.caches['price'][cache_key]
             
         try:
+            api_symbol = self.api_config._normalize_symbol(token_symbol)
             if data_type == 'current':
-                data = await self.api_config.get_real_time_price(token_symbol, vs_currency)
+                data = await self.api_config.get_real_time_price(api_symbol, vs_currency)
             elif data_type == 'historical':
-                data = await self.api_config.fetch_historical_prices(token_symbol, days=timeframe)
+                data = await self.api_config.fetch_historical_prices(api_symbol, days=timeframe)
             else:
                 raise ValueError(f"Invalid data type: {data_type}")
                 
