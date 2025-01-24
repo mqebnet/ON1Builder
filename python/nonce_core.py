@@ -5,13 +5,15 @@ from cachetools import TTLCache
 from web3 import AsyncWeb3
 from web3.exceptions import Web3ValueError
 
-from utils import getLogger
 from configuration import Configuration
 
-import logging
-logger = getLogger("0xBuilder", level=logging.INFO)
+import logging as logger
+from main_core import setup_logging
 
+setup_logging()
 
+logger = logger.getLogger(__name__)
+ 
 class Nonce_Core:
     """
     Advanced nonce management system for Ethereum transactions with caching,
