@@ -10,7 +10,6 @@ from web3.middleware import ExtraDataToPOAMiddleware
 from web3 import AsyncIPCProvider, AsyncHTTPProvider, WebSocketProvider
 from eth_account import Account
 
-from utils import getLogger
 from abi_registry import ABI_Registry
 from api_config import API_Config
 from configuration import Configuration
@@ -20,8 +19,52 @@ from nonce_core import Nonce_Core
 from safety_net import Safety_Net
 from strategy_net import Strategy_Net
 from transaction_core import Transaction_Core
-import logging
-logger = getLogger("0xBuilder", level=logging.INFO)
+from colorama import init, Fore, Style
+import logging as logger
+
+def setup_logging():
+    """Configure logging with colored output for console and file output"""
+    # Initialize colorama
+    init()
+
+    # Custom formatter with colors for console
+    class ColorFormatter(logger.Formatter):
+        format_str = '%(name)s || %(levelname)s || %(message)s'
+        
+        FORMATS = {
+            logger.NOTSET: Fore.WHITE + format_str + Style.RESET_ALL,
+            logger.DEBUG: Fore.WHITE + format_str + Style.RESET_ALL,
+            logger.INFO: Fore.WHITE + format_str + Style.RESET_ALL,
+            logger.WARNING: Fore.YELLOW + format_str + Style.RESET_ALL,
+            logger.ERROR: Fore.RED + format_str + Style.RESET_ALL,
+            logger.CRITICAL: Fore.RED + Style.BRIGHT + format_str + Style.RESET_ALL,
+            logger.FATAL: Fore.RED + Style.BRIGHT + format_str + Style.RESET_ALL   
+        }
+
+        def format(self, record):
+            log_fmt = self.FORMATS.get(record.levelno)
+            formatter = logger.Formatter(log_fmt)
+            return formatter.format(record)
+
+    # Set up console handler with color formatter
+    console_handler = logger.StreamHandler()
+    console_handler.setFormatter(ColorFormatter())
+    
+    # Set up file handler with standard formatting (no colors)
+    file_handler = logger.FileHandler('0xbuilder.log')
+    file_handler.setFormatter(
+        logger.Formatter('%(name)s || %(levellevel)s || %(message)s')
+    )
+    
+    # Configure the root logger with both handlers
+    logger.basicConfig(
+        level=logger.DEBUG,
+        handlers=[console_handler, file_handler]
+    )
+
+setup_logging()
+
+logger = logger.getLogger(__name__)
 
 MEMORY_CHECK_INTERVAL = 300
 
