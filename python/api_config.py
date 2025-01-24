@@ -2,19 +2,22 @@ import asyncio
 import time
 import aiohttp
 import numpy as np
-
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Callable, Union
 from decimal import Decimal
 from cachetools import TTLCache
 
-from utils import getLogger
 from abi_registry import ABI_Registry
 from configuration import Configuration
 
-logger = getLogger("0xBuilder")
+import logging as logger
+from main_core import setup_logging
 
+setup_logging()
 
+logger = logger.getLogger(__name__)
+
+ 
 class API_Config:
     """
     Manages interactions with various external APIs for price and market data.
@@ -117,20 +120,35 @@ class API_Config:
         """Initialize API configuration."""
         try:
             self.session = aiohttp.ClientSession()
-            logger.info("API_Config initialized ✅")
             
-            # Load token mappings
-            token_data = await self.configuration._load_json(
+            # Load token addresses and symbols
+            token_addresses = await self.configuration._load_json(
                 self.configuration.TOKEN_ADDRESSES, 
                 "token addresses"
             )
-            self.token_address_to_symbol = {
-                addr.lower(): symbol for addr, symbol in token_data.items()
-            }
-            self.token_symbol_to_address = {
-                symbol: addr.lower() for addr, symbol in token_data.items()
-            }
-            logger.debug(f"Loaded {len(self.token_address_to_symbol)} token mappings")
+            token_symbols = await self.configuration._load_json(
+                self.configuration.TOKEN_SYMBOLS,
+                "token symbols"
+            )
+            
+            # Create bidirectional mappings
+            self.token_address_to_symbol = {}
+            self.token_symbol_to_address = {}
+            self.symbol_to_api_id = {}  # API-specific identifiers
+            
+            # Build mappings
+            for symbol, address in token_addresses.items():
+                normalized_symbol = symbol.upper()
+                normalized_address = address.lower()
+                
+                self.token_address_to_symbol[normalized_address] = normalized_symbol
+                self.token_symbol_to_address[normalized_symbol] = normalized_address
+                
+                # Map to API-specific ID if available
+                if normalized_symbol in token_symbols:
+                    self.symbol_to_api_id[normalized_symbol] = token_symbols[normalized_symbol]
+            
+            logger.info(f"API_Config initialized with {len(self.token_address_to_symbol)} tokens ✅")
             
         except Exception as e:
             logger.critical(f"API_Config initialization failed: {e}")
@@ -149,17 +167,51 @@ class API_Config:
         """Get token address for a symbol."""
         return self.token_symbol_to_address.get(symbol.upper())
 
+    def _normalize_symbol(self, symbol: str) -> str:
+        """Normalize token symbol and get API-specific identifier."""
+        symbol = symbol.upper().strip()
+        return self.symbol_to_api_id.get(symbol, symbol.lower())
+
+    def _get_api_symbol(self, symbol: str, api: str) -> str:
+        """Get API-specific symbol format."""
+        normalized = symbol.upper()
+        
+        # First check if we have an API-specific ID
+        api_id = self.symbol_to_api_id.get(normalized)
+        if api_id:
+            if api == "coingecko":
+                return api_id  # Already in correct format
+            elif api == "binance":
+                return normalized
+            elif api == "coinmarketcap":
+                return normalized
+            elif api == "cryptocompare":
+                return normalized
+        
+        # Fallback to basic normalization
+        return normalized
+
     async def get_token_metadata(self, token: str) -> Optional[Dict[str, Any]]:
-         """Get metadata for a given token symbol."""
-         if token in self.token_metadata_cache:
-             return self.token_metadata_cache[token]
-         metadata = await self._fetch_from_services(
-             lambda service: self._fetch_token_metadata(service, token),
-             f"metadata for {token}",
-         )
-         if metadata:
-             self.token_metadata_cache[token] = metadata
-         return metadata
+        """Get metadata using symbol instead of address."""
+        if token.startswith('0x'):  # If address is provided, convert to symbol
+            token = self.token_address_to_symbol.get(token.lower())
+            if not token:
+                logger.warning(f"No symbol found for address {token}")
+                return None
+
+        normalized_symbol = self._normalize_symbol(token)
+        
+        if normalized_symbol in self.token_metadata_cache:
+            return self.token_metadata_cache[normalized_symbol]
+            
+        metadata = await self._fetch_from_services(
+            lambda service: self._fetch_token_metadata(service, normalized_symbol),
+            f"metadata for {normalized_symbol}",
+        )
+        
+        if metadata:
+            self.token_metadata_cache[normalized_symbol] = metadata
+        return metadata
 
     async def _fetch_token_metadata(self, source: str, token: str) -> Optional[Dict[str, Any]]:
         """Fetch token metadata from a specific API source."""
@@ -211,8 +263,16 @@ class API_Config:
             return None
 
     async def get_real_time_price(self, token: str, vs_currency: str = "eth") -> Optional[Decimal]:
-        """Get real-time price using weighted average from multiple sources."""
-        cache_key = f"price_{token}_{vs_currency}"
+        """Get real-time price using symbol."""
+        if token.startswith('0x'):  # If address is provided, convert to symbol
+            token = self.token_address_to_symbol.get(token.lower())
+            if not token:
+                logger.warning(f"No symbol found for address {token}")
+                return None
+
+        normalized_symbol = self._normalize_symbol(token)
+        cache_key = f"price_{normalized_symbol}_{vs_currency}"
+        
         if cache_key in self.price_cache:
             return self.price_cache[cache_key]
         prices = []
@@ -220,7 +280,7 @@ class API_Config:
         async with self.api_lock:
             for source, config in self.api_configs.items():
                 try:
-                    price = await self._fetch_price(source, token, vs_currency)
+                    price = await self._fetch_price(source, normalized_symbol, vs_currency)
                     if price:
                         prices.append(price)
                         weights.append(config["weight"] * config["success_rate"])
