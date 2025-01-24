@@ -1,5 +1,5 @@
 # ./0xBuilder/utils/Python/colorformatter.py
-import logging
+import logging as logger
 import sys
 from typing import Optional, Dict
 import dotenv
@@ -47,4 +47,4 @@ def getLogger(name: Optional[str] = None, level: int = logging.DEBUG) -> logging
     return logger
 
 # Initialize the logger globally so it can be used throughout the script
-logger = getLogger("0xBuilder")
+logger = getLogger("0xBuilder", level=logging.INFO)
