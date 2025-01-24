@@ -192,11 +192,6 @@ class Transaction_Core:
             logger.error(f"Failed to load ERC20 ABI: {e}")
             raise
 
-    async def _validate_signatures(self) -> None:
-         """Validate loaded ERC20 signatures."""
-        # This function was not used, and it is now removed
-         pass
-
     async def build_transaction(self, function_call: Any, additional_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Enhanced transaction building with EIP-1559 support and proper gas estimation."""
         additional_params = additional_params or {}
