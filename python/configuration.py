@@ -86,6 +86,14 @@ class Configuration:
         self.MODEL_PATH: str = str(self.BASE_PATH / "linear_regression" / "price_model.joblib")
         self.TRAINING_DATA_PATH: str = str(self.BASE_PATH / "linear_regression" / "training_data.csv")
         
+        # Ensure ML paths are absolute
+        self.LINEAR_REGRESSION_PATH = str(self.BASE_PATH / "linear_regression")
+        self.MODEL_PATH = str(self.BASE_PATH / "linear_regression" / "price_model.joblib")
+        self.TRAINING_DATA_PATH = str(self.BASE_PATH / "linear_regression" / "training_data.csv")
+        
+        # Create directories if they don't exist
+        os.makedirs(self.LINEAR_REGRESSION_PATH, exist_ok=True)
+        
         # WETH and USDC addresses
         self.WETH_ADDRESS: str = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"  # Mainnet WETH
         self.USDC_ADDRESS: str = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"  # Mainnet USDC
