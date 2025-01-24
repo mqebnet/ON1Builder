@@ -29,7 +29,7 @@ class CustomFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         """Formats a log record with colors."""
-        color = self.LEVEL_COLORS.get(record.levelname, self.COLORS["RESET"])
+        color = self.LEVEL_COLORS.get(record.levelno, self.COLORS["RESET"])
         reset = self.COLORS["RESET"]
         record.levelname = f"{color}{record.levelname}{reset}"  # Colorize level name
         record.msg = f"{color}{record.msg}{reset}"              # Colorize message

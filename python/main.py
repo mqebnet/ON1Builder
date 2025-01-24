@@ -36,7 +36,7 @@ async def run_bot():
 
     except Exception as e:
         logger.critical(f"Fatal error: {e}")
-        if tracemalloc.is_tracing():
+        if tracemalloc.is_trcing():
             snapshot = tracemalloc.take_snapshot()
             logger.debug("Top 10 memory allocations:")
             for stat in snapshot.statistics('lineno')[:10]:
