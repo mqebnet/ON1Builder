@@ -70,6 +70,7 @@ class Mempool_Monitor:
         self.running = False
         self.pending_transactions = asyncio.Queue()
         self.monitored_tokens = set(monitored_tokens or [])
+        self.processed_transactions_lock = asyncio.Lock()
         self.profitable_transactions = asyncio.Queue()
         self.processed_transactions = set()
 
@@ -98,12 +99,23 @@ class Mempool_Monitor:
         }
 
         logger.info("Go for main engine start! ✅...")
-        time.sleep(1) # ensuring proper initialization
+        asyncio.sleep(1) # ensuring proper initialization
         
         self.abi_registry = ABI_Registry()
 
     async def initialize(self) -> None:
-        """Initialize with proper ABI loading."""
+        """
+        Initialize the Mempool Monitor.
+
+        This method performs the following initializations:
+        - Updates ERC20 function signatures if available in the configuration.
+        - Loads the ERC20 ABI through the ABI manager.
+        - Validates the required ERC20 methods.
+        - Initializes monitoring state attributes such as running status, 
+          pending transactions queue, profitable transactions queue, 
+          processed transactions set, and task queue.
+        - Logs the initialization status.
+        """
         try:
             logger.debug("Initializing MempoolMonitor...")
             # Update ERC20 signatures if available
@@ -111,9 +123,9 @@ class Mempool_Monitor:
                 self.function_signatures.update(await self.configuration.get_erc20_signatures())
             # Load ERC20 ABI through ABI manager
             if not self.erc20_abi:
-                 raise ValueError("Failed to load ERC20 ABI")
+                raise ValueError("Failed to load ERC20 ABI")
 
-             # Validate required methods
+            # Validate required methods
             required_methods = ['transfer', 'approve', 'transferFrom', 'balanceOf']
             if not self.abi_registry._validate_abi(self.erc20_abi, 'erc20'):
                  raise ValueError("Invalid ERC20 ABI")
@@ -149,34 +161,6 @@ class Mempool_Monitor:
             self.running = False
             logger.error(f"Error during monitoring start: {e}")
     
-    async def stop(self) -> None:
-        """Gracefully stop monitoring activities."""
-        if not self.running:
-            return
-
-        self.running = False
-        self.stopping = True
-        try:
-            # Wait for remaining tasks with timeout
-            try:
-                # Set a timeout of 5 seconds for remaining tasks
-                await asyncio.wait_for(self.task_queue.join(), timeout=5.0)
-            except asyncio.TimeoutError:
-                logger.warning("Timed out waiting for tasks to complete")
-            
-            # Cancel any remaining tasks
-            while not self.task_queue.empty():
-                try:
-                    self.task_queue.get_nowait()
-                    self.task_queue.task_done()
-                except asyncio.QueueEmpty:
-                    break
-                
-            logger.debug("Mempool monitoring stopped gracefully.")
-        except Exception as e:
-            logger.error(f"Error during monitoring shutdown: {e}")
-            raise
-    
     async def _run_monitoring(self) -> None:
         """Enhanced mempool monitoring with automatic recovery and fallback."""
         retry_count = 0
@@ -190,7 +174,7 @@ class Mempool_Monitor:
                         while self.running:
                             tx_hashes = await pending_filter.get_new_entries()
                             await self._handle_new_transactions(tx_hashes)
-                            await asyncio.sleep(0.1)  # Prevent tight loop
+                            await asyncio.sleep(1)  # Prevent tight loop
                     else:
                         # Fallback to polling if filter not available
                         await self._poll_pending_transactions()
@@ -250,7 +234,8 @@ class Mempool_Monitor:
                 logger.warning("Filter setup timed out, falling back to polling")
                 return None
             except Exception as e:
-                logger.warning(f"Filter validation failed: {e}, falling back to polling")
+                logger.warning(f"Filter validation failed: {e}, retrying after delay")
+                await asyncio.sleep(self.RETRY_DELAY)
                 return None
 
         except Exception as e:
@@ -275,9 +260,10 @@ class Mempool_Monitor:
     async def _queue_transaction(self, tx_hash: str) -> None:
         """Queue transaction for processing with deduplication."""
         tx_hash_hex = tx_hash.hex() if isinstance(tx_hash, bytes) else tx_hash
-        if tx_hash_hex not in self.processed_transactions:
-            self.processed_transactions.add(tx_hash_hex)
-            await self.task_queue.put(tx_hash_hex)
+        async with self.processed_transactions_lock:
+            if tx_hash_hex not in self.processed_transactions:
+                self.processed_transactions.add(tx_hash_hex)
+                await self.task_queue.put(tx_hash_hex)
 
     async def _process_task_queue(self) -> None:
         """Process queued transactions with concurrency control."""
@@ -314,13 +300,29 @@ class Mempool_Monitor:
             except TransactionNotFound:
                  if attempt == self.retry_attempts - 1:
                     return None
-                 await asyncio.sleep(self.backoff_factor ** attempt)
+                 await asyncio.sleep(self.RETRY_DELAY * (attempt + 1))
             except Exception as e:
                 logger.error(f"Error fetching transaction {tx_hash}: {e}")
                 return None
 
     async def _handle_profitable_transaction(self, analysis: Dict[str, Any]) -> None:
-        """Enhanced profitable transaction handling with validation."""
+        """
+        Handle profitable transactions with enhanced validation and logging.
+
+        This method performs the following steps:
+        - Validates the profit value from the analysis dictionary.
+        - Formats the profit value for logging purposes.
+        - Adds additional analysis data such as timestamp, gas price, and strategy type.
+        - Puts the analysis dictionary into the profitable transactions queue.
+        - Logs the details of the profitable transaction.
+
+        Args:
+            analysis: A dictionary containing the analysis of the transaction, including
+                      the estimated profit, transaction hash, gas price, and other relevant details.
+
+        Raises:
+            Exception: If an error occurs during the handling process, it is logged.
+        """
         try:
             # Validate profit value
             profit = analysis.get('profit', Decimal(0))
@@ -370,6 +372,23 @@ class Mempool_Monitor:
 
 
     async def analyze_transaction(self, tx) -> Dict[str, Any]:
+        """
+        Analyze a transaction to determine if it is profitable.
+
+        This method performs the following steps:
+        - Checks if the transaction has a hash and input data.
+        - Determines if the transaction involves ETH or tokens.
+        - Analyzes the transaction based on its type (ETH or token).
+        - Returns a dictionary indicating whether the transaction is profitable.
+
+        Args:
+            tx: The transaction object to be analyzed.
+
+        Returns:
+            A dictionary containing the analysis results, including:
+            - "is_profitable": A boolean indicating if the transaction is profitable.
+            - Additional details such as transaction hash, value, gas price, etc.
+        """
         if not tx.hash or not tx.input:
             logger.debug(
                 f"Transaction {tx.hash.hex()} is missing essential fields. Skipping."
@@ -406,7 +425,25 @@ class Mempool_Monitor:
             return {"is_profitable": False}
 
     async def _analyze_token_transaction(self, tx) -> Dict[str, Any]:
-        """Enhanced token transaction analysis with better validation."""
+        """
+        Enhanced token transaction analysis with better validation.
+
+        This method performs the following steps:
+        - Validates the presence of the ERC20 ABI and transaction input data.
+        - Extracts the function selector from the transaction input.
+        - Attempts to decode the transaction using local signature lookup and contract ABI.
+        - Validates and extracts transaction parameters based on the function name.
+        - Estimates the potential profit of the transaction.
+        - Returns a dictionary indicating whether the transaction is profitable.
+
+        Args:
+            tx: The transaction object to be analyzed.
+
+        Returns:
+            A dictionary containing the analysis results, including:
+            - "is_profitable": A boolean indicating if the transaction is profitable.
+            - Additional details such as transaction hash, value, gas price, etc.
+        """
         try:
             if not self.erc20_abi or not tx.input or len(tx.input) < 10:
                 logger.debug("Missing ERC20 ABI or invalid transaction input")
@@ -511,6 +548,23 @@ class Mempool_Monitor:
             return False
 
     async def _estimate_eth_transaction_profit(self, tx: Any) -> Decimal:
+        """
+        Estimate the potential profit of an ETH transaction.
+
+        This method performs the following steps:
+        - Retrieves the dynamic gas price from the safety net.
+        - Estimates the gas used by the transaction if not already provided.
+        - Calculates the total gas cost in ETH.
+        - Converts the transaction value from Wei to ETH.
+        - Computes the potential profit by subtracting the gas cost from the transaction value.
+        - Ensures the profit is non-negative.
+
+        Args:
+            tx: The transaction object to be analyzed.
+
+        Returns:
+            A Decimal representing the estimated profit in ETH.
+        """
         try:
             gas_price_gwei = await self.safety_net.get_dynamic_gas_price()
             gas_used = tx.gas if tx.gas else await self.web3.eth.estimate_gas(tx)
@@ -560,7 +614,30 @@ class Mempool_Monitor:
             return Decimal(0)
 
     async def _calculate_gas_costs(self, tx: Any) -> Dict[str, Any]:
-        """Calculate gas costs with improved precision."""
+        """
+        Calculate gas costs with improved precision.
+
+        This method performs the following steps:
+        - Retrieves the gas price from the transaction.
+        - Converts the gas price from Wei to Gwei.
+        - Estimates the gas used by the transaction if not already provided.
+        - Adds a safety margin to the gas estimate (10%).
+        - Calculates the total gas cost in ETH with high precision.
+        - Returns a dictionary containing the gas price in Gwei, gas used, gas with margin, and gas cost in ETH.
+
+        Args:
+            tx: The transaction object to be analyzed.
+
+        Returns:
+            A dictionary containing the gas cost details:
+            - 'valid': A boolean indicating if the gas cost calculation was successful.
+            - 'data': A dictionary with the following keys if 'valid' is True:
+                - 'gas_price_gwei': The gas price in Gwei.
+                - 'gas_used': The estimated gas used by the transaction.
+                - 'gas_with_margin': The gas used with a safety margin.
+                - 'gas_cost_eth': The total gas cost in ETH.
+            - 'reason': A string indicating the reason for failure if 'valid' is False.
+        """
         try:
             gas_price_wei = Decimal(tx.gasPrice)
             gas_price_gwei = Decimal(self.web3.from_wei(gas_price_wei, "gwei"))
@@ -664,7 +741,27 @@ class Mempool_Monitor:
             }
 
     async def _get_market_data(self, token_address: str) -> Dict[str, Any]:
-        """Get comprehensive market data for profit calculation."""
+        """
+        Get comprehensive market data for profit calculation.
+
+        This method performs the following steps:
+        - Retrieves the token symbol using the token address.
+        - Fetches the real-time price of the token from the API.
+        - Calculates dynamic slippage based on the token's trading volume.
+        - Returns a dictionary containing the market data, including price and slippage.
+
+        Args:
+            token_address: The address of the token for which market data is being retrieved.
+
+        Returns:
+            A dictionary containing the market data:
+            - 'valid': A boolean indicating if the market data retrieval was successful.
+            - 'data': A dictionary with the following keys if 'valid' is True:
+                - 'price': The real-time price of the token.
+                - 'slippage': The calculated slippage based on trading volume.
+                - 'symbol': The symbol of the token.
+            - 'reason': A string indicating the reason for failure if 'valid' is False.
+        """
         try:
             token_symbol = await self.api_config.get_token_symbol(self.web3, token_address)
             if not token_symbol:
@@ -709,7 +806,22 @@ class Mempool_Monitor:
         gas_costs: Dict[str, Decimal],
         market_data: Dict[str, Any]
     ) -> Decimal:
-        """Calculate final profit with all factors considered."""
+        """
+        Calculate final profit with all factors considered.
+
+        This method performs the following steps:
+        - Calculates the expected output value by multiplying the output amount in ETH by the market price and applying slippage.
+        - Computes the net profit by subtracting the input amount in ETH and the gas cost in ETH from the expected output value.
+        - Ensures the profit is non-negative and returns the final profit value.
+
+        Args:
+            amounts: A dictionary containing the input and output amounts in ETH and Wei.
+            gas_costs: A dictionary containing the gas price in Gwei, gas used, gas with margin, and gas cost in ETH.
+            market_data: A dictionary containing the market price, slippage, and token symbol.
+
+        Returns:
+            A Decimal representing the final profit in ETH.
+        """
         try:
             # Calculate expected output value with slippage
             expected_output_value = (
@@ -860,6 +972,15 @@ class Mempool_Monitor:
     async def stop(self) -> None:
         """
         Gracefully stop the Mempool Monitor.
+
+        This method performs the following steps to ensure a clean shutdown:
+        - Sets the `running` attribute to False to signal all running tasks to stop.
+        - Sets the `stopping` attribute to True to indicate the stopping process has begun.
+        - Waits for all tasks in the `task_queue` to complete using `task_queue.join()`.
+        - Logs a debug message indicating the monitor has stopped gracefully.
+        
+        Raises:
+            Exception: If an error occurs during the stopping process, it is logged and re-raised.
         """
         try:
             self.running = False
