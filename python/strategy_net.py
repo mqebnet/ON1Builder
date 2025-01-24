@@ -324,48 +324,6 @@ class Strategy_Net:
             logger.error(f"Error in risk assessment: {e}")
             return 0.0, {}
 
-    # Remove duplicate validation methods and consolidate into one
-    async def _validate_transaction(
-        self,
-        tx: Dict[str, Any],
-        strategy_type: str,
-        min_value: float = 0
-    ) -> Tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
-        """Centralized transaction validation for all strategies."""
-        try:
-            if not isinstance(tx, dict) or not tx:
-                logger.debug("Invalid transaction format")
-                return False, None, None
-
-            decoded_tx = await self._decode_transaction(tx)
-            if not decoded_tx:
-                return False, None, None
-
-            # Extract and validate path
-            path = decoded_tx.get("params", {}).get("path", [])
-            if not path or len(path) < 2:
-                logger.debug("Invalid transaction path")
-                return False, None, None
-
-            # Get token details
-            token_address = path[0] if strategy_type in ["front_run", "sandwich_attack"] else path[-1]
-            token_symbol = await self._get_token_symbol(token_address)
-            if not token_symbol:
-                return False, None, None
-
-            # Validate value if required
-            if min_value > 0:
-                tx_value = self.transaction_core.web3.from_wei(int(tx.get("value", 0)), "ether")
-                if float(tx_value) < min_value:
-                    logger.debug(f"Transaction value {tx_value} below minimum {min_value}")
-                    return False, None, None
-
-            return True, decoded_tx, token_symbol
-
-        except Exception as e:
-            logger.error(f"Transaction validation error: {e}")
-            return False, None, None
-
     async def high_value_eth_transfer(self, target_tx: Dict[str, Any]) -> bool:
          """
         Execute high-value ETH transfer strategy with advanced validation and dynamic thresholds.
