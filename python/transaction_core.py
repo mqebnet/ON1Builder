@@ -50,9 +50,9 @@ class Transaction_Core:
         safety_net: Optional["Safety_Net"] = None,
         configuration: Optional["Configuration"] = None,
         gas_price_multiplier: float = 1.1,
-        erc20_abi: Optional[List[Dict[str, Any]]] = None,
+        erc20_abi: Optional[List[Dict[str, Any]] = None,
         uniswap_address: Optional[str] = None,
-        uniswap_abi: Optional[List[Dict[str, Any]]] = None,
+        uniswap_abi: Optional[List[Dict[str, Any]] = None,
     ):
         """
         Initialize the Transaction Core.
@@ -101,7 +101,7 @@ class Transaction_Core:
             # Directly convert to checksum without changing case
             return self.web3.to_checksum_address(address)
         except Exception as e:
-            logger.error(f"Error normalizing address {address}: {e}")
+            self.handle_error(e, "normalize_address", {"address": address})
             raise
 
     async def initialize(self) -> None:
@@ -130,7 +130,7 @@ class Transaction_Core:
             logger.info("Transaction Core initialized successfully")
 
         except Exception as e:
-            logger.error(f"Transaction Core initialization failed: {e}")
+            self.handle_error(e, "initialize")
             raise
 
     async def _validate_contract(self, contract: Any, name: str, abi_type: str) -> None:
@@ -179,7 +179,7 @@ class Transaction_Core:
                     raise ValueError(f"No code at {contract.address}")
 
         except Exception as e:
-            logger.error(f"Contract validation failed for {name}: {e}")
+            self.handle_error(e, "_validate_contract", {"contract": contract, "name": name, "abi_type": abi_type})
             # Don't raise the error, just log it as a warning
             logger.warning(f"Contract validation warning for {name}: {e}")
 
@@ -189,7 +189,7 @@ class Transaction_Core:
             return await self.abi_registry.get_abi('erc20')
             
         except Exception as e:
-            logger.error(f"Failed to load ERC20 ABI: {e}")
+            self.handle_error(e, "_load_erc20_abi")
             raise
 
     async def build_transaction(self, function_call: Any, additional_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -236,7 +236,7 @@ class Transaction_Core:
             return tx_details
 
         except Exception as e:
-            logger.error(f"Error building transaction: {e}")
+            self.handle_error(e, "build_transaction", {"function_call": function_call, "additional_params": additional_params})
             raise
 
     async def _get_dynamic_gas_parameters(self) -> Dict[str, int]:
@@ -249,9 +249,7 @@ class Transaction_Core:
              gas_price_gwei = await self.safety_net.get_dynamic_gas_price()
              logger.debug(f"Fetched gas price: {gas_price_gwei} Gwei")
         except Exception as e:
-            logger.error(
-                f"Error fetching dynamic gas price: {e}. Using default gas price."
-            )
+            self.handle_error(e, "_get_dynamic_gas_parameters")
             gas_price_gwei = Decimal(self.DEFAULT_GAS_PRICE_GWEI)  # Default gas price in Gwei
 
         gas_price = int(
@@ -271,13 +269,13 @@ class Transaction_Core:
             logger.debug(f"Estimated gas: {gas_estimate}")
             return gas_estimate
         except ContractLogicError as e:
-            logger.warning(f"Contract logic error during gas estimation: {e}. Using default gas limit.")
+            self.handle_error(e, "estimate_gas_smart", {"tx": tx})
             return self.DEFAULT_GAS_LIMIT  # Default gas limit
         except TransactionNotFound:
-            logger.warning("Transaction not found during gas estimation. Using default gas limit.")
+            self.handle_error(e, "estimate_gas_smart", {"tx": tx})
             return self.DEFAULT_GAS_LIMIT
         except Exception as e:
-            logger.error(f"Gas estimation failed: {e}. Using default gas limit.")
+            self.handle_error(e, "estimate_gas_smart", {"tx": tx})
             return self.DEFAULT_GAS_LIMIT  # Default gas limit
 
     async def execute_transaction(self, tx: Dict[str, Any]) -> Optional[str]:
@@ -294,15 +292,11 @@ class Transaction_Core:
                 logger.debug(f"Transaction sent successfully: {tx_hash.hex()}")
                 return tx_hash.hex()
         except TransactionNotFound as e:
-            logger.error(
-                f"Transaction not found: {e}. Attempt {attempt} of {self.retry_attempts}"
-            )
+            self.handle_error(e, "execute_transaction", {"tx": tx})
         except ContractLogicError as e:
-            logger.error(
-                f"Contract logic error: {e}. Attempt {attempt} of {self.retry_attempts}"
-            )
+            self.handle_error(e, "execute_transaction", {"tx": tx})
         except Exception as e:
-            logger.warning(f"Attempt {attempt+1}: Failed to execute transaction - {e}")
+            self.handle_error(e, "execute_transaction", {"tx": tx})
             await asyncio.sleep(self.RETRY_DELAY * (attempt + 1))
         logger.error("Failed to execute transaction after retries")
         return None
@@ -324,10 +318,10 @@ class Transaction_Core:
             )
             return signed_tx.rawTransaction
         except KeyError as e:
-            logger.error(f"Missing transaction parameter for signing: {e}")
+            self.handle_error(e, "sign_transaction", {"transaction": transaction})
             raise
         except Exception as e:
-            logger.error(f"Error signing transaction: {e}")
+            self.handle_error(e, "sign_transaction", {"transaction": transaction})
             raise
     
     async def handle_eth_transaction(self, target_tx: Dict[str, Any]) -> bool:
@@ -375,7 +369,7 @@ class Transaction_Core:
                 logger.warning("Failed to execute ETH transaction. Retrying... ⚠️ ")
         
         except Exception as e:
-            logger.error(f"Error handling ETH transaction: {e}")
+            self.handle_error(e, "handle_eth_transaction", {"target_tx": target_tx})
         return False
     
     def calculate_flashloan_amount(self, target_tx: Dict[str, Any]) -> int:
@@ -413,10 +407,10 @@ class Transaction_Core:
                 logger.debug("Transaction simulation succeeded.")
                 return True
             except ContractLogicError as e:
-                logger.debug(f"Transaction simulation failed due to contract logic error: {e}")
+                self.handle_error(e, "simulate_transaction", {"transaction": transaction})
                 return False
             except Exception as e:
-                logger.debug(f"Transaction simulation failed: {e}")
+                self.handle_error(e, "simulate_transaction", {"transaction": transaction})
                 return False
 
     async def prepare_flashloan_transaction(
@@ -442,12 +436,10 @@ class Transaction_Core:
             tx = await self.build_transaction(function_call)
             return tx
         except ContractLogicError as e:
-            logger.error(
-                f"Contract logic error preparing flashloan transaction: {e} ⚠️ "
-            )
+            self.handle_error(e, "prepare_flashloan_transaction", {"flashloan_asset": flashloan_asset, "flashloan_amount": flashloan_amount})
             return None
         except Exception as e:
-            logger.error(f"Error preparing flashloan transaction: {e} ⚠️ ")
+            self.handle_error(e, "prepare_flashloan_transaction", {"flashloan_asset": flashloan_asset, "flashloan_amount": flashloan_amount})
             return None
 
     async def send_bundle(self, transactions: List[Dict[str, Any]]) -> bool:
@@ -504,9 +496,7 @@ class Transaction_Core:
                                 response_data = await response.json()
 
                                 if "error" in response_data:
-                                    logger.error(
-                                        f"Bundle submission error via {builder['name']}: {response_data['error']}"
-                                    )
+                                    self.handle_error(ValueError(response_data["error"]), "send_bundle", {"transactions": transactions})
                                     raise ValueError(response_data["error"])
 
                                 logger.info(f"Bundle sent successfully via {builder['name']}. ✅ ")
@@ -514,18 +504,16 @@ class Transaction_Core:
                                 break  # Success, move to next builder
 
                     except aiohttp.ClientResponseError as e:
-                        logger.error(
-                            f"HTTP error sending bundle via {builder['name']}: {e}. Attempt {attempt} of {self.retry_attempts}"
-                        )
+                        self.handle_error(e, "send_bundle", {"transactions": transactions})
                         if attempt < self.retry_attempts:
                             sleep_time = self.RETRY_DELAY * attempt
                             logger.warning(f"Retrying in {sleep_time} seconds...")
                             await asyncio.sleep(sleep_time)
                     except ValueError as e:
-                        logger.error(f"Bundle submission error via {builder['name']}: {e} ⚠️ ")
+                        self.handle_error(e, "send_bundle", {"transactions": transactions})
                         break  # Move to next builder
                     except Exception as e:
-                        logger.error(f"Unexpected error with {builder['name']}: {e}. Attempt {attempt} of {self.retry_attempts} ⚠️ ")
+                        self.handle_error(e, "send_bundle", {"transactions": transactions})
                         if attempt < self.retry_attempts:
                             sleep_time = self.RETRY_DELAY * attempt
                             logger.warning(f"Retrying in {sleep_time} seconds...")
@@ -541,7 +529,7 @@ class Transaction_Core:
                 return False
 
         except Exception as e:
-            logger.error(f"Unexpected error in send_bundle: {e} ⚠️ ")
+            self.handle_error(e, "send_bundle", {"transactions": transactions})
             return False
     
     async def _validate_transaction(self, tx: Dict[str, Any], operation: str) -> Optional[Dict[str, Any]]:
@@ -594,7 +582,7 @@ class Transaction_Core:
 
             return False
         except Exception as e:
-            logger.error(f"Front-run execution failed: {e}")
+            self.handle_error(e, "front_run", {"target_tx": target_tx})
             return False
 
     async def back_run(self, target_tx: Dict[str, Any]) -> bool:
@@ -614,7 +602,7 @@ class Transaction_Core:
 
             return False
         except Exception as e:
-            logger.error(f"Back-run execution failed: {e}")
+            self.handle_error(e, "back_run", {"target_tx": target_tx})
             return False
 
     async def execute_sandwich_attack(self, target_tx: Dict[str, Any]) -> bool:
@@ -638,7 +626,7 @@ class Transaction_Core:
 
             return False
         except Exception as e:
-            logger.error(f"Sandwich attack execution failed: {e}")
+            self.handle_error(e, "execute_sandwich_attack", {"target_tx": target_tx})
             return False
     
     async def _prepare_flashloan(self, asset: str, target_tx: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -717,7 +705,7 @@ class Transaction_Core:
             logger.info(f"Prepared front-run transaction on {exchange_name} successfully. ✅ ")
             return front_run_tx
         except Exception as e:
-            logger.error(f"Error preparing front-run transaction: {e}")
+            self.handle_error(e, "_prepare_front_run_transaction", {"target_tx": target_tx})
             return None
 
     async def _prepare_back_run_transaction(
@@ -778,7 +766,7 @@ class Transaction_Core:
             return back_run_tx
 
         except Exception as e:
-            logger.error(f"Error preparing back-run transaction: {e}")
+            self.handle_error(e, "_prepare_back_run_transaction", {"target_tx": target_tx, "decoded_tx": decoded_tx})
             return None
 
     async def decode_transaction_input(self, input_data: str, contract_address: str) -> Optional[Dict[str, Any]]:
@@ -813,7 +801,7 @@ class Transaction_Core:
             return None
 
         except Exception as e:
-            logger.error(f"Error decoding transaction input: {e}")
+            self.handle_error(e, "decode_transaction_input", {"input_data": input_data, "contract_address": contract_address})
             return None
 
     async def cancel_transaction(self, nonce: int) -> bool:
@@ -846,7 +834,7 @@ class Transaction_Core:
                 )
                 return True
             except Exception as e:
-                logger.warning(f"Failed to cancel transaction: {e}")
+                self.handle_error(e, "cancel_transaction", {"nonce": nonce})
                 return False
     
     async def estimate_gas_limit(self, tx: Dict[str, Any]) -> int:
@@ -861,9 +849,7 @@ class Transaction_Core:
             logger.debug(f"Estimated gas: {gas_estimate}")
             return gas_estimate
         except Exception as e:
-            logger.debug(
-                f"Gas estimation failed: {e}. Using default gas limit of {self.DEFAULT_GAS_LIMIT}."
-            )
+            self.handle_error(e, "estimate_gas_limit", {"tx": tx})
             return self.DEFAULT_GAS_LIMIT  # Default gas limit
     
     async def get_current_profit(self) -> Decimal:
@@ -878,7 +864,7 @@ class Transaction_Core:
             logger.debug(f"Current profit: {self.current_profit} ETH")
             return self.current_profit
         except Exception as e:
-            logger.error(f"Error fetching current profit: {e}")
+            self.handle_error(e, "get_current_profit")
             return Decimal("0")
 
     async def withdraw_eth(self) -> bool:
@@ -900,10 +886,10 @@ class Transaction_Core:
                 logger.warning("Failed to send ETH withdrawal transaction.")
                 return False
         except ContractLogicError as e:
-            logger.error(f"Contract logic error during ETH withdrawal: {e}")
+            self.handle_error(e, "withdraw_eth")
             return False
         except Exception as e:
-            logger.error(f"Error withdrawing ETH: {e}")
+            self.handle_error(e, "withdraw_eth")
             return False
     
     async def estimate_transaction_profit(self, tx: Dict[str, Any]) -> Decimal:
@@ -921,7 +907,7 @@ class Transaction_Core:
             logger.debug(f"Estimated profit: {profit} ETH")
             return Decimal(profit)
         except Exception as e:
-            logger.error(f"Error estimating transaction profit: {e}")
+            self.handle_error(e, "estimate_transaction_profit", {"tx": tx})
             return Decimal("0")
 
     async def withdraw_token(self, token_address: str) -> bool:
@@ -946,10 +932,10 @@ class Transaction_Core:
                 logger.warning("Failed to send token withdrawal transaction.")
                 return False
         except ContractLogicError as e:
-            logger.error(f"Contract logic error during token withdrawal: {e}")
+            self.handle_error(e, "withdraw_token", {"token_address": token_address})
             return False
         except Exception as e:
-            logger.error(f"Error withdrawing token: {e}")
+            self.handle_error(e, "withdraw_token", {"token_address": token_address})
             return False
 
     async def transfer_profit_to_account(self, amount: Decimal, account: str) -> bool:
@@ -975,10 +961,10 @@ class Transaction_Core:
                 logger.warning("Failed to send profit transfer transaction.")
                 return False
         except ContractLogicError as e:
-            logger.error(f"Contract logic error during profit transfer: {e}")
+            self.handle_error(e, "transfer_profit_to_account", {"amount": amount, "account": account})
             return False
         except Exception as e:
-            logger.error(f"Error transferring profit: {e}")
+            self.handle_error(e, "transfer_profit_to_account", {"amount": amount, "account": account})
             return False
 
     async def stop(self) -> None:
@@ -987,7 +973,7 @@ class Transaction_Core:
             await self.nonce_core.stop()
             logger.debug("Stopped Transaction Core. ")
         except Exception as e:
-            logger.error(f"Error stopping Transaction Core: {e} !")
+            self.handle_error(e, "stop")
             raise
 
     async def calculate_gas_parameters(
@@ -1004,7 +990,7 @@ class Transaction_Core:
                 'gas': int(estimated_gas * 1.1)  # 10% buffer
             }
         except Exception as e:
-            logger.error(f"Error calculating gas parameters: {e}")
+            self.handle_error(e, "calculate_gas_parameters", {"tx": tx, "gas_limit": gas_limit})
             # Fallback to Default values
             return {
                 "gasPrice": int(self.web3.to_wei(self.DEFAULT_GAS_PRICE_GWEI * self.gas_price_multiplier, "gwei")),
@@ -1024,7 +1010,7 @@ class Transaction_Core:
             tx_hash = await self.execute_transaction(tx)
             return tx_hash
         except Exception as e:
-            logger.error(f"Error executing transaction with custom gas parameters: {e}")
+            self.handle_error(e, "execute_transaction_with_gas_parameters", {"tx": tx, "gas_params": gas_params})
             return None
 
     async def call_contract_function(self, signed_tx: bytes) -> hexbytes.HexBytes:
@@ -1038,5 +1024,18 @@ class Transaction_Core:
             tx_hash = await self.web3.eth.send_raw_transaction(signed_tx)
             return tx_hash
         except Exception as e:
-            logger.error(f"Error calling contract function: {e}")
+            self.handle_error(e, "call_contract_function", {"signed_tx": signed_tx})
             raise
+
+    def handle_error(self, error: Exception, function_name: str, params: Optional[Dict[str, Any]] = None) -> None:
+        """
+        Centralized error handling function.
+
+        :param error: Exception object.
+        :param function_name: Name of the function where the error occurred.
+        :param params: Optional dictionary of parameters passed to the function.
+        """
+        error_message = f"Error in {function_name}: {error}"
+        if params:
+            error_message += f" | Parameters: {params}"
+        logger.error(error_message)

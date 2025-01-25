@@ -1,5 +1,6 @@
 import json
 import aiofiles
+import asyncio
 from eth_utils import function_signature_to_4byte_selector
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -57,37 +58,41 @@ class ABI_Registry:
         # Define critical ABIs that are essential for the application
         critical_abis = {'erc20', 'uniswap'}
 
-        for abi_type, filename in abi_files.items():
-            abi_path = abi_dir / filename
-            try:
-                abi = await self._load_abi_from_path(abi_path, abi_type)
-                self.abis[abi_type] = abi
-                self._extract_signatures(abi, abi_type)
-                logger.info(f"Loaded and validated {abi_type} ABI from {abi_path}")
-            except FileNotFoundError:
-                logger.error(f"ABI file not found for {abi_type}: {abi_path}")
-                if abi_type in critical_abis:
-                    raise
-                else:
-                    logger.warning(f"Skipping non-critical ABI: {abi_type}")
-            except ValueError as ve:
-                logger.error(f"Validation failed for {abi_type} ABI: {ve}")
-                if abi_type in critical_abis:
-                    raise
-                else:
-                    logger.warning(f"Skipping non-critical ABI: {abi_type}")
-            except json.JSONDecodeError as je:
-                logger.error(f"JSON decode error for {abi_type} ABI: {je}")
-                if abi_type in critical_abis:
-                    raise
-                else:
-                    logger.warning(f"Skipping non-critical ABI: {abi_type}")
-            except Exception as e:
-                logger.error(f"Unexpected error loading {abi_type} ABI: {e}")
-                if abi_type in critical_abis:
-                    raise
-                else:
-                    logger.warning(f"Skipping non-critical ABI: {abi_type}")
+        await asyncio.gather(
+            *[self._load_and_validate_abi(abi_type, abi_dir / filename, critical_abis) for abi_type, filename in abi_files.items()]
+        )
+
+    async def _load_and_validate_abi(self, abi_type: str, abi_path: Path, critical_abis: set) -> None:
+        """Load and validate a single ABI."""
+        try:
+            abi = await self._load_abi_from_path(abi_path, abi_type)
+            self.abis[abi_type] = abi
+            self._extract_signatures(abi, abi_type)
+            logger.info(f"Loaded and validated {abi_type} ABI from {abi_path}")
+        except FileNotFoundError:
+            logger.error(f"ABI file not found for {abi_type}: {abi_path}")
+            if abi_type in critical_abis:
+                raise
+            else:
+                logger.warning(f"Skipping non-critical ABI: {abi_type}")
+        except ValueError as ve:
+            logger.error(f"Validation failed for {abi_type} ABI: {ve}")
+            if abi_type in critical_abis:
+                raise
+            else:
+                logger.warning(f"Skipping non-critical ABI: {abi_type}")
+        except json.JSONDecodeError as je:
+            logger.error(f"JSON decode error for {abi_type} ABI: {je}")
+            if abi_type in critical_abis:
+                raise
+            else:
+                logger.warning(f"Skipping non-critical ABI: {abi_type}")
+        except Exception as e:
+            logger.error(f"Unexpected error loading {abi_type} ABI: {e}")
+            if abi_type in critical_abis:
+                raise
+            else:
+                logger.warning(f"Skipping non-critical ABI: {abi_type}")
 
     async def _load_abi_from_path(self, abi_path: Path, abi_type: str) -> List[Dict]:
         """Load and validate ABI content from the specified path."""
@@ -165,3 +170,12 @@ class ABI_Registry:
     def get_function_signature(self, abi_type: str, method_name: str) -> Optional[str]:
         """Retrieve a function signature by ABI type and method name."""
         return self.signatures.get(abi_type, {}).get(method_name)
+
+    async def update_abi(self, abi_type: str, new_abi: List[Dict]) -> None:
+        """Update an ABI dynamically without restarting the application."""
+        if not self._validate_abi(new_abi, abi_type):
+            raise ValueError(f"Validation failed for {abi_type} ABI")
+
+        self.abis[abi_type] = new_abi
+        self._extract_signatures(new_abi, abi_type)
+        logger.info(f"Updated {abi_type} ABI dynamically")

@@ -696,8 +696,7 @@ class Mempool_Monitor:
                 output_amount_wei = Decimal(str(parse_amount(output_amount)))
             except (ValueError, TypeError) as e:
                 return {
-                    'valid': False,
-                    'reason': f'Amount parsing error: {str(e)}',
+                    'valid': False, 'reason': f'Amount parsing error: {str(e)}',
                     'details': {
                         'input_raw': input_amount,
                         'output_raw': output_amount

@@ -1,6 +1,7 @@
 import asyncio
 import tracemalloc
 import logging as logger
+import signal
 
 from typing import Optional
 
@@ -19,6 +20,12 @@ async def run_bot():
     loop = asyncio.get_running_loop()
     shutdown_handler_task: Optional[asyncio.Task] = None
 
+    def shutdown_handler():
+        """Handle shutdown signals."""
+        logger.info("Received shutdown signal. Stopping the bot...")
+        if shutdown_handler_task:
+            shutdown_handler_task.cancel()
+
     try:
         # Start memory tracking
         tracemalloc.start()
@@ -30,13 +37,17 @@ async def run_bot():
         # Create and initialize main core
         core = Main_Core(configuration)
 
+        # Register shutdown signals
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, shutdown_handler)
+
         # Initialize and run
         await core.initialize()
         await core.run()
 
     except Exception as e:
         logger.critical(f"Fatal error: {e}")
-        if tracemalloc.is_trcing():
+        if tracemalloc.is_tracing():
             snapshot = tracemalloc.take_snapshot()
             logger.debug("Top 10 memory allocations:")
             for stat in snapshot.statistics('lineno')[:10]:
