@@ -193,7 +193,7 @@ class Transaction_Core:
             raise
 
     async def build_transaction(self, function_call: Any, additional_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Enhanced transaction building with EIP-1559 support and proper gas estimation."""
+        """ transaction building with EIP-1559 support and proper gas estimation."""
         additional_params = additional_params or {}
         try:
             # Get chain ID
@@ -210,7 +210,7 @@ class Transaction_Core:
                 'from': self.account.address,
             }
 
-            # Add EIP-1559 specific parameters if supported
+            # EIP-1559 specific parameters
             if supports_eip1559:
                 base_fee = latest_block['baseFeePerGas']
                 priority_fee = await self.web3.eth.max_priority_fee
@@ -226,12 +226,12 @@ class Transaction_Core:
             # Build transaction
             tx_details = function_call.buildTransaction(tx_params)
 
-            # Add additional parameters
+            # Additional parameters
             tx_details.update(additional_params)
 
             # Estimate gas with buffer
             estimated_gas = await self.estimate_gas_smart(tx_details)
-            tx_details['gas'] = int(estimated_gas * 1.1)  # Add 10% buffer
+            tx_details['gas'] = int(estimated_gas * 1.1)  # 10% buffer
             
             return tx_details
 
@@ -785,7 +785,7 @@ class Transaction_Core:
         """Decode transaction input using ABI registry."""
         try:
             # Get selector from input
-            selector = input_data[:10][2:]  # Remove '0x' prefix
+            selector = input_data[:10][2:]
             
             # Get method name from registry
             method_name = self.abi_registry.get_method_selector(selector)
@@ -1001,7 +1001,7 @@ class Transaction_Core:
             estimated_gas = gas_limit or await self.estimate_gas_smart(tx)
             return {
                 'gasPrice': gas_params['gasPrice'],
-                'gas': int(estimated_gas * 1.1)  # Add 10% buffer
+                'gas': int(estimated_gas * 1.1)  # 10% buffer
             }
         except Exception as e:
             logger.error(f"Error calculating gas parameters: {e}")

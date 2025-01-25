@@ -91,7 +91,7 @@ class Mempool_Monitor:
         self.semaphore = asyncio.Semaphore(self.max_parallel_tasks)
         self.task_queue = asyncio.Queue()
 
-        # Add function signature mappings
+        # Function signature mappings
         self.function_signatures = {
             '0xa9059cbb': 'transfer',
             '0x095ea7b3': 'approve',
@@ -144,7 +144,7 @@ class Mempool_Monitor:
             raise
 
     async def start_monitoring(self) -> None:
-         """Start monitoring the mempool with improved error handling."""
+         """Start monitoring the mempool with  error handling."""
          if self.running:
             logger.debug("Monitoring is already active.")
             return
@@ -162,7 +162,7 @@ class Mempool_Monitor:
             logger.error(f"Error during monitoring start: {e}")
     
     async def _run_monitoring(self) -> None:
-        """Enhanced mempool monitoring with automatic recovery and fallback."""
+        """ mempool monitoring with automatic recovery and fallback."""
         retry_count = 0
         
         while self.running:
@@ -189,7 +189,7 @@ class Mempool_Monitor:
                 await asyncio.sleep(self.RETRY_DELAY * retry_count)
     
     async def _poll_pending_transactions(self) -> None:
-        """Enhanced polling method with better error handling."""
+        """ polling method with better error handling."""
         last_block = await self.web3.eth.block_number
         
         while self.running:
@@ -279,7 +279,7 @@ class Mempool_Monitor:
                 logger.error(f"Error processing task queue: {e}")
 
     async def process_transaction(self, tx_hash: str) -> None:
-        """Process individual transactions with enhanced error handling."""
+        """Process individual transactions with  error handling."""
         try:
             tx = await self._get_transaction_with_retry(tx_hash)
             if not tx:
@@ -307,7 +307,7 @@ class Mempool_Monitor:
 
     async def _handle_profitable_transaction(self, analysis: Dict[str, Any]) -> None:
         """
-        Handle profitable transactions with enhanced validation and logging.
+        Handle profitable transactions with  validation and logging.
 
         This method performs the following steps:
         - Validates the profit value from the analysis dictionary.
@@ -335,7 +335,7 @@ class Mempool_Monitor:
             # Format profit for logging
             profit_str = f"{float(profit):.6f}" if profit > 0 else 'Unknown'
             
-            # Add additional analysis data
+            # Additional analysis data
             analysis['profit'] = profit
             analysis['timestamp'] = time.time()
             analysis['gas_price'] = self.web3.from_wei(
@@ -343,7 +343,7 @@ class Mempool_Monitor:
                 'gwei'
             )
             
-            # Add strategy type
+            # Strategy type
             analysis['strategy_type'] = self._determine_strategy_type(analysis)
 
             await self.profitable_transactions.put(analysis)
@@ -426,7 +426,7 @@ class Mempool_Monitor:
 
     async def _analyze_token_transaction(self, tx) -> Dict[str, Any]:
         """
-        Enhanced token transaction analysis with better validation.
+         token transaction analysis with better validation.
 
         This method performs the following steps:
         - Validates the presence of the ERC20 ABI and transaction input data.
@@ -450,8 +450,8 @@ class Mempool_Monitor:
                 return {"is_profitable": False}
 
             # Extract function selector
-            function_selector = tx.input[:10]  # includes '0x'
-            selector_no_prefix = function_selector[2:]  # remove '0x'
+            function_selector = tx.input[:10]
+            selector_no_prefix = function_selector[2:]
 
             # Initialize variables
             function_name = None
@@ -501,7 +501,7 @@ class Mempool_Monitor:
             
             # Process decoded transaction if successful
             if decoded and function_name in ('transfer', 'transferFrom', 'swap', 'swapExactTokensForTokens', 'swapTokensForExactTokens'):
-                # Enhanced parameter validation
+                #  parameter validation
                 params = await self._extract_transaction_params(tx, function_name, function_params)
                 if not params:
                     logger.debug(f"Could not extract valid parameters for {function_name}")
@@ -577,7 +577,7 @@ class Mempool_Monitor:
             return Decimal(0)
 
     async def _estimate_profit(self, tx, function_params: Dict[str, Any]) -> Decimal:
-        """Enhanced profit estimation with improved precision and market analysis."""
+        """ profit estimation with  precision and market analysis."""
         try:
             # Validate and get gas costs with increased precision
             gas_data = await self._calculate_gas_costs(tx)
@@ -615,7 +615,7 @@ class Mempool_Monitor:
 
     async def _calculate_gas_costs(self, tx: Any) -> Dict[str, Any]:
         """
-        Calculate gas costs with improved precision.
+        Calculate gas costs with  precision.
 
         This method performs the following steps:
         - Retrieves the gas price from the transaction.
@@ -646,7 +646,7 @@ class Mempool_Monitor:
             gas_used = tx.gas if tx.gas else await self.web3.eth.estimate_gas(tx)
             gas_used = Decimal(gas_used)
 
-            # Add safety margin for gas estimation (10%)
+            # Safety margin for gas estimation (10%)
             gas_with_margin = gas_used * Decimal("1.1")
             
             # Calculate total gas cost in ETH
@@ -665,7 +665,7 @@ class Mempool_Monitor:
             return {'valid': False, 'reason': str(e)}
 
     async def _validate_token_amounts(self, function_params: Dict[str, Any]) -> Dict[str, Any]:
-        """Improved token amount validation with better hex value handling."""
+        """ token amount validation with better hex value handling."""
         try:
             # Extract amounts with more comprehensive fallbacks
             input_amount = function_params.get("amountIn", 
@@ -681,7 +681,7 @@ class Mempool_Monitor:
                 )
             )
 
-            # Enhanced hex string handling
+            #  hex string handling
             def parse_amount(amount: Any) -> int:
                 if isinstance(amount, str):
                     if amount.startswith("0x"):
@@ -889,12 +889,12 @@ class Mempool_Monitor:
         decoded_params: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         """
-        Extract and validate transaction parameters with improved parsing.
+        Extract and validate transaction parameters with  parsing.
         """
         try:
             params = {}
             
-            # Enhanced transfer parameter handling
+            #  transfer parameter handling
             if function_name in ['transfer', 'transferFrom']:
                 # Handle different parameter naming conventions
                 amount = decoded_params.get('amount', 
@@ -918,7 +918,7 @@ class Mempool_Monitor:
                     'to': to_addr
                 })
             
-            # Enhanced swap parameter handling
+            #  swap parameter handling
             elif function_name in ['swap', 'swapExactTokensForTokens', 'swapTokensForExactTokens']:
                 # Handle different swap parameter formats
                 params = {

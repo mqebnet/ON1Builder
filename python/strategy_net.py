@@ -85,7 +85,7 @@ class Strategy_Net:
         self.configuration: "StrategyConfiguration" = StrategyConfiguration()
         self.history_data: List[Dict[str, Any]] = []
 
-        logger.debug("StrategyNet initialized with enhanced configuration")
+        logger.debug("StrategyNet initialized with  configuration")
     
     async def initialize(self) -> None:
         """Initialize strategy network with performance metrics and reinforcement weights."""
@@ -416,7 +416,7 @@ class Strategy_Net:
     async def _validate_contract_interaction(self, contract_address: str) -> bool:
         """Validate interaction with contract address."""
         try:
-            # Example validation: check if it's a known contract
+            # Check if it's a known contract
             token_symbols = await self.api_config.get_token_symbols()
             is_valid = contract_address in token_symbols
             logger.debug(f"Contract address '{contract_address}' validation result: {is_valid}")
@@ -462,7 +462,7 @@ class Strategy_Net:
         Execute predictive front-run strategy based on advanced price prediction analysis
         and multiple market indicators.
         """
-        logger.debug("Initiating Enhanced Predictive Front-Run Strategy...")
+        logger.debug("Initiating  Predictive Front-Run Strategy...")
 
         # Validate transaction
         valid, decoded_tx, token_symbol = await self._validate_transaction(
@@ -545,7 +545,7 @@ class Strategy_Net:
         """
         score = 0
         
-        # Define score components with weights.
+        # Score components with weights.
         components = {
            "price_change": {
                "very_strong": {"threshold": 5.0, "points": 40},
@@ -611,7 +611,7 @@ class Strategy_Net:
         Execute front-run strategy based on market volatility analysis with 
         advanced risk assessment and dynamic thresholds.
         """
-        logger.debug("Initiating Enhanced Volatility Front-Run Strategy...")
+        logger.debug("Initiating  Volatility Front-Run Strategy...")
 
         # Validate transaction
         valid, decoded_tx, token_symbol = await self._validate_transaction(

@@ -18,7 +18,7 @@ logger = logger.getLogger(__name__)
  
 class Safety_Net:
     """
-    Enhanced safety system for risk management and transaction validation.
+     safety system for risk management and transaction validation.
     """
 
     CACHE_TTL: int = 300  # Cache TTL in seconds
@@ -31,7 +31,7 @@ class Safety_Net:
         address: Optional[str] = None,
         account: Optional[Account] = None,
         api_config: Optional["API_Config"] = None,
-        market_monitor: Optional[Any] = None,  # Add this parameter
+        market_monitor: Optional[Any] = None, 
     ):
         """
         Initialize Safety Net components.
@@ -57,7 +57,7 @@ class Safety_Net:
         logger.info("SafetyNet is reporting for duty 🛡️")
         time.sleep(1) # ensuring proper initialization
 
-        # Add safety checks cache
+        # Safety checks cache
         self.safety_cache: TTLCache = TTLCache(maxsize=100, ttl=60)  # 1 minute cache
 
         # Load settings from config object
@@ -74,7 +74,7 @@ class Safety_Net:
                 "min_profit_multiplier": self.configuration.get_config_value("MIN_PROFIT_MULTIPLIER", 2.0),
                 "base_gas_limit": self.configuration.get_config_value("BASE_GAS_LIMIT", 21000)
             }
-        else: #Defaults for testing when config class is not available.
+        else: # Defaults for testing when config class is not available.
              self.SLIPPAGE_CONFIG: Dict[str, float] = {
                 "default":  0.1,
                 "min": 0.01,
@@ -138,7 +138,7 @@ class Safety_Net:
         transaction_data: Dict[str, Any],
         minimum_profit_eth: Optional[float] = None,
     ) -> bool:
-        """Enhanced profit verification with dynamic thresholds and risk assessment."""
+        """ profit verification with dynamic thresholds and risk assessment."""
         try:
             real_time_price = await self.api_config.get_real_time_price(transaction_data['output_token'])
             if real_time_price is None:

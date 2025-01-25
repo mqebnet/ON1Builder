@@ -77,7 +77,7 @@ class Configuration:
         self.MIN_PROFIT_MULTIPLIER: float = 2.0
         self.BASE_GAS_LIMIT: int = 21000
         
-        # Add ML model configuration
+        # ML model configuration
         self.MODEL_RETRAINING_INTERVAL: int = 3600  # 1 hour
         self.MIN_TRAINING_SAMPLES: int = 100
         self.MODEL_ACCURACY_THRESHOLD: float = 0.7
@@ -109,7 +109,6 @@ class Configuration:
         if not isinstance(address, str):
             raise ValueError(f"Invalid {var_name}: must be a string")
         
-        # Remove '0x' prefix if present for length check
         clean_address = address.lower().replace('0x', '')
         
         if len(clean_address) != 40:
@@ -137,9 +136,7 @@ class Configuration:
 
     def _parse_numeric_string(self, value: str) -> str:
         """Remove underscores and comments from numeric strings."""
-        # Remove any comments (starting with #)
         value = value.split('#')[0].strip()
-        # Remove underscores from the number
         return value.replace('_', '')
 
     def _get_env_int(self, var_name: str, default: Optional[int] = None) -> int:

@@ -35,7 +35,7 @@ class Market_Monitor:
         web3: "AsyncWeb3",
         configuration: Optional["Configuration"],
         api_config: Optional["API_Config"],
-        transaction_core: Optional[Any] = None,  # Add this parameter
+        transaction_core: Optional[Any] = None,
     ) -> None:
         """Initialize Market Monitor with required components."""
         self.web3: "AsyncWeb3" = web3
@@ -53,7 +53,7 @@ class Market_Monitor:
         # Create directory if it doesn't exist
         os.makedirs(self.linear_regression_path, exist_ok=True)
         
-        # Add separate caches for different data types
+        # Separate caches for different data types
         self.caches: Dict[str, TTLCache] = {
             'price': TTLCache(maxsize=2000, 
                     ttl=300),
@@ -74,7 +74,7 @@ class Market_Monitor:
         self.historical_data: pd.DataFrame = pd.DataFrame()
         self.prediction_cache: TTLCache = TTLCache(maxsize=1000, ttl=300)  # 5-minute cache
 
-        # Add data update
+        # Data update
         self.update_scheduler = {
             'training_data': 0,  # Last update timestamp
             'model': 0,          # Last model update timestamp
@@ -221,7 +221,7 @@ class Market_Monitor:
             return 0.0
 
     async def _get_market_features(self, token_symbol: str) -> Optional[Dict[str, float]]:
-        """Get current market features for prediction with enhanced metrics."""
+        """Get current market features for prediction with  metrics."""
         try:
             # Use API-specific symbol format
             api_symbol = self.api_config._normalize_symbol(token_symbol)
@@ -301,7 +301,7 @@ class Market_Monitor:
                 'smart_money_flow': 0.0
             }
 
-    # Add methods to calculate new metrics
+    # Calculate new metrics
     async def _get_avg_transaction_value(self, token_symbol: str) -> float:
         """Get average transaction value over last 24h."""
         try:
@@ -312,7 +312,7 @@ class Market_Monitor:
             logger.error(f"Error calculating avg transaction value: {e}")
             return 0.0
 
-    # Add helper methods to calculate new metrics
+    # Helper methods to calculate new metrics
     async def _get_transaction_count(self, token_symbol: str) -> int:
         """Get number of transactions in 24 hrs using api config."""
         try:
@@ -414,7 +414,7 @@ class Market_Monitor:
                     volumes = [float(v[1]) for v in data['volumes']]
                     if len(volumes) > 12:  # Need at least 12 hours of data
                         recent_vol = sum(volumes[-6:])  # Last 6 hours
-                        prev_vol = sum(volumes[-12:-6])  # Previous 6 hours
+                        prev_vol = sum(volumes[-12:-6])  # Pous 6 hours
                         if prev_vol > 0:
                             vol_change = (recent_vol - prev_vol) / prev_vol
                             smart_money_score += vol_change
@@ -499,7 +499,7 @@ class Market_Monitor:
             logger.error(f"Error updating training data: {e}")
 
     async def _train_model(self) -> None:
-        """Enhanced model training with feature importance analysis."""
+        """ model training with feature importance analysis."""
         try:
             if len(self.historical_data) < self.MIN_TRAINING_SAMPLES:
                 logger.warning("Insufficient data for model training")
@@ -634,7 +634,6 @@ class Market_Monitor:
             decoded_tx = await self.transaction_core.decode_transaction_input(
                 target_tx["input"], target_tx["to"]
             )
-             # Add logic here to check for arbitrage
             if not decoded_tx:
                 logger.debug("Transaction input could not be decoded")
                 return False

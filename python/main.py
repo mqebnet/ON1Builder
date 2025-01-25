@@ -1,6 +1,6 @@
 import asyncio
 import tracemalloc
-import logging as logger  # Add this import
+import logging as logger
 
 from typing import Optional
 

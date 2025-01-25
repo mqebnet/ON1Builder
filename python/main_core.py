@@ -198,7 +198,7 @@ class Main_Core:
                 api_config=self.components['api_config'],
                 monitored_tokens=await self.configuration.get_token_addresses(),
                 configuration=self.configuration,
-                erc20_abi=erc20_abi,  # Pass the loaded ABI
+                erc20_abi=erc20_abi,
                 market_monitor=self.components['market_monitor']
             )
             await self.components['mempool_monitor'].initialize()
@@ -336,7 +336,7 @@ class Main_Core:
                 await asyncio.sleep(1)
     
     async def _add_middleware(self, web3: AsyncWeb3) -> None:
-        """Add appropriate middleware based on network."""
+        """Middleware based on network."""
         try:
             chain_id = await web3.eth.chain_id
             if (chain_id in {99, 100, 77, 7766, 56}):  # POA networks
@@ -393,7 +393,7 @@ class Main_Core:
             raise
 
     async def run(self) -> None:
-        """Main execution loop with improved task management."""
+        """Main execution loop with  task management."""
         logger.info("Starting 0xBuilder...")
         self.running = True
 
