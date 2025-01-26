@@ -50,9 +50,9 @@ class Transaction_Core:
         safety_net: Optional["Safety_Net"] = None,
         configuration: Optional["Configuration"] = None,
         gas_price_multiplier: float = 1.1,
-        erc20_abi: Optional[List[Dict[str, Any]] = None,
+        erc20_abi: Optional[List[Dict[str, Any]]] = None,
         uniswap_address: Optional[str] = None,
-        uniswap_abi: Optional[List[Dict[str, Any]] = None,
+        uniswap_abi: Optional[List[Dict[str, Any]]] = None
     ):
         """
         Initialize the Transaction Core.
@@ -142,7 +142,6 @@ class Transaction_Core:
                     await contract.functions.getReservesList().call()
                     logger.debug(f"{name} contract validated via getReservesList()")
                 except (ContractLogicError, OverflowError):
-                    # Fallback to admin() check
                     await contract.functions.admin().call()
                     logger.debug(f"{name} contract validated via admin()")
             elif 'Flashloan' in name:
@@ -167,7 +166,6 @@ class Transaction_Core:
                     await contract.functions.getAmountsOut(1000000, path).call()
                     logger.debug(f"{name} contract validated via getAmountsOut()")
                 except (ContractLogicError, OverflowError):
-                    # Fallback validation for DEX contracts
                     await contract.functions.factory().call()
                     logger.debug(f"{name} contract validated via factory()")
             else:
