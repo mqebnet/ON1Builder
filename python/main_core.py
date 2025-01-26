@@ -108,13 +108,11 @@ class Main_Core:
             logger.debug("Loading Configuration...")
             await self._load_configuration()
             logger.info("Configuration initialized ✅")
-            time.sleep(1)
             # Initialize ABI Registry and load ABIs
             logger.debug("Initializing ABI Registry...")
             abi_registry = ABI_Registry()
             await abi_registry.initialize(self.configuration.BASE_PATH)
             logger.info("ABI Registry initialized ✅")
-            time.sleep(1)
             # Load and validate ERC20 ABI
             erc20_abi = await self._load_abi(self.configuration.ERC20_ABI, abi_registry)
             if not erc20_abi:
@@ -125,19 +123,15 @@ class Main_Core:
             logger.info("Web3 initialized ✅")
             if not self.web3:
                 raise RuntimeError("Failed to initialize Web3 connection")
-            else:
-                time.sleep(1)
             
             self.account = Account.from_key(self.configuration.WALLET_KEY)
             await self._check_account_balance()
             logger.info("Account {self.account.address} initialized ✅")
-            time.sleep(1)
             # 2. Initialize API config
             logger.debug("Initializing API_Config...")
             self.components['api_config'] = API_Config(self.configuration)
             await self.components['api_config'].initialize()
             logger.info("API_Config initialized ✅")
-            time.sleep(1)
             
             # 3. Initialize nonce core
             logger.debug("Initializing Nonce_Core...")
