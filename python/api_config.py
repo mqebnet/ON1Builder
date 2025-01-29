@@ -1,14 +1,3 @@
-"""
-API Configuration and Data Management Module
-
-This module handles:
-1. Multi-source API integration for cryptocurrency data
-2. Caching and rate limiting mechanisms
-3. Data normalization and validation
-4. Price prediction model training
-5. Market metrics calculations
-"""
-
 import asyncio
 import time
 import aiohttp
