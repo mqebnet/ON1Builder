@@ -178,12 +178,12 @@ class Market_Monitor:
             api_symbol = self.api_config._normalize_symbol(symbol)
             
             # Use API-specific symbol for all API calls
-            prices = await self.get_token_price(api_symbol, data_type='historical', timeframe=1)
+            prices = await self.api_config.get_token_price_data(api_symbol, 'historical', timeframe=1)
             if len(prices) < 2:
                 logger.debug(f"Not enough price data to analyze market conditions for {symbol}")
                 return market_conditions
 
-            volatility = self._calculate_volatility(prices)
+            volatility = await self.api_config._calculate_volatility(prices)
             if volatility > self.VOLATILITY_THRESHOLD:
                 market_conditions["high_volatility"] = True
             logger.debug(f"Calculated volatility for {symbol}: {volatility}")
@@ -247,9 +247,9 @@ class Market_Monitor:
                 'percent_change_24h': await self.api_config.get_price_change_24h(token_symbol),
                 'total_supply': supply_data.get('total_supply', 0),
                 'circulating_supply': supply_data.get('circulating_supply', 0),
-                 'volatility': self._calculate_volatility(prices) if prices else 0,
-                'price_momentum': self._calculate_momentum(prices) if prices else 0,
-                'liquidity_ratio': await self._calculate_liquidity_ratio(token_symbol),
+                 'volatility': await self.api_config._calculate_volatility(prices) if prices else 0,
+                'price_momentum': await self.api_config._calculate_momentum(prices) if prices else 0,
+                'liquidity_ratio': await self.api_config._calculate_liquidity_ratio(token_symbol),
                 **market_data
             }
             
@@ -258,28 +258,6 @@ class Market_Monitor:
         except Exception as e:
             logger.error(f"Error fetching market features: {e}")
             return None
-
-    def _calculate_momentum(self, prices: List[float]) -> float:
-        """Calculate price momentum using exponential moving average."""
-        try:
-            if  len(prices) < 2:
-                return 0.0
-            ema_short = np.mean(prices[-self.PRICE_EMA_SHORT_PERIOD:])  # 1-hour EMA
-            ema_long = np.mean(prices)  # 24-hour EMA
-            return (ema_short / ema_long) - 1 if ema_long != 0 else 0.0
-        except Exception as e:
-            logger.error(f"Error calculating momentum: {e}")
-            return 0.0
-
-    async def _calculate_liquidity_ratio(self, token_symbol: str) -> float:
-        """Calculate liquidity ratio using market cap and volume from API config."""
-        try:
-            volume = await self.api_config.get_token_volume(token_symbol)
-            market_cap = await self.api_config.get_token_market_cap(token_symbol)
-            return volume / market_cap if market_cap > 0 else 0.0
-        except Exception as e:
-            logger.error(f"Error calculating liquidity ratio: {e}")
-            return 0.0
 
     async def _get_trading_metrics(self, token_symbol: str) -> Dict[str, float]:
         """Get additional trading metrics."""
@@ -593,24 +571,6 @@ class Market_Monitor:
         logger.warning(f"failed to fetch {description}.")
         return None
 
-    # Helper Methods
-    def _calculate_volatility(
-        self, 
-        prices: List[float]
-    ) -> float:
-        """
-        Calculate price volatility using standard deviation of returns.
-        
-        Args:
-            prices: List of historical prices
-            
-        Returns:
-            Volatility measure as float
-        """
-        prices_array = np.array(prices)
-        returns = np.diff(prices_array) / prices_array[:-1]
-        return np.std(returns)
-
     async def _update_price_model(self, token_symbol: str) -> None:
         """
         Update the price prediction model.
@@ -677,25 +637,5 @@ class Market_Monitor:
             logger.error(f"Error stopping Market Monitor: {e}")
 
     async def get_token_price(self, token_symbol: str, data_type: str = 'current', timeframe: int = 1, vs_currency: str = 'eth') -> Union[float, List[float]]:
-        """Centralized price data fetching for all components."""
-        cache_key = f"{data_type}_{token_symbol}_{timeframe}_{vs_currency}"
-        
-        if cache_key in self.caches['price']:
-            return self.caches['price'][cache_key]
-            
-        try:
-            api_symbol = self.api_config._normalize_symbol(token_symbol)
-            if data_type == 'current':
-                data = await self.api_config.get_real_time_price(api_symbol, vs_currency)
-            elif data_type == 'historical':
-                data = await self.api_config.fetch_historical_prices(api_symbol, days=timeframe)
-            else:
-                raise ValueError(f"Invalid data type: {data_type}")
-                
-            if data is not None:
-                self.caches['price'][cache_key] = data
-            return data
-            
-        except Exception as e:
-            logger.error(f"Error fetching {data_type} price data: {e}")
-            return [] if data_type == 'historical' else 0.0
+        """Delegate to API_Config for price data."""
+        return await self.api_config.get_token_price_data(token_symbol, data_type, timeframe, vs_currency)
