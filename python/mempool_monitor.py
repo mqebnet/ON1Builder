@@ -1,3 +1,6 @@
+#========================================================================================================================
+# File: mempool_monitor.py
+#========================================================================================================================
 import asyncio
 import logging as logger
 import time
@@ -29,11 +32,6 @@ class Mempool_Monitor:
     Includes sophisticated profit estimation, caching, and parallel processing capabilities.
     """
 
-    MAX_RETRIES = 3
-    RETRY_DELAY = 1.0
-    BATCH_SIZE = 10
-    MAX_PARALLEL_TASKS = 50
-
     def __init__(
         self,
         web3: AsyncWeb3,
@@ -42,7 +40,7 @@ class Mempool_Monitor:
         api_config: "API_Config",
         monitored_tokens: Optional[List[str]] = None,
         configuration: Optional["Configuration"] = None,
-        erc20_abi: Optional[List[Dict[str, Any]]] = None,  # Changed to accept loaded ABI
+        erc20_abi: Optional[List[Dict[str, Any]]] = None,
         market_monitor: Optional["Market_Monitor"] = None
     ):
         """
@@ -83,12 +81,10 @@ class Mempool_Monitor:
             self.erc20_abi = erc20_abi
             logger.debug(f"Loaded ERC20 ABI with {len(self.erc20_abi)} entries")
         self.minimum_profit_threshold = Decimal("0.001")
-        self.max_parallel_tasks = self.MAX_PARALLEL_TASKS
-        self.retry_attempts = self.MAX_RETRIES
         self.backoff_factor = 1.5
 
         # Concurrency control
-        self.semaphore = asyncio.Semaphore(self.max_parallel_tasks)
+        self.semaphore = asyncio.Semaphore(configuration.MEMPOOL_MAX_PARALLEL_TASKS) 
         self.task_queue = asyncio.Queue()
 
         # Function signature mappings
@@ -99,8 +95,8 @@ class Mempool_Monitor:
         }
 
         logger.info("Go for main engine start! ✅...")
-        asyncio.sleep(1) # ensuring proper initialization
-        
+        asyncio.sleep(1) 
+
         self.abi_registry = ABI_Registry()
 
     async def initialize(self) -> None:
@@ -111,8 +107,8 @@ class Mempool_Monitor:
         - Updates ERC20 function signatures if available in the configuration.
         - Loads the ERC20 ABI through the ABI manager.
         - Validates the required ERC20 methods.
-        - Initializes monitoring state attributes such as running status, 
-          pending transactions queue, profitable transactions queue, 
+        - Initializes monitoring state attributes such as running status,
+          pending transactions queue, profitable transactions queue,
           processed transactions set, and task queue.
         - Logs the initialization status.
         """
@@ -129,16 +125,16 @@ class Mempool_Monitor:
             required_methods = ['transfer', 'approve', 'transferFrom', 'balanceOf']
             if not self.abi_registry._validate_abi(self.erc20_abi, 'erc20'):
                  raise ValueError("Invalid ERC20 ABI")
-            
+
             # Initialize other attributes
             self.running = False
             self.pending_transactions = asyncio.Queue()
             self.profitable_transactions = asyncio.Queue()
             self.processed_transactions = set()
             self.task_queue = asyncio.Queue()
-            
+
             logger.info("MempoolMonitor initialized ✅")
-        
+
         except Exception as e:
             logger.critical(f"Mempool Monitor initialization failed: {e}")
             raise
@@ -152,19 +148,19 @@ class Mempool_Monitor:
             self.running = True
             monitoring_task = asyncio.create_task(self._run_monitoring())
             processor_task = asyncio.create_task(self._process_task_queue())
-             
+
             logger.info("Lift-off 🚀🚀🚀")
             logger.info("Monitoring mempool activities... 📡")
             await asyncio.gather(monitoring_task, processor_task)
-            
+
          except Exception as e:
             self.running = False
             logger.error(f"Error during monitoring start: {e}")
-    
+
     async def _run_monitoring(self) -> None:
         """ mempool monitoring with automatic recovery and fallback."""
         retry_count = 0
-        
+
         while self.running:
             try:
                 # Try setting up filter first
@@ -186,12 +182,12 @@ class Mempool_Monitor:
             except Exception as e:
                 logger.error(f"Error in monitoring loop: {e}")
                 retry_count += 1
-                await asyncio.sleep(self.RETRY_DELAY * retry_count)
-    
+                await asyncio.sleep(self.configuration.MEMPOOL_RETRY_DELAY * retry_count) # Use configurable RETRY_DELAY
+
     async def _poll_pending_transactions(self) -> None:
         """ polling method with better error handling."""
         last_block = await self.web3.eth.block_number
-        
+
         while self.running:
             try:
                 current_block = await self.web3.eth.block_number
@@ -204,7 +200,7 @@ class Mempool_Monitor:
                     try:
                         block = await self.web3.eth.get_block(block_num, full_transactions=True)
                         if block and block.transactions:
-                            tx_hashes = [tx.hash.hex() if hasattr(tx, 'hash') else tx['hash'].hex() 
+                            tx_hashes = [tx.hash.hex() if hasattr(tx, 'hash') else tx['hash'].hex()
                                        for tx in block.transactions]
                             await self._handle_new_transactions(tx_hashes)
                     except Exception as e:
@@ -217,13 +213,13 @@ class Mempool_Monitor:
             except Exception as e:
                 logger.error(f"Error in polling loop: {e}")
                 await asyncio.sleep(2)
-    
+
     async def _setup_pending_filter(self) -> Optional[Any]:
         """Set up pending transaction filter with validation and fallback."""
         try:
             # Try to create a filter
             pending_filter = await self.web3.eth.filter("pending")
-            
+
             # Test filter with timeout
             try:
                 async with async_timeout.timeout(5):
@@ -235,7 +231,7 @@ class Mempool_Monitor:
                 return None
             except Exception as e:
                 logger.warning(f"Filter validation failed: {e}, retrying after delay")
-                await asyncio.sleep(self.RETRY_DELAY)
+                await asyncio.sleep(self.configuration.MEMPOOL_RETRY_DELAY) # Use configurable RETRY_DELAY
                 return None
 
         except Exception as e:
@@ -250,10 +246,10 @@ class Mempool_Monitor:
              )
         try:
             # Process transactions in batches
-            for i in range(0, len(tx_hashes), self.BATCH_SIZE):
-                batch = tx_hashes[i: i + self.BATCH_SIZE]
+            for i in range(0, len(tx_hashes), self.configuration.MEMPOOL_BATCH_SIZE): # Use configurable BATCH_SIZE
+                batch = tx_hashes[i: i + self.configuration.MEMPOOL_BATCH_SIZE]
                 await process_batch(batch)
-        
+
         except Exception as e:
             logger.error(f"Error handling new transactions: {e}")
 
@@ -270,7 +266,7 @@ class Mempool_Monitor:
         while self.running:
             try:
                 tx_hash = await self.task_queue.get()
-                async with self.semaphore:
+                async with self.semaphore: 
                     await self.process_transaction(tx_hash)
                 self.task_queue.task_done()
             except asyncio.CancelledError:
@@ -291,16 +287,16 @@ class Mempool_Monitor:
 
         except Exception as e:
              logger.debug(f"Error processing transaction {tx_hash}: {e}")
-    
+
     async def _get_transaction_with_retry(self, tx_hash: str) -> Optional[Any]:
         """Fetch transaction details with exponential backoff."""
-        for attempt in range(self.retry_attempts):
+        for attempt in range(self.configuration.MEMPOOL_MAX_RETRIES): # Use configurable MAX_RETRIES
             try:
                 return await self.web3.eth.get_transaction(tx_hash)
             except TransactionNotFound:
-                 if attempt == self.retry_attempts - 1:
+                 if attempt == self.configuration.MEMPOOL_MAX_RETRIES - 1:
                     return None
-                 await asyncio.sleep(self.RETRY_DELAY * (attempt + 1))
+                 await asyncio.sleep(self.configuration.MEMPOOL_RETRY_DELAY * (attempt + 1)) # Use configurable RETRY_DELAY
             except Exception as e:
                 logger.error(f"Error fetching transaction {tx_hash}: {e}")
                 return None
@@ -334,20 +330,20 @@ class Mempool_Monitor:
 
             # Format profit for logging
             profit_str = f"{float(profit):.6f}" if profit > 0 else 'Unknown'
-            
+
             # Additional analysis data
             analysis['profit'] = profit
             analysis['timestamp'] = time.time()
             analysis['gas_price'] = self.web3.from_wei(
-                analysis.get('gasPrice', 0), 
+                analysis.get('gasPrice', 0),
                 'gwei'
             )
-            
+
             # Strategy type
             analysis['strategy_type'] = self._determine_strategy_type(analysis)
 
             await self.profitable_transactions.put(analysis)
-            
+
             logger.info(
                 f"Profitable transaction identified: {analysis['tx_hash']} "
                 f"(Estimated profit: {profit_str} ETH, Strategy Type: {analysis['strategy_type']})"
@@ -358,7 +354,7 @@ class Mempool_Monitor:
 
     def _determine_strategy_type(self, analysis: Dict[str, Any]) -> str:
         """Determine the correct strategy type based on the transaction details."""
-        
+
         if analysis.get('value', 0) > 0 and 'input' not in analysis:
               return "eth_transaction"
         if  analysis.get('function_name') in ("swap", "swapExactTokensForTokens", "swapTokensForExactTokens"):
@@ -498,7 +494,7 @@ class Mempool_Monitor:
                         logger.debug(f"Could not decode function input: {e}")
                 except Exception as e:
                     logger.debug(f"Contract decode error: {e}")
-            
+
             # Process decoded transaction if successful
             if decoded and function_name in ('transfer', 'transferFrom', 'swap', 'swapExactTokensForTokens', 'swapTokensForExactTokens'):
                 #  parameter validation
@@ -623,32 +619,26 @@ class Mempool_Monitor:
         - Estimates the gas used by the transaction if not already provided.
         - Adds a safety margin to the gas estimate (10%).
         - Calculates the total gas cost in ETH with high precision.
-        - Returns a dictionary containing the gas price in Gwei, gas used, gas with margin, and gas cost in ETH.
-
-        Args:
-            tx: The transaction object to be analyzed.
-
-        Returns:
-            A dictionary containing the gas cost details:
-            - 'valid': A boolean indicating if the gas cost calculation was successful.
-            - 'data': A dictionary with the following keys if 'valid' is True:
-                - 'gas_price_gwei': The gas price in Gwei.
-                - 'gas_used': The estimated gas used by the transaction.
-                - 'gas_with_margin': The gas used with a safety margin.
-                - 'gas_cost_eth': The total gas cost in ETH.
-            - 'reason': A string indicating the reason for failure if 'valid' is False.
+        - Returns a dictionary containing the gas cost details:
+        - 'valid': A boolean indicating if the gas cost calculation was successful.
+        - 'data': A dictionary with the following keys if 'valid' is True:
+            - 'gas_price_gwei': The gas price in Gwei.
+            - 'gas_used': The estimated gas used by the transaction.
+            - 'gas_with_margin': The gas used with a safety margin.
+            - 'gas_cost_eth': The total gas cost in ETH.
+        - 'reason': A string indicating the reason for failure if 'valid' is False.
         """
         try:
             gas_price_wei = Decimal(tx.gasPrice)
             gas_price_gwei = Decimal(self.web3.from_wei(gas_price_wei, "gwei"))
-            
+
             # Get dynamic gas estimate
             gas_used = tx.gas if tx.gas else await self.web3.eth.estimate_gas(tx)
             gas_used = Decimal(gas_used)
 
             # Safety margin for gas estimation (10%)
             gas_with_margin = gas_used * Decimal("1.1")
-            
+
             # Calculate total gas cost in ETH
             gas_cost_eth = (gas_price_gwei * gas_with_margin * Decimal("1e-9")).quantize(Decimal("0.000000001"))
 
@@ -668,8 +658,8 @@ class Mempool_Monitor:
         """ token amount validation with better hex value handling."""
         try:
             # Extract amounts with more comprehensive fallbacks
-            input_amount = function_params.get("amountIn", 
-                function_params.get("value", 
+            input_amount = function_params.get("amountIn",
+                function_params.get("value",
                 function_params.get("amount",
                 function_params.get("_value", 0)
             )))
@@ -824,15 +814,15 @@ class Mempool_Monitor:
         try:
             # Calculate expected output value with slippage
             expected_output_value = (
-                amounts['output_eth'] * 
-                market_data['price'] * 
+                amounts['output_eth'] *
+                market_data['price'] *
                 market_data['slippage']
             ).quantize(Decimal("0.000000001"))
 
             # Calculate net profit
             profit = (
-                expected_output_value - 
-                amounts['input_eth'] - 
+                expected_output_value -
+                amounts['input_eth'] -
                 gas_costs['gas_cost_eth']
             ).quantize(Decimal("0.000000001"))
 
@@ -892,31 +882,31 @@ class Mempool_Monitor:
         """
         try:
             params = {}
-            
+
             #  transfer parameter handling
             if function_name in ['transfer', 'transferFrom']:
                 # Handle different parameter naming conventions
-                amount = decoded_params.get('amount', 
-                            decoded_params.get('_value', 
-                                decoded_params.get('value', 
+                amount = decoded_params.get('amount',
+                            decoded_params.get('_value',
+                                decoded_params.get('value',
                                     decoded_params.get('wad', 0))))
-                to_addr = decoded_params.get('to', 
-                            decoded_params.get('_to', 
-                                decoded_params.get('dst', 
+                to_addr = decoded_params.get('to',
+                            decoded_params.get('_to',
+                                decoded_params.get('dst',
                                     decoded_params.get('recipient'))))
-                
+
                 if function_name == 'transferFrom':
-                    from_addr = decoded_params.get('from', 
-                                decoded_params.get('_from', 
-                                    decoded_params.get('src', 
+                    from_addr = decoded_params.get('from',
+                                decoded_params.get('_from',
+                                    decoded_params.get('src',
                                         decoded_params.get('sender'))))
                     params['from'] = from_addr
-                
+
                 params.update({
                     'amount': amount,
                     'to': to_addr
                 })
-            
+
             #  swap parameter handling
             elif function_name in ['swap', 'swapExactTokensForTokens', 'swapTokensForExactTokens']:
                 # Handle different swap parameter formats
@@ -934,9 +924,9 @@ class Mempool_Monitor:
             if not self._validate_params_format(params, function_name):
                 logger.debug(f"Invalid parameter format for {function_name}")
                 return None
-            
+
             return params
-        
+
         except Exception as e:
             logger.error(f"Error extracting transaction parameters: {e}")
             return None
@@ -961,13 +951,13 @@ class Mempool_Monitor:
                 if params.get(field) is None or params.get(field) == '':
                     logger.debug(f"Missing or empty field '{field}' for function '{function_name}'")
                     return False
-            
+
             return True
 
         except Exception as e:
             logger.error(f"Parameter validation error: {e}")
             return False
-        
+
     async def stop(self) -> None:
         """
         Gracefully stop the Mempool Monitor.
@@ -977,7 +967,7 @@ class Mempool_Monitor:
         - Sets the `stopping` attribute to True to indicate the stopping process has begun.
         - Waits for all tasks in the `task_queue` to complete using `task_queue.join()`.
         - Logs a debug message indicating the monitor has stopped gracefully.
-        
+
         Raises:
             Exception: If an error occurs during the stopping process, it is logged and re-raised.
         """
@@ -986,7 +976,7 @@ class Mempool_Monitor:
             self.stopping = True
             await self.task_queue.join()
             logger.debug("Mempool Monitor stopped gracefully.")
-        
+
         except Exception as e:
             logger.error(f"Error stopping Mempool Monitor: {e}")
             raise

@@ -1,3 +1,6 @@
+#========================================================================================================================
+# File: nonce_core.py
+#========================================================================================================================
 import asyncio
 import time
 
@@ -13,18 +16,12 @@ from main_core import setup_logging
 setup_logging()
 
 logger = logger.getLogger(__name__)
- 
+
 class Nonce_Core:
     """
     Advanced nonce management system for Ethereum transactions with caching,
     auto-recovery, and comprehensive error handling.
     """
-
-    MAX_RETRIES: int = 3
-    RETRY_DELAY: float = 1.0
-    CACHE_TTL: int = 300  # Cache TTL in seconds
-    TRANSACTION_TIMEOUT: int = 120  # Transaction receipt timeout in seconds
-
     def __init__(
         self,
         web3: AsyncWeb3,
@@ -44,7 +41,7 @@ class Nonce_Core:
         self.configuration: "Configuration" = configuration
         self.address: str = address
         self.lock: asyncio.Lock = asyncio.Lock()
-        self.nonce_cache: TTLCache = TTLCache(maxsize=1, ttl=self.CACHE_TTL)
+        self.nonce_cache: TTLCache = TTLCache(maxsize=1, ttl=self.configuration.NONCE_CACHE_TTL) # Use configurable CACHE_TTL
         self.last_sync: float = time.monotonic()
         self._initialized: bool = False
 
@@ -87,8 +84,8 @@ class Nonce_Core:
 
     async def _fetch_current_nonce_with_retries(self) -> int:
         """Fetch current nonce with exponential backoff."""
-        backoff = self.RETRY_DELAY
-        for attempt in range(self.MAX_RETRIES):
+        backoff = self.configuration.NONCE_RETRY_DELAY # Use configurable RETRY_DELAY
+        for attempt in range(self.configuration.NONCE_MAX_RETRIES): # Use configurable MAX_RETRIES
             try:
                 nonce = await self.web3.eth.get_transaction_count(self.address)
                 logger.debug(f"Fetched nonce: {nonce}")
@@ -114,7 +111,7 @@ class Nonce_Core:
         """Track pending transaction for nonce management."""
         self.pending_transactions.add(nonce)
         try:
-            receipt = await self.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=self.TRANSACTION_TIMEOUT)
+            receipt = await self.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=self.configuration.NONCE_TRANSACTION_TIMEOUT) # Use configurable TRANSACTION_TIMEOUT
             if receipt.status == 1:
                 logger.info(f"Transaction {tx_hash} succeeded.")
             else:
@@ -154,7 +151,7 @@ class Nonce_Core:
 
     def _should_refresh_cache(self) -> bool:
         """Check if the nonce cache should be refreshed based on time."""
-        return time.monotonic() - self.last_sync > self.CACHE_TTL
+        return time.monotonic() - self.last_sync > self.configuration.NONCE_CACHE_TTL # Use configurable CACHE_TTL
 
     async def get_next_nonce(self) -> int:
         """Fetch the next available nonce."""

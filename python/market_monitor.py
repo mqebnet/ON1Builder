@@ -1,3 +1,6 @@
+#========================================================================================================================
+# File: market_monitor.py
+#========================================================================================================================
 import asyncio
 import os
 import time
@@ -23,12 +26,11 @@ class Market_Monitor:
     """Advanced market monitoring system for real-time analysis and prediction."""
 
     # Class Constants
-    MODEL_UPDATE_INTERVAL: int = 3600  # Update model every hour
     VOLATILITY_THRESHOLD: float = 0.05  # 5% standard deviation
     LIQUIDITY_THRESHOLD: int = 100_000  # $100,000 in 24h volume
     PRICE_EMA_SHORT_PERIOD: int = 12
     PRICE_EMA_LONG_PERIOD: int = 26
-    
+
 
     def __init__(
         self,
@@ -44,7 +46,7 @@ class Market_Monitor:
         self.transaction_core: Optional[Any] = transaction_core  # Store transaction_core reference
         self.price_model: Optional[LinearRegression] = LinearRegression()
         self.model_last_updated: float = 0
-    
+
         # Get from config or default
         self.linear_regression_path: str = self.configuration.get_config_value("LINEAR_REGRESSION_PATH")
         self.model_path: str = self.configuration.get_config_value("MODEL_PATH")
@@ -52,34 +54,34 @@ class Market_Monitor:
 
         # Create directory if it doesn't exist
         os.makedirs(self.linear_regression_path, exist_ok=True)
-        
+
         # Separate caches for different data types
         self.caches: Dict[str, TTLCache] = {
-            'price': TTLCache(maxsize=2000, 
+            'price': TTLCache(maxsize=2000,
                     ttl=300),
-            'volume': TTLCache(maxsize=1000, 
+            'volume': TTLCache(maxsize=1000,
                      ttl=900),
-            'volatility': TTLCache(maxsize=200, 
+            'volatility': TTLCache(maxsize=200,
                      ttl=600)
         }
-        
+
         # Initialize model variables
         self.price_model: Optional[LinearRegression] = None
         self.last_training_time: float = 0
         self.model_accuracy: float = 0.0
         self.RETRAINING_INTERVAL: int = self.configuration.MODEL_RETRAINING_INTERVAL if self.configuration else 3600 # Retrain every hour
         self.MIN_TRAINING_SAMPLES: int = self.configuration.MIN_TRAINING_SAMPLES if self.configuration else 100
-        
+
         # Initialize data storage
         self.historical_data: pd.DataFrame = pd.DataFrame()
         self.prediction_cache: TTLCache = TTLCache(maxsize=1000, ttl=300)  # 5-minute cache
 
         # Data update
-        self.update_scheduler = {
+        self.update_scheduler: Dict[str, int] = {
             'training_data': 0,  # Last update timestamp
             'model': 0,          # Last model update timestamp
-            'UPDATE_INTERVAL': self.configuration.MODEL_RETRAINING_INTERVAL if self.configuration else 3600,  # 1 hour
-            'MODEL_INTERVAL': 86400   # 24 hours
+            'model_retraining_interval': self.configuration.MODEL_RETRAINING_INTERVAL if self.configuration else 3600,  
+
         }
 
     async def initialize(self) -> None:
@@ -101,7 +103,7 @@ class Market_Monitor:
                 except (OSError, KeyError) as e:
                     logger.warning(f"Failed to load model: {e}. Creating new model.")
                     self.price_model = LinearRegression()
-            
+
             if not model_loaded:
                 logger.debug("Creating new price prediction model")
                 self.price_model = LinearRegression()
@@ -111,7 +113,7 @@ class Market_Monitor:
                     logger.debug("Saved initial price prediction model")
                 except Exception as e:
                     logger.warning(f"Failed to save initial model: {e}")
-            
+
             # Load or create training data file
             if os.path.exists(self.training_data_path):
                 try:
@@ -122,11 +124,11 @@ class Market_Monitor:
                     self.historical_data = pd.DataFrame()
             else:
                 self.historical_data = pd.DataFrame()
-            
+
             # Initial model training if needed
             if len(self.historical_data) >= self.MIN_TRAINING_SAMPLES:
                 await self._train_model()
-            
+
             logger.debug("Market Monitor initialized ✅")
 
             # Start update scheduler
@@ -141,19 +143,19 @@ class Market_Monitor:
         while True:
             try:
                 current_time = time.time()
-                
+
                 # Update training data
-                if current_time - self.update_scheduler['training_data'] >= self.update_scheduler['UPDATE_INTERVAL']:
+                if current_time - self.update_scheduler['training_data'] >= self.update_scheduler['model_retraining_interval']: # Corrected to use model_retraining_interval
                     await self.api_config.update_training_data()
                     self.update_scheduler['training_data'] = current_time
-                
+
                 # Retrain model
-                if current_time - self.update_scheduler['model'] >= self.update_scheduler['MODEL_INTERVAL']:
+                if current_time - self.update_scheduler['model'] >= self.update_scheduler['model_retraining_interval']: # Corrected to use model_retraining_interval
                     await self._train_model()
                     self.update_scheduler['model'] = current_time
-                
+
                 await asyncio.sleep(60)  # Check every minute
-                
+
             except Exception as e:
                 logger.error(f"Error in update scheduler: {e}")
                 await asyncio.sleep(300)  # Wait 5 minutes on error
@@ -166,7 +168,7 @@ class Market_Monitor:
             "bearish_trend": False,
             "low_liquidity": False,
         }
-        
+
         # Get symbol from address using API_Config's method
         symbol = self.api_config.get_token_symbol(token_address)
         if not symbol:
@@ -176,7 +178,7 @@ class Market_Monitor:
         try:
             # Get the API-specific ID for the token
             api_symbol = self.api_config._normalize_symbol(symbol)
-            
+
             # Use API-specific symbol for all API calls
             prices = await self.api_config.get_token_price_data(api_symbol, 'historical', timeframe=1)
             if len(prices) < 2:
@@ -225,7 +227,7 @@ class Market_Monitor:
         try:
             # Use API-specific symbol format
             api_symbol = self.api_config._normalize_symbol(token_symbol)
-            
+
             # Gather data concurrently using API-specific symbol
             price, volume, supply_data, market_data, prices = await asyncio.gather(
                 self.api_config.get_real_time_price(api_symbol),
@@ -249,12 +251,12 @@ class Market_Monitor:
                 'circulating_supply': supply_data.get('circulating_supply', 0),
                  'volatility': await self.api_config._calculate_volatility(prices) if prices else 0,
                 'price_momentum': await self.api_config._calculate_momentum(prices) if prices else 0,
-                'liquidity_ratio': await self.api_config._calculate_liquidity_ratio(token_symbol),
+                'liquidity_ratio': await self._calculate_liquidity_ratio(token_symbol),
                 **market_data
             }
-            
+
             return features
-        
+
         except Exception as e:
             logger.error(f"Error fetching market features: {e}")
             return None
@@ -317,8 +319,8 @@ class Market_Monitor:
         except Exception as e:
            logger.error(f"Error getting exchange count for {token_symbol}: {e}")
            return 0
-        
-        
+
+
     async def _get_buy_sell_ratio(self, token_symbol: str) -> float:
         """
         Calculate buy/sell ratio using available API data.
@@ -333,37 +335,37 @@ class Market_Monitor:
                 if pairs:
                     total_buys = 0
                     total_sells = 0
-                    
+
                     for pair in pairs[:3]:  # Limit to top 3 pairs
                         url = f"{config['base_url']}/ticker/24hr"
                         params = {"symbol": pair}
                         data = await self.api_config.make_request('binance', url, params=params)
-                        
+
                         if data:
                             # Use count of upward vs downward trades
                             buys = float(data.get('count', 0)) * (float(data.get('priceChangePercent', 0)) > 0)
                             sells = float(data.get('count', 0)) * (float(data.get('priceChangePercent', 0)) < 0)
                             total_buys += buys
                             total_sells += sells
-                    
+
                     if total_sells > 0:
                         return total_buys / total_sells
-                        
+
             # Fallback to CoinGecko's sentiment data
             config = self.api_config.api_configs.get('coingecko')
             if config:
                 url = f"{config['base_url']}/coins/{token_symbol.lower()}"
                 headers = {"x-cg-pro-api-key": config['api_key']} if config['api_key'] else None
                 data = await self.api_config.make_request('coingecko', url, headers=headers)
-                
+
                 if data and 'sentiment_votes_up_percentage' in data:
                     up_votes = data['sentiment_votes_up_percentage']
                     down_votes = data['sentiment_votes_down_percentage']
                     if down_votes > 0:
                         return up_votes / down_votes
-            
+
             return 1.0  # Neutral ratio if no data available
-            
+
         except Exception as e:
             logger.error(f"Error calculating buy/sell ratio: {e}")
             return 1.0
@@ -378,14 +380,14 @@ class Market_Monitor:
         try:
             smart_money_score = 0.0
             indicators = 0
-            
+
             # Get volume data from CoinGecko
             config = self.api_config.api_configs.get('coingecko')
             if config:
                 url = f"{config['base_url']}/coins/{token_symbol.lower()}/market_chart"
                 params = {"vs_currency": "usd", "days": "1", "interval": "hourly"}
                 headers = {"x-cg-pro-api-key": config['api_key']} if config['api_key'] else None
-                
+
                 data = await self.api_config.make_request('coingecko', url, params=params, headers=headers)
                 if data and 'volumes' in data:
                     # Analyze volume trend
@@ -404,16 +406,16 @@ class Market_Monitor:
                 url = f"{config['base_url']}/cryptocurrency/quotes/latest"
                 params = {"symbol": token_symbol.upper()}
                 headers = {"X-CMC_PRO_API_KEY": config['api_key']}
-                
+
                 data = await self.api_config.make_request('coinmarketcap', url, params=params, headers=headers)
                 if data and 'data' in data:
                     token_data = data['data'].get(token_symbol.upper(), {})
                     quote = token_data.get('quote', {}).get('USD', {})
-                    
+
                     # Analyze market cap vs volume ratio
                     market_cap = quote.get('market_cap', 0)
                     volume_24h = quote.get('volume_24h', 0)
-                    
+
                     if market_cap > 0:
                         volume_ratio = volume_24h / market_cap
                         if volume_ratio > 0.1:  # High volume relative to market cap
@@ -432,7 +434,7 @@ class Market_Monitor:
                     "limit": 24,
                     "api_key": config['api_key']
                 }
-                
+
                 data = await self.api_config.make_request('cryptocompare', url, params=params)
                 if data and 'Data' in data:
                     prices = [float(d['close']) for d in data['Data']]
@@ -449,30 +451,30 @@ class Market_Monitor:
             if indicators > 0:
                 final_score = smart_money_score / indicators
                 return max(min(final_score, 1.0), -1.0)
-            
+
             return 0.0  # Neutral score if no data available
-            
+
         except Exception as e:
             logger.error(f"Error calculating smart money flow: {e}")
             return 0.0
 
-    
+
     async def update_training_data(self, new_data: Dict[str, Any]) -> None:
         """Update training data with new market information."""
         try:
             # Convert new data to DataFrame row
             df_row = pd.DataFrame([new_data])
-            
+
             # Append to historical data
             self.historical_data = pd.concat([self.historical_data, df_row], ignore_index=True)
-            
+
             # Save updated data
             self.historical_data.to_csv(self.training_data_path, index=False)
-            
+
             # Retrain model if enough new data
             if len(self.historical_data) >= self.MIN_TRAINING_SAMPLES:
                 await self._train_model()
-                
+
         except Exception as e:
             logger.error(f"Error updating training data: {e}")
 
@@ -485,7 +487,7 @@ class Market_Monitor:
 
             # Define all features we want to use
             features = [
-                'market_cap', 'volume_24h', 'percent_change_24h', 
+                'market_cap', 'volume_24h', 'percent_change_24h',
                 'total_supply', 'circulating_supply', 'volatility',
                 'liquidity_ratio', 'avg_transaction_value', 'trading_pairs',
                 'exchange_count', 'price_momentum', 'buy_sell_ratio',
@@ -517,10 +519,10 @@ class Market_Monitor:
 
             # Calculate accuracy
             self.model_accuracy = self.price_model.score(X_test, y_test)
-            
+
             # Save model and accuracy metrics
             joblib.dump(self.price_model, self.model_path)
-            
+
             self.last_training_time = time.time()
             logger.debug(f"Model trained successfully. Accuracy: {self.model_accuracy:.4f}")
 
@@ -544,7 +546,7 @@ class Market_Monitor:
             logger.debug(f"Returning cached trading volume for {token_symbol}.")
             return self.caches['volume'][cache_key]
 
-        volume = await self._fetch_from_services(
+        volume = await self.api_config._fetch_from_services( 
             lambda _: self.api_config.get_token_volume(token_symbol),
             f"trading volume for {token_symbol}"
         )
@@ -552,79 +554,6 @@ class Market_Monitor:
             self.caches['volume'][cache_key] = volume
         return volume or 0.0
 
-    async def _fetch_from_services(self, fetch_func: Callable[[str], Any], description: str) -> Optional[Union[List[float], float]]:
-        """
-        Helper method to fetch data from multiple services.
-
-        :param fetch_func: Function to fetch data from a service
-        :param description: Description of the data being fetched
-        :return: Fetched data or None
-        """
-        for service in self.api_config.api_configs.keys():
-            try:
-                logger.debug(f"Fetching {description} using {service}...")
-                result = await fetch_func(service)
-                if result:
-                    return result
-            except Exception as e:
-                logger.warning(f"failed to fetch {description} using {service}: {e}")
-        logger.warning(f"failed to fetch {description}.")
-        return None
-
-    async def _update_price_model(self, token_symbol: str) -> None:
-        """
-        Update the price prediction model.
-
-        :param token_symbol: Token symbol to update the model for
-        """
-        prices = await self.get_price_data(token_symbol, data_type='historical')
-        if len(prices) > 10:
-            X = np.arange(len(prices)).reshape(-1, 1)
-            y = np.array(prices)
-            self.price_model.fit(X, y)
-            self.model_last_updated = time.time()
-
-    async def is_arbitrage_opportunity(self, target_tx: Dict[str, Any]) -> bool:
-        """Use transaction_core for decoding but avoid circular dependencies."""
-        if not self.transaction_core:
-            logger.warning("Transaction core not initialized, cannot check arbitrage")
-            return False
-
-        try:
-            decoded_tx = await self.transaction_core.decode_transaction_input(
-                target_tx["input"], target_tx["to"]
-            )
-            if not decoded_tx:
-                logger.debug("Transaction input could not be decoded")
-                return False
-            
-            if 'swap' in decoded_tx.get('function_name', '').lower():
-                logger.debug("Transaction is a swap, might have arbitrage oppurtunity.")
-                # Further check for price differences etc. can be implemented here
-                return True
-
-            return False
-            
-        except Exception as e:
-            logger.error(f"Error checking arbitrage opportunity: {e}")
-            return False
-
-    async def _get_prices_from_services(self, token_symbol: str) -> List[float]:
-        """
-        Get real-time prices from different services.
-
-        :param token_symbol: Token symbol to get prices for
-        :return: List of real-time prices
-        """
-        prices = []
-        for service in self.api_config.api_configs.keys():
-            try:
-                price = await self.api_config.get_real_time_price(token_symbol)
-                if price is not None:
-                    prices.append(price)
-            except Exception as e:
-                logger.warning(f"failed to get price from {service}: {e}")
-        return prices
 
     async def stop(self) -> None:
         """Clean up resources and stop monitoring."""

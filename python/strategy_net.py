@@ -1,3 +1,6 @@
+#==============================================================================================================
+# File: strategy_net.py
+#========================================================================================================================
 import asyncio
 import time
 import numpy as np
@@ -71,32 +74,28 @@ class Strategy_Net:
         }
 
         # Initialize performance metrics after strategy registry
-        self.strategy_performance: Dict[str, "StrategyPerformanceMetrics"] = {
-            strategy_type: StrategyPerformanceMetrics()
-            for strategy_type in self.strategy_types
-        }
+        self.strategy_performance: Dict[str, "StrategyPerformanceMetrics"] = {}
+        
 
         # Initialize reinforcement weights after strategy registry
-        self.reinforcement_weights: Dict[str, np.ndarray] = {
-            strategy_type: np.ones(len(self._strategy_registry[strategy_type]))
-            for strategy_type in self.strategy_types
-        }
+        self.reinforcement_weights: Dict[str, np.ndarray] = {}
+
 
         self.configuration: "StrategyConfiguration" = StrategyConfiguration()
         self.history_data: List[Dict[str, Any]] = []
 
         logger.debug("StrategyNet initialized with  configuration")
-    
+
     async def initialize(self) -> None:
         """Initialize strategy network with performance metrics and reinforcement weights."""
         try:
             # Initialize performance metrics
-            self.strategy_performance = {
+            self.strategy_performance = { # Initializing here
                 strategy_type: StrategyPerformanceMetrics()
                 for strategy_type in self.strategy_types
             }
             # Initialize reinforcement weights
-            self.reinforcement_weights = {
+            self.reinforcement_weights = { # Initializing here
                 strategy_type: np.ones(len(self.get_strategies(strategy_type)))
                 for strategy_type in self.strategy_types
             }
@@ -119,17 +118,17 @@ class Strategy_Net:
         return self._strategy_registry.get(strategy_type, [])
 
     async def execute_best_strategy(
-        self, 
-        target_tx: Dict[str, Any], 
+        self,
+        target_tx: Dict[str, Any],
         strategy_type: str
     ) -> bool:
         """
         Execute the optimal strategy based on current market conditions and historical performance.
-        
+
         Args:
             target_tx: Target transaction details
             strategy_type: Type of strategy to execute
-            
+
         Returns:
             bool: True if execution was successful, False otherwise
         """
@@ -137,7 +136,7 @@ class Strategy_Net:
         if not strategies:
             logger.debug(f"No strategies available for type: {strategy_type}")
             return False
-        
+
         try:
             start_time = time.time()
             selected_strategy = await self._select_best_strategy(strategies, strategy_type)
@@ -145,7 +144,7 @@ class Strategy_Net:
             profit_before = await self.transaction_core.get_current_profit()
             success = await self.execute_strategy(selected_strategy, target_tx)
             profit_after = await self.transaction_core.get_current_profit()
-            
+
             execution_time = time.time() - start_time
             profit_made = profit_after - profit_before
 
@@ -156,7 +155,7 @@ class Strategy_Net:
                 profit_made,
                 execution_time,
             )
-           
+
             return success
 
         except StrategyExecutionError as e:
@@ -175,7 +174,7 @@ class Strategy_Net:
         if random.random() < self.configuration.exploration_rate:
             logger.debug("Using exploration for strategy selection")
             return random.choice(strategies)
-        
+
         # Numerical stability for softmax
         max_weight = np.max(weights)
         exp_weights = np.exp(weights - max_weight)
@@ -254,7 +253,7 @@ class Strategy_Net:
         new_weight = current_weight * (1 - lr) + reward * lr
         self.reinforcement_weights[strategy_type][index] = max(0.1, new_weight)
         logger.debug(f"Updated weight for strategy index {index} in '{strategy_type}': {new_weight:.4f}")
-    
+
     async def _decode_transaction(self, target_tx: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             """Decode transaction input."""
             try:
@@ -290,11 +289,11 @@ class Strategy_Net:
         try:
             risk_score = 1.0
             market_conditions = await self.market_monitor.check_market_conditions(tx.get("to", ""))
-            
-            # Gas price impact 
+
+            # Gas price impact
             gas_price = int(tx.get("gasPrice", 0))
             gas_price_gwei = float(self.transaction_core.web3.from_wei(gas_price, "gwei"))
-            if gas_price_gwei > 300:
+            if gas_price_gwei > self.configuration.MAX_GAS_PRICE_GWEI: # Use MAX_GAS_PRICE_GWEI from main Configuration
                 risk_score *= 0.7
 
             # Market conditions impact
@@ -304,12 +303,12 @@ class Strategy_Net:
                 risk_score *= 0.6
             if market_conditions.get("bullish_trend", False):
                 risk_score *= 1.2
-                
+
             # Price change impact
             if price_change > 0:
                 risk_score *= min(1.3, 1 + (price_change / 100))
-                
-            # Volume impact    
+
+            # Volume impact
             if volume >= 1_000_000:
                 risk_score *= 1.2
             elif volume <= 100_000:
@@ -317,9 +316,9 @@ class Strategy_Net:
 
             risk_score = max(0.0, min(1.0, risk_score))
             logger.debug(f"Risk assessment for {token_symbol}: {risk_score:.2f}")
-            
+
             return risk_score, market_conditions
-            
+
         except Exception as e:
             logger.error(f"Error in risk assessment: {e}")
             return 0.0, {}
@@ -327,7 +326,7 @@ class Strategy_Net:
     async def high_value_eth_transfer(self, target_tx: Dict[str, Any]) -> bool:
          """
         Execute high-value ETH transfer strategy with advanced validation and dynamic thresholds.
-        
+
         :param target_tx: Target transaction dictionary
         :return: True if transaction was executed successfully, else False
         """
@@ -349,10 +348,10 @@ class Strategy_Net:
             gas_price_gwei = self.transaction_core.web3.from_wei(gas_price, "gwei")
 
              # Dynamic threshold based on current gas prices
-            base_threshold = self.transaction_core.web3.to_wei(10, "ether")
-            if gas_price_gwei > 200:  # High gas price scenario
+            base_threshold = self.transaction_core.web3.to_wei(self.configuration.ETH_TRANSFER_BASE_THRESHOLD_ETH, "ether") # Use configurable ETH_TRANSFER_BASE_THRESHOLD_ETH
+            if gas_price_gwei > self.configuration.ETH_TRANSFER_HIGH_GAS_PRICE_THRESHOLD_GWEI:  # Use configurable ETH_TRANSFER_HIGH_GAS_PRICE_THRESHOLD_GWEI
                 threshold = base_threshold * 2  # Double threshold when gas is expensive
-            elif gas_price_gwei > 100:
+            elif gas_price_gwei > self.configuration.ETH_TRANSFER_MID_GAS_PRICE_THRESHOLD_GWEI: # Use configurable ETH_TRANSFER_MID_GAS_PRICE_THRESHOLD_GWEI
                 threshold = base_threshold * 1.5
             else:
                 threshold = base_threshold
@@ -412,7 +411,7 @@ class Strategy_Net:
         except Exception as e:
             logger.error(f"Error checking if address is contract: {e}")
             return False
-    
+
     async def _validate_contract_interaction(self, contract_address: str) -> bool:
         """Validate interaction with contract address."""
         try:
@@ -428,30 +427,30 @@ class Strategy_Net:
     async def aggressive_front_run(self, target_tx: Dict[str, Any]) -> bool:
         """
         Execute aggressive front-running strategy with dynamic gas pricing and risk assessment.
-        
+
         Args:
             target_tx: Target transaction details
-            
+
         Returns:
-            bool: True if front-run was successful, False otherwise
+            bool: True if front-run was successful, else False
         """
         logger.debug("Initiating Aggressive Front-Run Strategy...")
 
         # Validate transaction
         valid, decoded_tx, token_symbol = await self._validate_transaction(
-            target_tx, "front_run", min_value=0.1
+            target_tx, "front_run", min_value=self.configuration.AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH # Use configurable min_value
         )
         if not valid:
             return False
 
         # Assess risk
         risk_score, market_conditions = await self._assess_risk(
-            target_tx, 
+            target_tx,
             token_symbol,
             price_change=await self.api_config.get_price_change_24h(token_symbol)
         )
-        
-        if risk_score >= 0.7:  # High confidence threshold
+
+        if risk_score >= self.configuration.AGGRESSIVE_FRONT_RUN_RISK_SCORE_THRESHOLD:  # Use configurable risk score threshold
             logger.debug(f"Executing aggressive front-run (Risk: {risk_score:.2f})")
             return await self.transaction_core.front_run(target_tx)
 
@@ -493,11 +492,11 @@ class Strategy_Net:
         except Exception as e:
             logger.error(f"Error gathering market data: {e}")
             return False
-        
+
         # Calculate price metrics
         price_change = (predicted_price / float(current_price) - 1) * 100
         volatility = np.std(historical_prices) / np.mean(historical_prices) if historical_prices else 0
-        
+
         # Score the opportunity (0-100)
         opportunity_score = await self._calculate_opportunity_score(
             price_change=price_change,
@@ -506,7 +505,7 @@ class Strategy_Net:
             current_price=current_price,
             historical_prices=historical_prices
         )
-    
+
         # Log detailed analysis
         logger.debug(
             f"Predictive Analysis for {token_symbol}:\n"
@@ -519,18 +518,18 @@ class Strategy_Net:
         )
 
         # Execute if conditions are favorable
-        if opportunity_score >= 75:  # High confidence threshold
+        if opportunity_score >= self.configuration.FRONT_RUN_OPPORTUNITY_SCORE_THRESHOLD:  # Use configurable threshold
             logger.debug(
                 f"Executing predictive front-run for {token_symbol} "
                 f"(Score: {opportunity_score}/100, Expected Change: {price_change:.2f}%)"
             )
             return await self.transaction_core.front_run(target_tx)
-        
+
         logger.debug(
             f"Opportunity score {opportunity_score}/100 below threshold. Skipping front-run."
         )
         return False
-    
+
     async def _calculate_opportunity_score(
         self,
         price_change: float,
@@ -544,7 +543,7 @@ class Strategy_Net:
         Higher score indicates more favorable conditions for front-running.
         """
         score = 0
-        
+
         # Score components with weights.
         components = {
            "price_change": {
@@ -605,10 +604,10 @@ class Strategy_Net:
 
         logger.debug(f"Calculated opportunity score: {score}/100")
         return score
-    
+
     async def volatility_front_run(self, target_tx: Dict[str, Any]) -> bool:
         """
-        Execute front-run strategy based on market volatility analysis with 
+        Execute front-run strategy based on market volatility analysis with
         advanced risk assessment and dynamic thresholds.
         """
         logger.debug("Initiating  Volatility Front-Run Strategy...")
@@ -645,7 +644,7 @@ class Strategy_Net:
             current_price=current_price,
             market_conditions=market_conditions
         )
-        
+
         # Log detailed analysis
         logger.debug(
             f"Volatility Analysis for {token_symbol}:\n"
@@ -656,7 +655,7 @@ class Strategy_Net:
         )
 
         # Execute based on volatility thresholds
-        if volatility_score >= 75:  # High volatility threshold
+        if volatility_score >= self.configuration.VOLATILITY_FRONT_RUN_SCORE_THRESHOLD:  # Use configurable threshold
             logger.debug(
                 f"Executing volatility-based front-run for {token_symbol} "
                 f"(Volatility Score: {volatility_score:.2f}/100)"
@@ -679,7 +678,7 @@ class Strategy_Net:
         Higher score indicates more favorable volatility conditions.
         """
         score = 0
-        
+
         # Calculate price volatility metrics
         if len(historical_prices) > 1:
             price_changes = np.diff(historical_prices) / np.array(historical_prices[:-1])
@@ -693,7 +692,7 @@ class Strategy_Net:
                 score += 30
             elif volatility > 0.02:  # Moderate volatility
                 score += 20
-        
+
             # Price range component (0-30 points)
             if price_range > 0.15:  # Wide price range
                 score += 30
@@ -719,14 +718,14 @@ class Strategy_Net:
         and multi-factor decision making.
         """
         logger.debug("Initiating Advanced Front-Run Strategy...")
-        
+
         # Validate transaction
         valid, decoded_tx, token_symbol = await self._validate_transaction(
             target_tx, "front_run"
         )
         if not valid:
             return False
-        
+
         # Multi-factor analysis
         try:
              analysis_results = await asyncio.gather(
@@ -746,7 +745,7 @@ class Strategy_Net:
              if current_price is None or predicted_price is None:
                  logger.debug("Missing price data for analysis. Skipping...")
                  return False
-        
+
         except Exception as e:
             logger.error(f"Error gathering market data: {e}")
             return False
@@ -764,9 +763,9 @@ class Strategy_Net:
             is_volatile=is_volatile,
             has_liquidity=has_liquidity,
             volume=volume
-    
+
         )
-        
+
         # Log detailed analysis
         logger.debug(
             f"Analysis for {token_symbol}:\n"
@@ -779,7 +778,7 @@ class Strategy_Net:
         )
 
         # Execute if conditions are favorable
-        if risk_score >= 75:  # Minimum risk score threshold
+        if risk_score >= self.configuration.ADVANCED_FRONT_RUN_RISK_SCORE_THRESHOLD:  # Use configurable threshold
             logger.debug(
                 f"Executing advanced front-run for {token_symbol} "
                 f"(Risk Score: {risk_score}/100)"
@@ -801,14 +800,6 @@ class Strategy_Net:
     ) -> int:
         """
         Calculate comprehensive risk score based on multiple market factors.
-        
-        Args:
-            price_increase: Percentage price increase
-            is_bullish: Market trend indicator
-            is_volatile: Volatility indicator
-            has_liquidity: Liquidity indicator
-            volume: Trading volume in USD
-            
         Returns:
             int: Risk score between 0-100
         """
@@ -825,15 +816,15 @@ class Strategy_Net:
         # Market trend (0-20 points)
         if is_bullish:
             score += 20
-            
+
         # Volatility (0-15 points)
         if not is_volatile:
             score += 15
-        
+
         # Liquidity (0-20 points)
         if has_liquidity:
             score += 20
-            
+
         # Volume-based score (0-15 points)
         if volume >= 1_000_000:  # $1M+ daily volume
             score += 15
@@ -861,10 +852,10 @@ class Strategy_Net:
             return False
 
         predicted_price = await self.market_monitor.predict_price_movement(token_symbol)
-        if predicted_price < float(current_price) * 0.99:
+        if predicted_price < float(current_price) * self.configuration.PRICE_DIP_BACK_RUN_THRESHOLD: # Use configurable threshold
             logger.debug("Predicted price decrease exceeds threshold, proceeding with back-run.")
             return await self.transaction_core.back_run(target_tx)
-        
+
         logger.debug("Predicted price decrease does not meet threshold. Skipping back-run.")
         return False
 
@@ -872,7 +863,7 @@ class Strategy_Net:
         """Execute back-run strategy using flash loans."""
         logger.debug("Initiating Flashloan Back-Run Strategy...")
         estimated_amount = await self.transaction_core.calculate_flashloan_amount(target_tx)
-        estimated_profit = estimated_amount * Decimal("0.02")
+        estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE)) # Use configurable profit percentage
         if estimated_profit > self.configuration.min_profit_threshold:
             logger.debug(f"Estimated profit: {estimated_profit} ETH meets threshold.")
             return await self.transaction_core.back_run(target_tx)
@@ -889,7 +880,7 @@ class Strategy_Net:
         )
         if not valid:
             return False
-        
+
         volume_24h = await self.api_config.get_token_volume(token_symbol)
         volume_threshold = self._get_volume_threshold(token_symbol)
         if volume_24h > volume_threshold:
@@ -912,8 +903,9 @@ class Strategy_Net:
             "USDT": 50_000_000,
             "USDC": 50_000_000,
             "DAI": 20_000_000,
+            "default": 100000 # Default for unknown tokens
         }
-    
+
         tier2_tokens = {
             "UNI": 5_000_000,
             "LINK": 8_000_000,
@@ -923,6 +915,7 @@ class Strategy_Net:
             "SUSHI": 2_000_000,
             "SNX": 2_000_000,
             "COMP": 2_000_000,
+            "default": 100000 # HIGH_VOLUME_DEFAULT
         }
 
         tier3_tokens = {
@@ -933,6 +926,7 @@ class Strategy_Net:
             "DYDX": 1_200_000,
             "LDO": 1_500_000,
             "RPL": 700_000,
+            "default": 100000 # HIGH_VOLUME_DEFAULT
         }
 
         volatile_tokens = {
@@ -940,6 +934,7 @@ class Strategy_Net:
             "PEPE": 5_000_000,
             "DOGE": 10_000_000,
             "FLOKI": 3_000_000,
+            "default": 100000 # HIGH_VOLUME_DEFAULT
         }
 
         # Check each tier in order
@@ -952,10 +947,11 @@ class Strategy_Net:
         elif token_symbol in volatile_tokens:
             threshold = volatile_tokens[token_symbol]
         else:
-            threshold = 100000 # HIGH_VOLUME_DEFAULT  # Conservative default for unknown tokens
-        
+            threshold = volatile_tokens["default"] if "default" in volatile_tokens else tier3_tokens["default"] if "default" in tier3_tokens else tier2_tokens["default"] if "default" in tier2_tokens else tier1_tokens["default"] # Fallback to a default threshold if no token-specific or tier-default found.
+
         logger.debug(f"Volume threshold for '{token_symbol}': ${threshold:,.2f} USD")
         return threshold
+
 
     async def advanced_back_run(self, target_tx: Dict[str, Any]) -> bool:
         """Execute advanced back-run strategy with comprehensive analysis."""
@@ -981,13 +977,13 @@ class Strategy_Net:
         return False
 
     async def flash_profit_sandwich(self, target_tx: Dict[str, Any]) -> bool:
-        """Execute sandwich attack strategy using flash loans."""
+        """Execute sandwich attack strategy based on flash loans."""
         logger.debug("Initiating Flash Profit Sandwich Strategy...")
         estimated_amount = await self.transaction_core.calculate_flashloan_amount(target_tx)
-        estimated_profit = estimated_amount * Decimal("0.02")
+        estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE)) # Use configurable profit percentage
         if estimated_profit > self.configuration.min_profit_threshold:
             gas_price = await self.transaction_core.get_dynamic_gas_price()
-            if (gas_price > 200):
+            if (gas_price > self.configuration.SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI): # Use configurable gas price threshold
                 logger.debug(f"Gas price too high for sandwich attack: {gas_price} Gwei")
                 return False
             logger.debug(f"Executing sandwich with estimated profit: {estimated_profit:.4f} ETH")
@@ -1005,20 +1001,20 @@ class Strategy_Net:
         )
         if not valid:
             return False
-        
+
         historical_prices = await self.api_config.get_token_price_data(token_symbol, 'historical')
         if not historical_prices:
             logger.debug("No historical price data available, skipping price boost sandwich attack")
             return False
-        
+
         momentum = await self._analyze_price_momentum(historical_prices)
-        if momentum > 0.02:
+        if momentum > self.configuration.PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD: # Use configurable momentum threshold
             logger.debug(f"Strong price momentum detected: {momentum:.2%}")
             return await self.transaction_core.execute_sandwich_attack(target_tx)
 
         logger.debug(f"Insufficient price momentum: {momentum:.2%}. Skipping.")
         return False
-    
+
     async def _analyze_price_momentum(self, prices: List[float]) -> float:
          """Analyze price momentum from historical prices."""
          if not prices or len(prices) < 2:
@@ -1032,7 +1028,7 @@ class Strategy_Net:
     async def arbitrage_sandwich(self, target_tx: Dict[str, Any]) -> bool:
         """Execute sandwich attack strategy based on arbitrage opportunities."""
         logger.debug("Initiating Arbitrage Sandwich Strategy...")
-        
+
         # Validate transaction
         valid, decoded_tx, token_symbol = await self._validate_transaction(
             target_tx, "sandwich_attack"
@@ -1058,7 +1054,7 @@ class Strategy_Net:
         )
         if not valid:
             return False
-        
+
         market_conditions = await self.market_monitor.check_market_conditions(
             target_tx["to"]
         )
@@ -1067,7 +1063,7 @@ class Strategy_Net:
         ):
             logger.debug("Conditions favorable for sandwich attack.")
             return await self.transaction_core.execute_sandwich_attack(target_tx)
-        
+
         logger.debug("Conditions unfavorable for sandwich attack. Skipping.")
         return False
 
@@ -1081,7 +1077,7 @@ class Strategy_Net:
              logger.info("Strategy Net stopped successfully.")
         except Exception as e:
             logger.error(f"Error stopping Strategy Net: {e}")
-    
+
     async def _estimate_profit(self, tx: Any, decoded_params: Dict[str, Any]) -> Decimal:
         """Estimate potential profit from transaction."""
         try:
@@ -1123,12 +1119,27 @@ class Strategy_Net:
 
 class StrategyConfiguration:
     """Configuration parameters for strategy execution."""
-    
+
     def __init__(self):
         self.decay_factor: float = 0.95
-        self.min_profit_threshold: Decimal = 0.001
+        self.min_profit_threshold: Decimal = Decimal("0.01")
         self.learning_rate: float = 0.01
         self.exploration_rate: float = 0.1
+        self.RISK_ASSESSMENT_GAS_PRICE_THRESHOLD_GWEI: int = 300
+        self.ETH_TRANSFER_HIGH_GAS_PRICE_THRESHOLD_GWEI: int = 200
+        self.ETH_TRANSFER_MID_GAS_PRICE_THRESHOLD_GWEI: int = 100
+        self.ETH_TRANSFER_BASE_THRESHOLD_ETH: int = 10 # in ETH
+        self.FRONT_RUN_OPPORTUNITY_SCORE_THRESHOLD: int = 75
+        self.VOLATILITY_FRONT_RUN_SCORE_THRESHOLD: int = 75
+        self.ADVANCED_FRONT_RUN_RISK_SCORE_THRESHOLD: int = 75
+        self.PRICE_DIP_BACK_RUN_THRESHOLD: float = 0.99 # Price dip ratio
+        self.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE: float = 0.02 # Profit percentage for flashloan backrun
+        self.HIGH_VOLUME_BACK_RUN_DEFAULT_THRESHOLD_USD: float = 100000 # Default volume threshold for high volume backrun
+        self.SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI: int = 200
+        self.PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD: float = 0.02 # Momentum threshold for price boost sandwich
+        self.AGGRESSIVE_FRONT_RUN_RISK_SCORE_THRESHOLD: float = 0.7 # Risk score threshold for aggressive front-run
+        self.AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH: float = 0.1 # Min value for aggressive front-run
+
 
 class StrategyPerformanceMetrics:
     """Metrics for tracking strategy performance."""

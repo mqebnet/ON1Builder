@@ -1,3 +1,6 @@
+#========================================================================================================================
+# File: main_core.py
+#========================================================================================================================
 import asyncio
 import time
 import tracemalloc
@@ -22,52 +25,11 @@ from transaction_core import Transaction_Core
 from colorama import init, Fore, Style
 import logging as logger
 
-def setup_logging():
-    """Configure logging with colored output for console and file output"""
-    # Initialize colorama
-    init()
-
-    # Custom formatter with colors for console
-    class ColorFormatter(logger.Formatter):
-        format_str = '%(name)s || %(levelname)s || %(message)s'
-        
-        FORMATS = {
-            logger.NOTSET: Fore.WHITE + format_str + Style.RESET_ALL,
-            logger.DEBUG: Fore.WHITE + format_str + Style.RESET_ALL,
-            logger.INFO: Fore.WHITE + format_str + Style.RESET_ALL,
-            logger.WARNING: Fore.YELLOW + format_str + Style.RESET_ALL,
-            logger.ERROR: Fore.RED + format_str + Style.RESET_ALL,
-            logger.CRITICAL: Fore.RED + Style.BRIGHT + format_str + Style.RESET_ALL,
-            logger.FATAL: Fore.RED + Style.BRIGHT + format_str + Style.RESET_ALL   
-        }
-
-        def format(self, record):
-            log_fmt = self.FORMATS.get(record.levelno)
-            formatter = logger.Formatter(log_fmt)
-            return formatter.format(record)
-
-    # Set up console handler with color formatter
-    console_handler = logger.StreamHandler()
-    console_handler.setFormatter(ColorFormatter())
-    
-    # Set up file handler with standard formatting (no colors)
-    file_handler = logger.FileHandler('0xbuilder.log')
-    file_handler.setFormatter(
-        logger.Formatter('%(name)s || %(levellevel)s || %(message)s')
-    )
-    
-    # Configure the root logger with both handlers
-    logger.basicConfig(
-        level=logger.DEBUG,
-        handlers=[console_handler, file_handler]
-    )
-
-setup_logging()
 
 logger = logger.getLogger(__name__)
 
 # Constants
-MEMORY_CHECK_INTERVAL = 300  # seconds
+
 MIN_ETH_BALANCE = 0.01  # minimum ETH balance threshold
 PROVIDER_TIMEOUT = 10  # seconds
 WEB3_MAX_RETRIES = 3
@@ -75,12 +37,12 @@ WEB3_RETRY_DELAY = 2
 
 # Custom types
 ComponentType = Union[
-    API_Config, 
-    Nonce_Core, 
-    Safety_Net, 
-    Market_Monitor, 
-    Mempool_Monitor, 
-    Transaction_Core, 
+    API_Config,
+    Nonce_Core,
+    Safety_Net,
+    Market_Monitor,
+    Mempool_Monitor,
+    Transaction_Core,
     Strategy_Net
 ]
 
@@ -132,13 +94,13 @@ class Main_Core:
             erc20_abi = await self._load_abi(self.configuration.ERC20_ABI, abi_registry)
             if not erc20_abi:
                 raise ValueError("Failed to load ERC20 ABI")
-            
+
             logger.debug("Initializing Web3...")
             self.web3 = await self._initialize_web3()
             logger.info("Web3 initialized ✅")
             if not self.web3:
                 raise RuntimeError("Failed to initialize Web3 connection")
-            
+
             self.account = Account.from_key(self.configuration.WALLET_KEY)
             await self._check_account_balance()
             logger.info("Account {self.account.address} initialized ✅")
@@ -147,7 +109,7 @@ class Main_Core:
             self.components['api_config'] = API_Config(self.configuration)
             await self.components['api_config'].initialize()
             logger.info("API_Config initialized ✅")
-            
+
             # 3. Initialize nonce core
             logger.debug("Initializing Nonce_Core...")
             self.components['nonce_core'] = Nonce_Core(
@@ -157,7 +119,7 @@ class Main_Core:
             )
             await self.components['nonce_core'].initialize()
             logger.info(f"Nonce_Core initialized with nonce {Nonce_Core.get_nonce}✅")
-           
+
             # 4. Initialize safety net
             logger.debug("Initializing Safety_Net...")
             self.components['safety_net'] = Safety_Net(
@@ -169,7 +131,7 @@ class Main_Core:
             )
             await self.components['safety_net'].initialize()
             logger.info("Safety_Net initialized ✅ ")
-            
+
             # 5. Initialize transaction core
             logger.debug("Initializing Transaction_Core...")
             self.components['transaction_core'] = Transaction_Core(
@@ -197,7 +159,7 @@ class Main_Core:
             )
             await self.components['market_monitor'].initialize()
             logger.info("Market_Monitor initialized ✅ ")
-            
+
             # 7. Initialize mempool monitor with validated ABI
             logger.debug("Initializing Mempool_Monitor...")
             self.components['mempool_monitor'] = Mempool_Monitor(
@@ -212,7 +174,7 @@ class Main_Core:
             )
             await self.components['mempool_monitor'].initialize()
             logger.info("Mempool_Monitor initialized ✅ ")
-            
+
             # 8. Finally initialize strategy net
             logger.debug("Initializing Strategy_Net...")
             self.components['strategy_net'] = Strategy_Net(
@@ -223,20 +185,20 @@ class Main_Core:
             )
             await self.components['strategy_net'].initialize()
             logger.info("Strategy_Net initialized ✅")
-            
+
             logger.info("All components initialized successfully ✅")
 
         except Exception as e:
             logger.critical(f"Component initialization failed: {e}")
             raise
-    
+
     async def initialize(self) -> None:
         """Initialize all components with proper error handling."""
         try:
             before_snapshot = tracemalloc.take_snapshot()
             await self._initialize_components()
             after_snapshot = tracemalloc.take_snapshot()
-            
+
             # Log memory usage
             top_stats = after_snapshot.compare_to(before_snapshot, 'lineno')
             logger.debug("Memory allocation during initialization:")
@@ -244,7 +206,7 @@ class Main_Core:
                 logger.debug(str(stat))
 
             logger.info("Main Core initialization complete ✅")
-            
+
         except Exception as e:
             logger.critical(f"Main Core initialization failed: {e}")
             raise
@@ -254,7 +216,7 @@ class Main_Core:
         try:
             # First load the configuration itself
             await self.configuration.load()
-        
+
         except Exception as e:
             logger.critical(f"Failed to load configuration: {e}")
             raise
@@ -265,13 +227,13 @@ class Main_Core:
         if not providers:
             logger.error("No valid endpoints provided!")
             return None
-        
+
         for provider_name, provider in providers:
              for attempt in range(self.WEB3_MAX_RETRIES):
                 try:
                     logger.debug(f"Attempting connection with {provider_name} (attempt {attempt + 1})...")
                     web3 = AsyncWeb3(provider, modules={"eth": (AsyncEth,)})
-                    
+
                     # Test connection with timeout
                     try:
                          async with async_timeout.timeout(10):
@@ -289,16 +251,16 @@ class Main_Core:
                     if attempt < self.WEB3_MAX_RETRIES - 1:
                         await asyncio.sleep(self.WEB3_RETRY_DELAY * (attempt + 1))
                     continue
-            
+
              logger.error(f"All attempts failed for {provider_name}")
-            
+
         logger.error("Failed to initialize Web3 with any provider")
         return None
 
     async def _get_providers(self) -> List[Tuple[str, Union[AsyncIPCProvider, AsyncHTTPProvider, WebSocketProvider]]]:
         """Get list of available providers with validation."""
         providers = []
-        
+
         if self.configuration.HTTP_ENDPOINT:
              try:
                 http_provider = AsyncHTTPProvider(self.configuration.HTTP_ENDPOINT)
@@ -308,7 +270,7 @@ class Main_Core:
                 return providers
              except Exception as e:
                  logger.warning(f"HTTP Provider failed. {e} ❌ - Attempting WebSocket... ")
-        
+
         if self.configuration.WEBSOCKET_ENDPOINT:
             try:
                 ws_provider = WebSocketProvider(self.configuration.WEBSOCKET_ENDPOINT)
@@ -318,7 +280,7 @@ class Main_Core:
                 return providers
             except Exception as e:
                 logger.warning(f"WebSocket Provider failed. {e} ❌ - Attempting IPC... ")
-                
+
         if self.configuration.IPC_ENDPOINT:
             try:
                 ipc_provider = AsyncIPCProvider(self.configuration.IPC_ENDPOINT)
@@ -332,18 +294,6 @@ class Main_Core:
         logger.critical("No more providers are available! ❌")
         return providers
 
-    async def _test_connection(self, web3: AsyncWeb3, name: str) -> bool:
-        """Test Web3 connection with retries."""
-        for attempt in range(3):
-            try:
-                if await web3.is_connected():
-                    chain_id = await web3.eth.chain_id
-                    logger.debug(f"Connected to network {name} (Chain ID: {chain_id}) ")
-                    return True
-            except Exception as e:
-                logger.error(f"Connection attempt {attempt + 1} failed: {e}")
-                await asyncio.sleep(1)
-    
     async def _add_middleware(self, web3: AsyncWeb3) -> None:
         """Middleware based on network."""
         try:
@@ -368,7 +318,7 @@ class Main_Core:
         try:
             balance = await self.web3.eth.get_balance(self.account.address)
             balance_eth = self.web3.from_wei(balance, 'ether')
-            
+
             logger.info(f"Account {self.account.address[:8]}...{self.account.address[-6:]}")
             logger.info(f"Balance: {balance_eth:.4f} ETH")
 
@@ -379,18 +329,8 @@ class Main_Core:
         except Exception as e:
             logger.error(f"Balance check failed: {e}")
             raise
-    
-    async def _initialize_component(self, name: str, component: Any) -> None:
-        """Initialize a single component with error handling."""
-        try:
-            if hasattr(component, 'initialize'):
-                await component.initialize()
-            self.components[name] = component
-            logger.debug(f"Initialized {name} successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize {name}: {e}")
-            raise
-            
+
+
     async def _load_abi(self, abi_path: str, abi_registry: "ABI_Registry") -> List[Dict[str, Any]]:
         """Load contract ABI from a file with better path handling."""
         try:
@@ -429,7 +369,7 @@ class Main_Core:
             try:
                 current_snapshot = tracemalloc.take_snapshot()
                 diff_stats = current_snapshot.compare_to(last_snapshot, 'lineno')
-                
+
                 # Log significant memory changes
                 significant_changes = [stat for stat in diff_stats if abs(stat.size_diff) > 1024 * 1024]  # > 1MB
                 if significant_changes:
@@ -438,7 +378,7 @@ class Main_Core:
                         logger.warning(str(stat))
 
                 last_snapshot = current_snapshot
-                await asyncio.sleep(MEMORY_CHECK_INTERVAL)
+                await asyncio.sleep(self.configuration.MEMORY_CHECK_INTERVAL) # Use configurable interval
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -452,13 +392,13 @@ class Main_Core:
                     if component and hasattr(component, 'is_healthy'):
                         self._component_health[name] = await component.is_healthy()
                     else:
-                        self._component_health[name] = component is not None
+                        self._component_health[name] = component is not None # Assume healthy if no is_healthy()
 
                 if not all(self._component_health.values()):
                     unhealthy = [name for name, healthy in self._component_health.items() if not healthy]
                     logger.warning(f"Unhealthy components detected: {unhealthy}")
 
-                await asyncio.sleep(60)  # Check every minute
+                await asyncio.sleep(self.configuration.COMPONENT_HEALTH_CHECK_INTERVAL) # Use configurable interval
             except Exception as e:
                 logger.error(f"Health check error: {e}")
                 await asyncio.sleep(5)  # Back off on error
@@ -505,7 +445,7 @@ class Main_Core:
         try:
             final_snapshot = tracemalloc.take_snapshot()
             top_stats = final_snapshot.compare_to(self.memory_snapshot, 'lineno')
-            
+
             logger.debug("Final memory allocation changes:")
             for stat in top_stats[:5]:
                 logger.debug(str(stat))
@@ -519,31 +459,31 @@ class Main_Core:
             logger.debug(f"Stopped {name}")
         except Exception as e:
             logger.error(f"Error stopping {name}: {e}")
-    
+
     async def _process_profitable_transactions(self) -> None:
         """Process profitable transactions from the queue."""
         strategy = self.components['strategy_net']
         monitor = self.components['mempool_monitor']
-        
+
         while self.running:
             try:
                 try:
-                    tx = await asyncio.wait_for(monitor.profitable_transactions.get(), timeout=1.0)
+                    tx = await asyncio.wait_for(monitor.profitable_transactions.get(), timeout=self.configuration.PROFITABLE_TX_PROCESS_TIMEOUT) # Use configurable timeout
                     tx_hash = tx.get('tx_hash', 'Unknown')
                     strategy_type = tx.get('strategy_type', 'Unknown')
                 except asyncio.TimeoutError:
                     continue
-               
+
                 logger.debug(f"Processing transaction {tx_hash} with strategy type {strategy_type}")
                 success = await strategy.execute_best_strategy(tx, strategy_type)
-                
+
                 if success:
                     logger.debug(f"Strategy execution successful for tx: {tx_hash}")
                 else:
                     logger.warning(f"Strategy execution failed for tx: {tx_hash}")
-                
+
                 # Mark task as done
                 monitor.profitable_transactions.task_done()
-                
+
             except Exception as e:
-                logger.error(f"Error processing transaction: {e}")
+                logger.error(f"Error processing transaction: {e}", exc_info=True) # error logging with traceback

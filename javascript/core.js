@@ -673,7 +673,7 @@ class Main_Core {
             try {
                 const http_provider = new Web3.providers.HttpProvider(this.configuration.HTTP_ENDPOINT);
                 providers.push(['HTTP', http_provider]);
-                logger.debug("HTTP provider added.");
+                logger.debug("HTTP provider Active.");
             } catch (e) {
                 logger.error(`Error with HTTP provider: ${e}`);
             }
@@ -683,7 +683,7 @@ class Main_Core {
             try {
                 const ws_provider = new Web3.providers.WebsocketProvider(this.configuration.WEBSOCKET_ENDPOINT);
                 providers.push(['WebSocket', ws_provider]);
-                logger.debug("WebSocket provider added.");
+                logger.debug("WebSocket provider Active.");
             } catch (e) {
                 logger.error(`Error with WebSocket provider: ${e}`);
             }

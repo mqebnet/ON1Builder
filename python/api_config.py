@@ -1,3 +1,6 @@
+#========================================================================================================================
+# File: api_config.py
+#========================================================================================================================
 import asyncio
 import time
 import aiohttp
@@ -20,18 +23,18 @@ setup_logging()
 
 logger = logger.getLogger(__name__)
 
- 
+
 class API_Config:
     """
     Cryptocurrency API Integration and Data Management System
-    
+
     Features:
     - Multi-source data aggregation (Binance, CoinGecko, CoinMarketCap, etc.)
     - Intelligent caching with TTL
     - Automatic rate limiting and retry mechanisms
     - Price prediction model training and inference
     - Market metrics calculations
-    
+
     Configuration:
     - MAX_REQUEST_ATTEMPTS: Maximum retry attempts for failed requests
     - REQUEST_BACKOFF_FACTOR: Exponential backoff multiplier for retries
@@ -72,7 +75,6 @@ class API_Config:
         }
 
         # API lock and session
-        self.api_lock: asyncio.Lock = asyncio.Lock()
         self.session: Optional[aiohttp.ClientSession] = None
 
         # API configurations
@@ -116,11 +118,12 @@ class API_Config:
             provider: asyncio.Semaphore(config.get("rate_limit", 10))
             for provider, config in self.api_configs.items()
         }
-        
+
         # Token mapping
         self.token_address_to_symbol: Dict[str, str] = {}
         self.token_symbol_to_address: Dict[str, str] = {}
-    
+        self.symbol_to_api_id: Dict[str, str] = {}  # API-specific identifiers
+
     async def __aenter__(self) -> "API_Config":
         self.session = aiohttp.ClientSession()
         return self
@@ -134,36 +137,36 @@ class API_Config:
         """Initialize API configuration."""
         try:
             self.session = aiohttp.ClientSession()
-            
+
             # Load token addresses and symbols
             token_addresses = await self.configuration._load_json(
-                self.configuration.TOKEN_ADDRESSES, 
+                self.configuration.TOKEN_ADDRESSES,
                 "token addresses"
             )
             token_symbols = await self.configuration._load_json(
                 self.configuration.TOKEN_SYMBOLS,
                 "token symbols"
             )
-            
+
             # Create bidirectional mappings
             self.token_address_to_symbol = {}
             self.token_symbol_to_address = {}
             self.symbol_to_api_id = {}  # API-specific identifiers
-            
+
             # Build mappings
             for symbol, address in token_addresses.items():
                 normalized_symbol = symbol.upper()
                 normalized_address = address.lower()
-                
+
                 self.token_address_to_symbol[normalized_address] = normalized_symbol
                 self.token_symbol_to_address[normalized_symbol] = normalized_address
-                
+
                 # Map to API-specific ID if available
                 if normalized_symbol in token_symbols:
                     self.symbol_to_api_id[normalized_symbol] = token_symbols[normalized_symbol]
-            
+
             logger.info(f"API_Config initialized with {len(self.token_address_to_symbol)} tokens ✅")
-            
+
         except Exception as e:
             logger.critical(f"API_Config initialization failed: {e}")
             raise
@@ -189,7 +192,7 @@ class API_Config:
     def _get_api_symbol(self, symbol: str, api: str) -> str:
         """Get API-specific symbol format."""
         normalized = symbol.upper()
-        
+
         # First check if we have an API-specific ID
         api_id = self.symbol_to_api_id.get(normalized)
         if api_id:
@@ -201,7 +204,7 @@ class API_Config:
                 return normalized
             elif api == "cryptocompare":
                 return normalized
-        
+
         # Fallback to basic normalization
         return normalized
 
@@ -214,15 +217,15 @@ class API_Config:
                 return None
 
         normalized_symbol = self._normalize_symbol(token)
-        
+
         if normalized_symbol in self.token_metadata_cache:
             return self.token_metadata_cache[normalized_symbol]
-            
+
         metadata = await self._fetch_from_services(
             lambda service: self._fetch_token_metadata(service, normalized_symbol),
             f"metadata for {normalized_symbol}",
         )
-        
+
         if metadata:
             self.token_metadata_cache[normalized_symbol] = metadata
         return metadata
@@ -279,17 +282,17 @@ class API_Config:
     async def get_real_time_price(self, token: str, vs_currency: str = "eth") -> Optional[Decimal]:
         """
         Fetch real-time token price with multi-source aggregation.
-        
+
         Strategy:
         1. Check cache for recent price
         2. Query multiple sources in parallel
         3. Weight results by source reliability
         4. Update source success rates
-        
+
         Args:
             token: Token symbol or address
             vs_currency: Quote currency (default: eth)
-            
+
         Returns:
             Decimal: Weighted average price across sources
         """
@@ -301,21 +304,21 @@ class API_Config:
 
         normalized_symbol = self._normalize_symbol(token)
         cache_key = f"price_{normalized_symbol}_{vs_currency}"
-        
+
         if cache_key in self.price_cache:
             return self.price_cache[cache_key]
         prices = []
         weights = []
-        async with self.api_lock:
-            for source, config in self.api_configs.items():
-                try:
-                    price = await self._fetch_price(source, normalized_symbol, vs_currency)
-                    if price:
-                        prices.append(price)
-                        weights.append(config["weight"] * config["success_rate"])
-                except Exception as e:
-                    logger.error(f"Error fetching price from {source}: {e}")
-                    config["success_rate"] *= 0.9
+
+        for source, config in self.api_configs.items():
+            try:
+                price = await self._fetch_price(source, normalized_symbol, vs_currency)
+                if price:
+                    prices.append(price)
+                    weights.append(config["weight"] * config["success_rate"])
+            except Exception as e:
+                logger.error(f"Error fetching price from {source}: {e}")
+                config["success_rate"] *= 0.9
         if not prices:
             logger.warning(f"No valid prices found for {token}!")
             return None
@@ -497,7 +500,7 @@ class API_Config:
                 url = f"{config['base_url']}/cryptocurrency/quotes/latest"
                 headers = {"X-CMC_PRO_API_KEY": config['api_key']}
                 params = {"symbol": token.upper()}
-                
+
                 response = await self.make_request(source, url, params=params, headers=headers)
                 if response and 'data' in response:
                     token_data = response['data'].get(token.upper(), {})
@@ -539,19 +542,8 @@ class API_Config:
                  logger.warning(f"failed to fetch {description} using {service}: {e}")
          logger.warning(f"failed to fetch {description}.")
          return None
-    
-    async def _load_abi(self) -> List[Dict[str, Any]]:
-        """Load contract abi from a file."""
-        try:
-            abi_registry = ABI_Registry()
-            abi = await abi_registry.load_abi('erc20')
-            if not abi:
-                 raise ValueError("Failed to load ERC20 ABI using ABI Registry")
-            return abi
-        except Exception as e:
-            logger.error(f"Failed to load abi: {e}")
-            raise
-    
+
+
     async def get_token_price_data(
         self,
         token_symbol: str,
@@ -561,10 +553,10 @@ class API_Config:
     ) -> Union[float, List[float]]:
         """Centralized price data fetching for all components."""
         cache_key = f"{data_type}_{token_symbol}_{timeframe}_{vs_currency}"
-        
+
         if cache_key in self.price_cache:
             return self.price_cache[cache_key]
-            
+
         try:
             if data_type == 'current':
                 data = await self.get_real_time_price(token_symbol, vs_currency)
@@ -572,76 +564,34 @@ class API_Config:
                 data = await self.fetch_historical_prices(token_symbol, days=timeframe)
             else:
                 raise ValueError(f"Invalid data type: {data_type}")
-                
+
             if data is not None:
                 self.price_cache[cache_key] = data
             return data
-            
+
         except Exception as e:
             logger.error(f"Error fetching {data_type} price data: {e}")
             return [] if data_type == 'historical' else 0.0
 
-    async def _fetch_with_priority(self, token: str, data_type: str) -> Optional[Any]:
-        """Fetch data with priority-based rate limiting."""
-        try:
-           
-            providers = list(self.api_configs.keys())
-            
-            # Try each provider until we get data
-            for provider in providers:
-                try:
-                    data = await self._fetch_from_provider(provider, token, data_type)
-                    if data:
-                        return data
-                except Exception as e:
-                    logger.debug(f"Error fetching from {provider}: {e}")
-                    continue
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"Error in priority fetch: {e}")
-            return None
-        
-    async def _fetch_from_provider(self, provider: str, token: str, data_type: str) -> Optional[Any]:
-        """Fetch data from specific provider with better error handling."""
-        try:
-            config = self.api_configs.get(provider)
-            if not config:
-                return None
-
-            if data_type == 'price':
-                return await self._fetch_price(provider, token, 'eth')
-            elif data_type == 'volume':
-                return await self._fetch_token_volume(provider, token)
-            elif data_type == 'metadata':
-                return await self._fetch_token_metadata(provider, token)
-            else:
-                logger.warning(f"Unsupported data type: {data_type}")
-                return None
-
-        except Exception as e:
-            logger.error(f"Error fetching from {provider}: {e}")
-            return None
 
     def _calculate_volatility(self, price_history: List[float]) -> float:
         """
         Calculate price volatility using standard deviation of returns.
-        
+
         Method:
         1. Calculate price returns series
         2. Compute standard deviation
         3. Handle edge cases (insufficient data)
-        
+
         Args:
             price_history: List of historical prices
-            
+
         Returns:
             float: Volatility metric between 0 and 1
         """
         if not price_history or len(price_history) < 2:
             return 0.0
-        
+
         try:
             returns = [
                 (price_history[i] - price_history[i-1]) / price_history[i-1]
@@ -656,18 +606,18 @@ class API_Config:
         """Calculate price momentum using exponential moving average."""
         if not price_history or len(price_history) < 2:
             return 0.0
-        
+
         try:
             # Calculate short and long term EMAs
             short_period = min(12, len(price_history))
             long_period = min(26, len(price_history))
-            
+
             ema_short = sum(price_history[-short_period:]) / short_period
             ema_long = sum(price_history[-long_period:]) / long_period
-            
+
             momentum = (ema_short / ema_long - 1) if ema_long > 0 else 0
             return float(momentum)
-            
+
         except Exception as e:
             logger.error(f"Error calculating momentum: {e}")
             return 0.0
@@ -716,7 +666,7 @@ class API_Config:
                 self.get_token_volume(token),
                 self.get_token_price_data(token, 'historical', timeframe=7)  # 7 day price history
             ]
-            
+
             metadata, volume, price_history = await asyncio.gather(*data_tasks, return_exceptions=True)
 
             # Check for exceptions in results
@@ -747,7 +697,7 @@ class API_Config:
         except Exception as e:
             logger.error(f"Error fetching market data for {token}: {e}")
             return None
-    
+
     async def _calculate_liquidity_ratio(self, token: str) -> float:
         """Calculate liquidity ratio using market cap and volume from API config."""
         try:
@@ -758,7 +708,7 @@ class API_Config:
         except Exception as e:
             logger.error(f"Error calculating liquidity ratio: {e}")
             return 0.0
-    
+
     async def get_token_supply_data(self, token: str) -> Dict[str, Any]:
             """Gets total and circulating supply for a given token."""
             metadata = await self.get_token_metadata(token)
@@ -809,12 +759,12 @@ class API_Config:
 
             df = pd.DataFrame(updates)
             training_data_path = Path(self.configuration.TRAINING_DATA_PATH)
-            
+
             # Read existing data, append new data, write back to CSV
             if training_data_path.exists():
                 async with aiofiles.open(training_data_path, 'r') as f:
                     old_data = await f.read()
-                
+
                 if old_data:
                     df_old = pd.read_csv(StringIO(old_data))
                     df = pd.concat([df_old, df], ignore_index=True)
@@ -825,17 +775,17 @@ class API_Config:
 
             # Keep file size manageable (keep last 30 days)
             await self._cleanup_old_data(training_data_path, days=30)
-            
+
         except Exception as e:
             logger.error(f"Error writing training data: {e}")
-            
+
     async def _cleanup_old_data(self, filepath: Path, days: int) -> None:
         """Remove data older than specified days."""
         try:
             import pandas as pd
             from io import StringIO
             import aiofiles
-            
+
             async with aiofiles.open(filepath, 'r') as f:
                 content = await f.read()
             if content:
@@ -850,14 +800,14 @@ class API_Config:
     async def train_price_model(self) -> None:
         """
         Train linear regression model for price prediction.
-        
+
         Process:
         1. Load historical training data
         2. Validate data quality and quantity
         3. Prepare feature matrix (price, volume, market cap, etc.)
         4. Train LinearRegression model
         5. Save model for inference
-        
+
         Features used:
         - Historical prices
         - Trading volume
@@ -869,7 +819,7 @@ class API_Config:
         try:
             training_data_path = Path(self.configuration.TRAINING_DATA_PATH)
             model_path = Path(self.configuration.MODEL_PATH)
-            
+
             if not training_data_path.exists():
                 logger.warning("No training data found")
                 return
@@ -880,7 +830,7 @@ class API_Config:
                 return
 
             # Features for training
-            features = ['price_usd', 'volume_24h', 'market_cap', 'volatility', 
+            features = ['price_usd', 'volume_24h', 'market_cap', 'volatility',
                        'liquidity_ratio', 'price_momentum']
             X = df[features].fillna(0)
             y = df['price_usd'].fillna(0)
@@ -888,7 +838,7 @@ class API_Config:
             # Train model
             model = LinearRegression()
             model.fit(X, y)
-            
+
             # Save model
             joblib.dump(model, model_path)
             logger.info(f"Price model trained and saved to {model_path}")

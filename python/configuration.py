@@ -1,7 +1,11 @@
+#========================================================================================================================
+# File: configuration.py
+#========================================================================================================================
 import os
 import json
 import aiofiles
 import dotenv
+import aiohttp # Import aiohttp for API key validation requests
 
 from eth_utils import function_signature_to_4byte_selector
 from pathlib import Path
@@ -71,7 +75,7 @@ class Configuration:
         self.HTTP_ENDPOINT: Optional[str] = self._get_env_str("HTTP_ENDPOINT", None)
         self.WEBSOCKET_ENDPOINT: Optional[str] = self._get_env_str("WEBSOCKET_ENDPOINT", None)
         self.IPC_ENDPOINT: Optional[str] = self._get_env_str("IPC_ENDPOINT", None)
-        
+
         # Account
         self.WALLET_ADDRESS: str = self._get_env_str("WALLET_ADDRESS")
         self.WALLET_KEY: str = self._get_env_str("WALLET_KEY")
@@ -91,7 +95,7 @@ class Configuration:
         self.SUSHISWAP_ADDRESS: str = self._get_env_str("SUSHISWAP_ADDRESS")
         self.AAVE_POOL_ADDRESS: str = self._get_env_str("AAVE_POOL_ADDRESS")
         self.AAVE_FLASHLOAN_ADDRESS: str = self._get_env_str("AAVE_FLASHLOAN_ADDRESS")
-    
+
         # Set default values for strategies
         self.SLIPPAGE_DEFAULT: float = 0.1
         self.SLIPPAGE_MIN: float = 0.01
@@ -101,7 +105,7 @@ class Configuration:
         self.MAX_GAS_PRICE_GWEI: int = 500
         self.MIN_PROFIT_MULTIPLIER: float = 2.0
         self.BASE_GAS_LIMIT: int = 21000
-        
+
         # ML model configuration
         self.MODEL_RETRAINING_INTERVAL: int = 3600  # 1 hour
         self.MIN_TRAINING_SAMPLES: int = 100
@@ -110,15 +114,21 @@ class Configuration:
         self.LINEAR_REGRESSION_PATH: str = str(self.BASE_PATH / "linear_regression")
         self.MODEL_PATH: str = str(self.BASE_PATH / "linear_regression" / "price_model.joblib")
         self.TRAINING_DATA_PATH: str = str(self.BASE_PATH / "linear_regression" / "training_data.csv")
-        
+
         # Ensure ML paths are absolute
         self.LINEAR_REGRESSION_PATH = str(self.BASE_PATH / "linear_regression")
         self.MODEL_PATH = str(self.BASE_PATH / "linear_regression" / "price_model.joblib")
         self.TRAINING_DATA_PATH = str(self.BASE_PATH / "linear_regression" / "training_data.csv")
-        
+
         # Create directories if they don't exist
         os.makedirs(self.LINEAR_REGRESSION_PATH, exist_ok=True)
-        
+
+        # Configurable Time Intervals
+        self.MEMORY_CHECK_INTERVAL = self._get_env_int("MEMORY_CHECK_INTERVAL", 300)
+        self.COMPONENT_HEALTH_CHECK_INTERVAL = self._get_env_int("COMPONENT_HEALTH_CHECK_INTERVAL", 60)
+        self.PROFITABLE_TX_PROCESS_TIMEOUT = self._get_env_float("PROFITABLE_TX_PROCESS_TIMEOUT", 1.0)
+
+
     def _load_env(self) -> None:
         """Load environment variables fromenv file."""
         dotenv.load_dotenv(dotenv_path=self.env_path)
@@ -132,14 +142,14 @@ class Configuration:
         """
         if not isinstance(address, str):
             raise ValueError(f"{var_name} must be a string, got {type(address)}")
-        
+
         clean_address = address.lower().strip()
         if not clean_address.startswith('0x'):
             clean_address = '0x' + clean_address
-            
+
         if len(clean_address) != 42:
             raise ValueError(f"Invalid {var_name} length: {len(clean_address)}")
-            
+
         try:
             int(clean_address[2:], 16)
             return clean_address
@@ -152,11 +162,11 @@ class Configuration:
         if value is None:
             logger.error(f"Missing environment variable: {var_name}")
             raise ValueError(f"Missing environment variable: {var_name}")
-            
+
         # Only validate Ethereum addresses for contract addresses
         if 'ADDRESS' in var_name and not any(path_suffix in var_name for path_suffix in ['ABI', 'PATH', 'ADDRESSES', 'SIGNATURES', 'SYMBOLS']):
             return self._validate_ethereum_address(value, var_name)
-            
+
         return value
 
     def _parse_numeric_string(self, value: str) -> str:
@@ -226,7 +236,7 @@ class Configuration:
          if not isinstance(data, dict):
              logger.error("Invalid format for token addresses: must be a dictionary")
              raise ValueError("Invalid format for token addresses: must be a dictionary")
-             
+
          # Extract addresses from dictionary keys
          addresses = list(data.keys())
          logger.info(f"Loaded {len(addresses)} token addresses")
@@ -257,7 +267,7 @@ class Configuration:
         except AttributeError:
             logger.warning(f"Configuration key '{key}' not found, using default: {default}")
             return default
-        
+
     def get_all_config_values(self) -> Dict[str, Any]:
          """Returns all configuration values as a dictionary."""
          return vars(self)
@@ -280,18 +290,18 @@ class Configuration:
         try:
             # Create required directories if they don't exist
             self._create_required_directories()
-            
-            # Load and validate critical ABIs
+
+            # Load and validate critical ABIs (Now just loads paths)
             await self._load_critical_abis()
-            
-            # Validate API keys
-            self._validate_api_keys()
-            
+
+            # Validate API keys (Enhanced API key validation)
+            await self._validate_api_keys()
+
             # Validate addresses
             self._validate_addresses()
-            
+
             logger.info("Configuration loaded successfully")
-            
+
         except Exception as e:
             logger.error(f"Configuration load failed: {str(e)}")
             raise
@@ -303,40 +313,57 @@ class Configuration:
             self.BASE_PATH / "abi",
             self.BASE_PATH / "utils"
         ]
-        
+
         for directory in required_dirs:
             os.makedirs(directory, exist_ok=True)
             logger.debug(f"Ensured directory exists: {directory}")
 
     async def _load_critical_abis(self) -> None:
-        """Load and validate critical ABIs."""
+        """Load and validate critical ABIs (Now just loads paths)."""
         try:
-            self.AAVE_FLASHLOAN_ABI = await self.load_abi_from_path(
-                self._resolve_path("AAVE_FLASHLOAN_ABI")
-            )
-            self.AAVE_POOL_ABI = await self.load_abi_from_path(
-                self._resolve_path("AAVE_POOL_ABI")
-            )
+            self.AAVE_FLASHLOAN_ABI_PATH = self._resolve_path("AAVE_FLASHLOAN_ABI") # Now storing path
+            self.AAVE_POOL_ABI_PATH = self._resolve_path("AAVE_POOL_ABI") # Now storing path
         except Exception as e:
             raise RuntimeError(f"Failed to load critical ABIs: {e}")
 
-    def _validate_api_keys(self) -> None:
-        """Validate required API keys are set."""
+    async def _validate_api_keys(self) -> None:
+        """Validate required API keys are set and functional."""
         required_keys = [
-            'ETHERSCAN_API_KEY',
-            'INFURA_API_KEY',
-            'COINGECKO_API_KEY',
-            'COINMARKETCAP_API_KEY',
-            'CRYPTOCOMPARE_API_KEY'
+            ('ETHERSCAN_API_KEY', "https://api.etherscan.io/api?module=stats&action=ethprice&apikey={key}"), # Example Etherscan test URL
+            ('INFURA_API_KEY', "https://mainnet.infura.io/v3/{key}"), # Example Infura test URL (might need a real request)
+            ('COINGECKO_API_KEY', "https://pro-api.coingecko.com/api/v3/ping?x_cg_pro_api_key={key}"), # Example CoinGecko Pro API ping
+            ('COINMARKETCAP_API_KEY', "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?CMC_PRO_API_KEY={key}&limit=1"), # Example CMC test URL
+            ('CRYPTOCOMPARE_API_KEY', "https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD&api_key={key}") # Example CryptoCompare test URL
         ]
-        
-        missing_keys = [
-            key for key in required_keys 
-            if not getattr(self, key, None)
-        ]
-        
+
+        missing_keys = []
+        invalid_keys = [] # To track invalid keys
+
+        async with aiohttp.ClientSession() as session: # Create a session for all requests
+            for key_name, test_url_template in required_keys:
+                api_key = getattr(self, key_name, None)
+                if not api_key:
+                    missing_keys.append(key_name)
+                    continue # Skip to next key if missing
+
+                test_url = test_url_template.format(key=api_key)
+                try:
+                    async with session.get(test_url, timeout=10) as response: # Timeout for test requests
+                        if response.status != 200: # Basic check for 200 OK status; might need more specific checks
+                            invalid_keys.append(f"{key_name} (Status: {response.status})")
+                        else:
+                            logger.debug(f"API key {key_name} validated successfully.") # Debug log for successful validation
+                except Exception as e: # Catch any request exceptions
+                    invalid_keys.append(f"{key_name} (Error: {e})")
+                    logger.warning(f"API key {key_name} validation request failed: {e}") # Warning for request failures
+
+
         if missing_keys:
             logger.warning(f"Missing API keys: {', '.join(missing_keys)}")
+        if invalid_keys:
+            logger.error(f"Invalid API keys: {', '.join(invalid_keys)}") # Log invalid keys as errors
+            raise ValueError(f"Invalid API keys detected: {', '.join(invalid_keys)}") # Raise exception for invalid keys
+
 
     def _validate_addresses(self) -> None:
         """Validate all Ethereum addresses in configuration."""
@@ -347,83 +374,13 @@ class Configuration:
             'AAVE_POOL_ADDRESS',
             'AAVE_FLASHLOAN_ADDRESS'
         ]
-        
+
         for field in address_fields:
             value = getattr(self, field, None)
             if value:
                 try:
-                    setattr(self, field, 
+                    setattr(self, field,
                            self._validate_ethereum_address(value, field))
                 except ValueError as e:
                     logger.error(f"Invalid address for {field}: {e}")
                     raise
-
-    def _validate_abi(self, abi: List[Dict], abi_type: str) -> bool:
-        """Validate the structure and required methods of an ABI."""
-        if not isinstance(abi, list):
-            logger.error(f"Invalid ABI format for {abi_type}")
-            return False
-
-        found_methods = {
-            item.get('name') for item in abi
-            if item.get('type') == 'function' and 'name' in item
-        }
-
-        required_methods = {
-            'erc20': {'transfer', 'approve', 'transferFrom', 'balanceOf'},
-            'uniswap': {'swapExactTokensForTokens', 'swapTokensForExactTokens', 'addLiquidity', 'getAmountsOut'},
-            'sushiswap': {'swapExactTokensForTokens', 'swapTokensForExactTokens', 'addLiquidity', 'getAmountsOut'},
-            'aave_flashloan': {'fn_RequestFlashLoan', 'executeOperation', 'ADDRESSES_PROVIDER', 'POOL'},
-            'aave': {'admin', 'implementation', 'upgradeToAndCall'}
-        }
-
-        required = required_methods.get(abi_type, set())
-        if not required.issubset(found_methods):
-            missing = required - found_methods
-            logger.error(f"Missing required methods in {abi_type} ABI: {missing}")
-            return False
-
-        return True
-
-    def _extract_signatures(self, abi: List[Dict], abi_type: str) -> None:
-        """Extract function signatures and method selectors from an ABI."""
-        signatures = {}
-        selectors = {}
-
-        for item in abi:
-            if item.get('type') == 'function':
-                name = item.get('name')
-                if name:
-                    inputs = ','.join(inp.get('type', '') for inp in item.get('inputs', []))
-                    signature = f"{name}({inputs})"
-                    selector = function_signature_to_4byte_selector(signature)
-                    hex_selector = selector.hex()
-
-                    signatures[name] = signature
-                    selectors[hex_selector] = name
-
-        self.signatures[abi_type] = signatures
-        self.method_selectors[abi_type] = selectors
-
-    async def _load_abi_from_path(self, abi_path: Path, abi_type: str) -> List[Dict]:
-        """Load and validate ABI content from the specified path."""
-        try:
-            if not abi_path.exists():
-                logger.error(f"ABI file not found: {abi_path}")
-                raise FileNotFoundError(f"ABI file not found: {abi_path}")
-
-            async with aiofiles.open(abi_path, 'r', encoding='utf-8') as f:
-                abi_content = await f.read()
-                abi = json.loads(abi_content)
-                logger.debug(f"ABI content loaded from {abi_path}")
-
-            if not self._validate_abi(abi, abi_type):
-                raise ValueError(f"Validation failed for {abi_type} ABI from file {abi_path}")
-
-            return abi
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error for {abi_type} in file {abi_path}: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Error loading ABI {abi_type}: {e}")
-            raise

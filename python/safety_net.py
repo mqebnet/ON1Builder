@@ -1,3 +1,6 @@
+#========================================================================================================================
+# File: safety_net.py
+#========================================================================================================================
 import asyncio
 from utils import getLogger
 import time
@@ -15,14 +18,11 @@ from main_core import setup_logging
 setup_logging()
 
 logger = logger.getLogger(__name__)
- 
+
 class Safety_Net:
     """
      safety system for risk management and transaction validation.
     """
-
-    CACHE_TTL: int = 300  # Cache TTL in seconds
-    GAS_PRICE_CACHE_TTL: int = 15  # 15 sec cache for gas prices
 
     def __init__(
         self,
@@ -31,7 +31,7 @@ class Safety_Net:
         address: Optional[str] = None,
         account: Optional[Account] = None,
         api_config: Optional["API_Config"] = None,
-        market_monitor: Optional[Any] = None, 
+        market_monitor: Optional[Any] = None,
     ):
         """
         Initialize Safety Net components.
@@ -49,8 +49,8 @@ class Safety_Net:
         self.configuration: Optional["Configuration"] = configuration
         self.account: Optional[Account] = account
         self.api_config: Optional["API_Config"] = api_config
-        self.price_cache: TTLCache = TTLCache(maxsize=1000, ttl=self.CACHE_TTL)
-        self.gas_price_cache: TTLCache = TTLCache(maxsize=1, ttl=self.GAS_PRICE_CACHE_TTL)
+        self.price_cache: TTLCache = TTLCache(maxsize=1000, ttl=self.configuration.SAFETY_NET_CACHE_TTL) # Use configurable CACHE_TTL
+        self.gas_price_cache: TTLCache = TTLCache(maxsize=1, ttl=self.configuration.SAFETY_NET_GAS_PRICE_TTL) # Use configurable GAS_PRICE_CACHE_TTL
         self.market_monitor: Optional[Any] = market_monitor  # Store market_monitor reference
 
         self.price_lock: asyncio.Lock = asyncio.Lock()
@@ -58,7 +58,7 @@ class Safety_Net:
         time.sleep(1) # ensuring proper initialization
 
         # Safety checks cache
-        self.safety_cache: TTLCache = TTLCache(maxsize=100, ttl=60)  # 1 minute cache
+        self.safety_cache: TTLCache = TTLCache(maxsize=100, ttl=60)  # 1 minute cache # Keep safety_cache TTL hardcoded for now, or make configurable too if needed.
 
         # Load settings from config object
         if self.configuration:
@@ -87,24 +87,24 @@ class Safety_Net:
                 "min_profit_multiplier": 2.0,
                 "base_gas_limit":  21000
             }
-        
+
 
     async def initialize(self) -> None:
         """Initialize Safety Net components."""
         try:
             # Initialize price cache
-            self.price_cache = TTLCache(maxsize=1000, ttl=self.CACHE_TTL)
-            
+            self.price_cache = TTLCache(maxsize=1000, ttl=self.configuration.SAFETY_NET_CACHE_TTL) # Use configurable CACHE_TTL
+
             # Initialize gas price cache
-            self.gas_price_cache = TTLCache(maxsize=1, ttl=self.GAS_PRICE_CACHE_TTL)
-            
+            self.gas_price_cache = TTLCache(maxsize=1, ttl=self.configuration.SAFETY_NET_GAS_PRICE_TTL) # Use configurable GAS_PRICE_CACHE_TTL
+
             # Initialize safety checks cache
-            self.safety_cache = TTLCache(maxsize=100, ttl=60)
-            
+            self.safety_cache = TTLCache(maxsize=100, ttl=60) # Keep safety_cache TTL hardcoded for now, or make configurable too if needed.
+
             # Verify web3 connection
             if not self.web3:
                 raise RuntimeError("Web3 not initialized in Safety_Net")
-                
+
             # Test connection
             if not await self.web3.is_connected():
                 raise RuntimeError("Web3 connection failed in Safety_Net")
@@ -263,7 +263,7 @@ class Safety_Net:
         try:
              is_safe = True
              messages = []
-             
+
              if check_type in ['all', 'gas']:
                 gas_price = await self.get_dynamic_gas_price()
                 if gas_price > self.configuration.MAX_GAS_PRICE_GWEI:
@@ -326,19 +326,19 @@ class Safety_Net:
         """Centralized risk assessment with proper error handling."""
         try:
             risk_score = 1.0
-            
+
             # Get market conditions if not provided and market_monitor exists
             if not market_conditions and self.market_monitor:
                 market_conditions = await self.market_monitor.check_market_conditions(tx.get("to", ""))
             elif not market_conditions:
                 market_conditions = {}  # Default empty if no market_monitor
-                
+
             # Gas price impact
             gas_price = int(tx.get("gasPrice", 0))
             gas_price_gwei = float(self.web3.from_wei(gas_price, "gwei"))
             if gas_price_gwei > self.configuration.MAX_GAS_PRICE_GWEI:
                 risk_score *= 0.7
-                
+
             # Market conditions impact
             if market_conditions.get("high_volatility", False):
                 risk_score *= 0.7
@@ -346,23 +346,23 @@ class Safety_Net:
                 risk_score *= 0.6
             if market_conditions.get("bullish_trend", False):
                 risk_score *= 1.2
-                
-            # Price change impact    
+
+            # Price change impact
             if price_change > 0:
                 risk_score *= min(1.3, 1 + (price_change / 100))
-                
+
             # Volume impact
             if volume >= 1_000_000:
                 risk_score *= 1.2
             elif volume <= 100_000:
                 risk_score *= 0.8
-                
-            return risk_score, market_conditions                    
-        
+
+            return risk_score, market_conditions
+
         except Exception as e:
             logger.error(f"Error in risk assessment: {e}")
             return 0.0, {}
-        
+
     async def get_dynamic_gas_price(self) -> Decimal:
         """
         Fetch dynamic gas price with caching.
@@ -377,7 +377,7 @@ class Safety_Net:
             #Fetch gas price from the latest block
              latest_block = await self.web3.eth.get_block('latest')
              base_fee = latest_block.get("baseFeePerGas")
-             
+
              if base_fee:
                   gas_price_wei =  base_fee * 2
                   gas_price_gwei = Decimal(self.web3.from_wei(gas_price_wei, 'gwei'))
