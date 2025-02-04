@@ -19,9 +19,6 @@ from mempool_monitor import Mempool_Monitor
 from nonce_core import Nonce_Core
 from safety_net import Safety_Net
 import logging as logger
-from main_core import setup_logging
-
-setup_logging()
 
 logger = logger.getLogger(__name__)
 

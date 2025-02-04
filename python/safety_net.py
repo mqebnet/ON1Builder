@@ -2,7 +2,6 @@
 # File: safety_net.py
 #========================================================================================================================
 import asyncio
-from utils import getLogger
 import time
 from decimal import Decimal
 from typing import Any, Dict, Optional, Tuple, Union
@@ -13,9 +12,6 @@ from eth_account import Account
 from api_config import API_Config
 from configuration import Configuration
 import logging as logger
-from main_core import setup_logging
-
-setup_logging()
 
 logger = logger.getLogger(__name__)
 

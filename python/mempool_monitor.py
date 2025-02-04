@@ -2,7 +2,6 @@
 # File: mempool_monitor.py
 #========================================================================================================================
 import asyncio
-import logging as logger
 import time
 import async_timeout
 import hexbytes as hexbytes
@@ -20,9 +19,6 @@ from market_monitor import Market_Monitor
 from nonce_core import Nonce_Core
 from safety_net import Safety_Net
 import logging as logger
-from main_core import setup_logging
-
-setup_logging()
 
 logger = logger.getLogger(__name__)
 

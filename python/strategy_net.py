@@ -9,9 +9,6 @@ import random
 from typing import Any, Dict, List, Optional, Callable, Tuple
 from decimal import Decimal
 import logging as logger
-from main_core import setup_logging
-
-setup_logging()
 
 logger = logger.getLogger(__name__)
 

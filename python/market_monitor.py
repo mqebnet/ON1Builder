@@ -16,9 +16,6 @@ from web3 import AsyncWeb3
 from api_config import API_Config
 from configuration import Configuration
 import logging as logger
-from main_core import setup_logging
-
-setup_logging()
 
 logger = logger.getLogger(__name__)
 
