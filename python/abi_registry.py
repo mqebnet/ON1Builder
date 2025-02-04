@@ -1,3 +1,6 @@
+#========================================================================================================================
+# File: abi_registry.py
+#========================================================================================================================
 import json
 import aiofiles
 import asyncio
@@ -46,7 +49,8 @@ class ABI_Registry:
         if not base_path:
             base_path = Path(__file__).parent.parent # Default
         abi_dir = base_path / 'abi'
-        
+        logger.debug(f"ABI Directory: {abi_dir}") 
+
         abi_files = {
             'erc20': 'erc20_abi.json',
             'uniswap': 'uniswap_abi.json',
