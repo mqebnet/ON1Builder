@@ -28,25 +28,36 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
         _;
     }
 
-    // Request a flash loan from Aave's pool
-    function fn_RequestFlashLoan(address _token, uint256 _amount) public {
-        address receiverAddress = address(this);
-        address asset = _token;
-        uint256 amount = _amount;
-        bytes memory params = "";  // Empty params can be expanded for more complex logic
-        uint16 referralCode = 0;   // Optional referral code
+    // Modifier to prevent reentrancy attacks
+    modifier nonReentrant() {
+        require(!locked, "Reentrant call");
+        locked = true;
+        _;
+        locked = false;
+    }
 
-        // Emit an event before triggering the flash loan
-        emit FlashLoanRequested(_token, _amount);
-        
-        // Execute the flash loan
-        POOL.flashLoanSimple(
-            receiverAddress,
-            asset,
-            amount,
-            params,
-            referralCode
-        );
+    // Request a flash loan from Aave's pool for multiple tokens
+    function fn_RequestFlashLoan(address[] memory _tokens, uint256[] memory _amounts) public {
+        require(_tokens.length == _amounts.length, "Tokens and amounts length mismatch");
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            address receiverAddress = address(this);
+            address asset = _tokens[i];
+            uint256 amount = _amounts[i];
+            bytes memory params = "";  // Empty params can be expanded for more complex logic
+            uint16 referralCode = 0;   // Optional referral code
+
+            // Emit an event before triggering the flash loan
+            emit FlashLoanRequested(_tokens[i], _amounts[i]);
+            
+            // Execute the flash loan
+            POOL.flashLoanSimple(
+                receiverAddress,
+                asset,
+                amount,
+                params,
+                referralCode
+            );
+        }
     }
 
     // This function is called by Aave after receiving the loaned amount
@@ -56,9 +67,12 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
         uint256 premium,
         address initiator,
         bytes calldata params
-    ) external override returns (bool) {
+    ) external override nonReentrant returns (bool) {
         // Custom logic for MEV bot, arbitrage, liquidation, etc., should be placed here
         // Flash loan execution logic handled outside the contract in Python
+
+        // Advanced arbitrage strategies and MEV bot logic
+        // Implement front-run, back-run, and sandwich attack logic here
 
         // Approve Aave to withdraw the loan + premium
         uint256 totalAmount = amount + premium;

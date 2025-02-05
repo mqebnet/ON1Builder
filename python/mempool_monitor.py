@@ -976,3 +976,117 @@ class Mempool_Monitor:
         except Exception as e:
             logger.error(f"Error stopping Mempool Monitor: {e}")
             raise
+
+    async def monitor_high_value_transactions(self) -> None:
+        """
+        Monitor the mempool for high-value transactions and execute back-run strategies.
+        """
+        while self.running:
+            try:
+                tx_hash = await self.pending_transactions.get()
+                tx = await self._get_transaction_with_retry(tx_hash)
+                if not tx:
+                    continue
+
+                # Check if the transaction is high-value
+                if tx.value > self.configuration.HIGH_VALUE_THRESHOLD:
+                    logger.info(f"High-value transaction detected: {tx.hash.hex()}")
+
+                    # Execute back-run strategies
+                    await self.execute_back_run_strategies(tx)
+
+            except Exception as e:
+                logger.error(f"Error monitoring high-value transactions: {e}")
+
+    async def execute_back_run_strategies(self, tx: Any) -> None:
+        """
+        Execute back-run strategies for high-value transactions.
+        """
+        try:
+            # Implement back-run strategies here
+            logger.info(f"Executing back-run strategies for transaction: {tx.hash.hex()}")
+
+            # Example back-run strategy: Flashloan back-run
+            await self.flashloan_back_run(tx)
+
+        except Exception as e:
+            logger.error(f"Error executing back-run strategies: {e}")
+
+    async def flashloan_back_run(self, tx: Any) -> None:
+        """
+        Execute a flashloan back-run strategy for a high-value transaction.
+        """
+        try:
+            # Implement flashloan back-run logic here
+            logger.info(f"Executing flashloan back-run for transaction: {tx.hash.hex()}")
+
+            # Example flashloan back-run logic
+            # 1. Request a flashloan
+            # 2. Execute the back-run transaction
+            # 3. Repay the flashloan
+
+        except Exception as e:
+            logger.error(f"Error executing flashloan back-run: {e}")
+
+    async def execute_back_run_strategies(self, tx: Any) -> None:
+        """
+        Execute back-run strategies for high-value transactions.
+        """
+        try:
+            # Implement back-run strategies here
+            logger.info(f"Executing back-run strategies for transaction: {tx.hash.hex()}")
+
+            # Example back-run strategy: Flashloan back-run
+            await self.flashloan_back_run(tx)
+
+        except Exception as e:
+            logger.error(f"Error executing back-run strategies: {e}")
+
+    async def flashloan_back_run(self, tx: Any) -> None:
+        """
+        Execute a flashloan back-run strategy for a high-value transaction.
+        """
+        try:
+            # Implement flashloan back-run logic here
+            logger.info(f"Executing flashloan back-run for transaction: {tx.hash.hex()}")
+
+            # Example flashloan back-run logic
+            # 1. Request a flashloan
+            # 2. Execute the back-run transaction
+            # 3. Repay the flashloan
+
+        except Exception as e:
+            logger.error(f"Error executing flashloan back-run: {e}")
+
+    async def price_dip_back_run(self, tx: Any) -> None:
+        """
+        Execute a price dip back-run strategy for a high-value transaction.
+        """
+        try:
+            # Implement price dip back-run logic here
+            logger.info(f"Executing price dip back-run for transaction: {tx.hash.hex()}")
+
+            # Example price dip back-run logic
+            # 1. Monitor for significant price dips
+            # 2. Execute the back-run transaction
+            # 3. Sell assets at a higher price once the market recovers
+
+        except Exception as e:
+            logger.error(f"Error executing price dip back-run: {e}")
+
+    async def high_volume_back_run(self, tx: Any) -> None:
+        """
+        Execute a high volume back-run strategy for a high-value transaction.
+        """
+        try:
+            # Implement high volume back-run logic here
+            logger.info(f"Executing high volume back-run for transaction: {tx.hash.hex()}")
+
+            # Example high volume back-run logic
+            # 1. Monitor for high trading volumes
+            # 2. Execute the back-run transaction
+            # 3. Capitalize on the price movements
+
+        except Exception as e:
+            logger.error(f"Error executing high volume back-run: {e}")
+

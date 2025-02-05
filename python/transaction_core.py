@@ -892,3 +892,306 @@ class Transaction_Core:
             return False
 
         return await self._validate_and_send_bundle([flashloan_tx, front_run_tx, back_run_tx])
+
+    async def aggressive_front_run(self, target_tx: Dict[str, Any]) -> bool:
+        """
+        Execute aggressive front-running strategy with dynamic gas pricing and risk assessment.
+
+        Args:
+            target_tx: Target transaction details
+
+        Returns:
+            bool: True if front-run was successful, else False
+        """
+        logger.debug("Initiating Aggressive Front-Run Strategy...")
+
+        # Validate transaction
+        valid, decoded_tx, token_symbol = await self._validate_transaction(
+            target_tx, "front_run", min_value=self.configuration.AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH # Use configurable min_value
+        )
+        if not valid:
+            return False
+
+        # Assess risk
+        risk_score, market_conditions = await self._assess_risk(
+            target_tx,
+            token_symbol,
+            price_change=await self.api_config.get_price_change_24h(token_symbol)
+        )
+
+        if risk_score >= self.configuration.AGGRESSIVE_FRONT_RUN_RISK_SCORE_THRESHOLD:  # Use configurable risk score threshold
+            logger.debug(f"Executing aggressive front-run (Risk: {risk_score:.2f})")
+            return await self.front_run(target_tx)
+
+        return False
+
+    async def predictive_front_run(self, target_tx: Dict[str, Any]) -> bool:
+        """
+        Execute predictive front-run strategy based on advanced price prediction analysis
+        and multiple market indicators.
+        """
+        logger.debug("Initiating  Predictive Front-Run Strategy...")
+
+        # Validate transaction
+        valid, decoded_tx, token_symbol = await self._validate_transaction(
+            target_tx, "front_run"
+        )
+        if not valid:
+            return False
+
+        # Gather market data asynchronously
+        try:
+            data = await asyncio.gather(
+                self.market_monitor.predict_price_movement(token_symbol),
+                self.api_config.get_real_time_price(token_symbol),
+                self.market_monitor.check_market_conditions(target_tx["to"]),
+                self.api_config.get_token_price_data(token_symbol, 'historical', timeframe=1),
+                return_exceptions=True
+            )
+            predicted_price, current_price, market_conditions, historical_prices = data
+
+            if any(isinstance(x, Exception) for x in data):
+                logger.warning("Failed to gather complete market data.")
+                return False
+
+            if current_price is None or predicted_price is None:
+                logger.debug("Missing price data for analysis.")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error gathering market data: {e}")
+            return False
+
+        # Calculate price metrics
+        price_change = (predicted_price / float(current_price) - 1) * 100
+        volatility = np.std(historical_prices) / np.mean(historical_prices) if historical_prices else 0
+
+        # Score the opportunity (0-100)
+        opportunity_score = await self._calculate_opportunity_score(
+            price_change=price_change,
+            volatility=volatility,
+            market_conditions=market_conditions,
+            current_price=current_price,
+            historical_prices=historical_prices
+        )
+
+        # Log detailed analysis
+        logger.debug(
+            f"Predictive Analysis for {token_symbol}:\n"
+            f"Current Price: {current_price:.6f}\n"
+            f"Predicted Price: {predicted_price:.6f}\n"
+            f"Expected Change: {price_change:.2f}%\n"
+            f"Volatility: {volatility:.2f}\n"
+            f"Opportunity Score: {opportunity_score}/100\n"
+            f"Market Conditions: {market_conditions}"
+        )
+
+        # Execute if conditions are favorable
+        if opportunity_score >= self.configuration.FRONT_RUN_OPPORTUNITY_SCORE_THRESHOLD:  # Use configurable threshold
+            logger.debug(
+                f"Executing predictive front-run for {token_symbol} "
+                f"(Score: {opportunity_score}/100, Expected Change: {price_change:.2f}%)"
+            )
+            return await self.front_run(target_tx)
+
+        logger.debug(
+            f"Opportunity score {opportunity_score}/100 below threshold. Skipping front-run."
+        )
+        return False
+
+    async def volatility_front_run(self, target_tx: Dict[str, Any]) -> bool:
+        """
+        Execute front-run strategy based on market volatility analysis with
+        advanced risk assessment and dynamic thresholds.
+        """
+        logger.debug("Initiating  Volatility Front-Run Strategy...")
+
+        # Validate transaction
+        valid, decoded_tx, token_symbol = await self._validate_transaction(
+            target_tx, "front_run"
+        )
+        if not valid:
+            return False
+
+        # Gather market data asynchronously
+        try:
+            results = await asyncio.gather(
+                self.market_monitor.check_market_conditions(target_tx["to"]),
+                self.api_config.get_real_time_price(token_symbol),
+                 self.api_config.get_token_price_data(token_symbol, 'historical', timeframe=1),
+                return_exceptions=True
+            )
+
+            market_conditions, current_price, historical_prices = results
+
+            if any(isinstance(result, Exception) for result in results):
+                logger.warning("Failed to gather complete market data")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error gathering market data: {e}")
+            return False
+
+        # Calculate volatility metrics
+        volatility_score = await self._calculate_volatility_score(
+            historical_prices=historical_prices,
+            current_price=current_price,
+            market_conditions=market_conditions
+        )
+
+        # Log detailed analysis
+        logger.debug(
+            f"Volatility Analysis for {token_symbol}:\n"
+            f"Volatility Score: {volatility_score:.2f}/100\n"
+            f"Current Price: {current_price}\n"
+            f"24h Price Range: {min(historical_prices):.4f} - {max(historical_prices):.4f}\n"
+            f"Market Conditions: {market_conditions}"
+        )
+
+        # Execute based on volatility thresholds
+        if volatility_score >= self.configuration.VOLATILITY_FRONT_RUN_SCORE_THRESHOLD:  # Use configurable threshold
+            logger.debug(
+                f"Executing volatility-based front-run for {token_symbol} "
+                f"(Volatility Score: {volatility_score:.2f}/100)"
+            )
+            return await self.front_run(target_tx)
+
+        logger.debug(
+            f"Volatility score {volatility_score:.2f}/100 below threshold. Skipping front-run."
+        )
+        return False
+
+    async def price_dip_back_run(self, target_tx: Dict[str, Any]) -> bool:
+        """Execute back-run strategy based on price dip prediction."""
+        logger.debug("Initiating Price Dip Back-Run Strategy...")
+
+        # Validate transaction
+        valid, decoded_tx, token_symbol = await self._validate_transaction(
+            target_tx, "back_run"
+        )
+        if not valid:
+            return False
+
+        current_price = await self.api_config.get_real_time_price(token_symbol)
+        if current_price is None:
+            return False
+
+        predicted_price = await self.market_monitor.predict_price_movement(token_symbol)
+        if predicted_price < float(current_price) * self.configuration.PRICE_DIP_BACK_RUN_THRESHOLD: # Use configurable threshold
+            logger.debug("Predicted price decrease exceeds threshold, proceeding with back-run.")
+            return await self.back_run(target_tx)
+
+        logger.debug("Predicted price decrease does not meet threshold. Skipping back-run.")
+        return False
+
+    async def flashloan_back_run(self, target_tx: Dict[str, Any]) -> bool:
+        """Execute back-run strategy using flash loans."""
+        logger.debug("Initiating Flashloan Back-Run Strategy...")
+        estimated_amount = await self.calculate_flashloan_amount(target_tx)
+        estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE)) # Use configurable profit percentage
+        if estimated_profit > self.configuration.min_profit_threshold:
+            logger.debug(f"Estimated profit: {estimated_profit} ETH meets threshold.")
+            return await self.back_run(target_tx)
+        logger.debug("Profit is insufficient for flashloan back-run. Skipping.")
+        return False
+
+    async def high_volume_back_run(self, target_tx: Dict[str, Any]) -> bool:
+        """Execute back-run strategy based on high trading volume."""
+        logger.debug("Initiating High Volume Back-Run Strategy...")
+
+        # Validate transaction
+        valid, decoded_tx, token_symbol = await self._validate_transaction(
+            target_tx, "back_run"
+        )
+        if not valid:
+            return False
+
+        volume_24h = await self.api_config.get_token_volume(token_symbol)
+        volume_threshold = self._get_volume_threshold(token_symbol)
+        if volume_24h > volume_threshold:
+            logger.debug(f"High volume detected (${volume_24h:,.2f} USD), proceeding with back-run.")
+            return await self.back_run(target_tx)
+
+        logger.debug(f"Volume (${volume_24h:,.2f} USD) below threshold (${volume_threshold:,.2f} USD). Skipping.")
+        return False
+
+    async def flash_profit_sandwich(self, target_tx: Dict[str, Any]) -> bool:
+        """Execute sandwich attack strategy based on flash loans."""
+        logger.debug("Initiating Flash Profit Sandwich Strategy...")
+        estimated_amount = await self.calculate_flashloan_amount(target_tx)
+        estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE)) # Use configurable profit percentage
+        if estimated_profit > self.configuration.min_profit_threshold:
+            gas_price = await self.get_dynamic_gas_price()
+            if (gas_price > self.configuration.SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI): # Use configurable gas price threshold
+                logger.debug(f"Gas price too high for sandwich attack: {gas_price} Gwei")
+                return False
+            logger.debug(f"Executing sandwich with estimated profit: {estimated_profit:.4f} ETH")
+            return await self.execute_sandwich_attack(target_tx)
+        logger.debug("Insufficient profit potential for flash sandwich. Skipping.")
+        return False
+
+    async def price_boost_sandwich(self, target_tx: Dict[str, Any]) -> bool:
+        """Execute sandwich attack strategy based on price momentum."""
+        logger.debug("Initiating Price Boost Sandwich Strategy...")
+
+        # Validate transaction
+        valid, decoded_tx, token_symbol = await self._validate_transaction(
+            target_tx, "sandwich_attack"
+        )
+        if not valid:
+            return False
+
+        historical_prices = await self.api_config.get_token_price_data(token_symbol, 'historical')
+        if not historical_prices:
+            logger.debug("No historical price data available, skipping price boost sandwich attack")
+            return False
+
+        momentum = await self._analyze_price_momentum(historical_prices)
+        if momentum > self.configuration.PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD: # Use configurable momentum threshold
+            logger.debug(f"Strong price momentum detected: {momentum:.2%}")
+            return await self.execute_sandwich_attack(target_tx)
+
+        logger.debug(f"Insufficient price momentum: {momentum:.2%}. Skipping.")
+        return False
+
+    async def arbitrage_sandwich(self, target_tx: Dict[str, Any]) -> bool:
+        """Execute sandwich attack strategy based on arbitrage opportunities."""
+        logger.debug("Initiating Arbitrage Sandwich Strategy...")
+
+        # Validate transaction
+        valid, decoded_tx, token_symbol = await self._validate_transaction(
+            target_tx, "sandwich_attack"
+        )
+        if not valid:
+            return False
+
+        is_arbitrage = await self.market_monitor.is_arbitrage_opportunity(target_tx)
+        if is_arbitrage:
+            logger.debug(f"Arbitrage opportunity detected for {token_symbol}")
+            return await self.execute_sandwich_attack(target_tx)
+
+        logger.debug("No profitable arbitrage opportunity found. Skipping.")
+        return False
+
+    async def advanced_sandwich_attack(self, target_tx: Dict[str, Any]) -> bool:
+        """Execute advanced sandwich attack strategy with risk management."""
+        logger.debug("Initiating Advanced Sandwich Attack...")
+
+         # Validate transaction
+        valid, decoded_tx, token_symbol = await self._validate_transaction(
+            target_tx, "sandwich_attack"
+        )
+        if not valid:
+            return False
+
+        market_conditions = await self.market_monitor.check_market_conditions(
+            target_tx["to"]
+        )
+        if market_conditions.get("high_volatility", False) and market_conditions.get(
+            "bullish_trend", False
+        ):
+            logger.debug("Conditions favorable for sandwich attack.")
+            return await self.execute_sandwich_attack(target_tx)
+
+        logger.debug("Conditions unfavorable for sandwich attack. Skipping.")
+        return False
