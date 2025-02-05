@@ -6,14 +6,20 @@ import "https://github.com/aave/aave-v3-core/blob/master/contracts/flashloan/bas
 import "https://github.com/aave/aave-v3-core/blob/master/contracts/interfaces/IPoolAddressesProvider.sol";
 import "https://github.com/aave/aave-v3-core/blob/master/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
 
+interface IGasPriceOracle {
+    function latestAnswer() external view returns (int256);
+}
+
 contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
     address payable public owner;
+    IGasPriceOracle public gasPriceOracle;
 
     event FlashLoanRequested(address token, uint256 amount);
     event FlashLoanExecuted(address token, uint256 amount, uint256 premium, bool success);
 
-    constructor(address _addressProvider) FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_addressProvider)) {
+    constructor(address _addressProvider, address _gasPriceOracle) FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_addressProvider)) {
         owner = payable(msg.sender); // Contract deployer becomes the owner
+        gasPriceOracle = IGasPriceOracle(_gasPriceOracle);
     }
 
     // Modifier to allow only the owner to perform sensitive functions

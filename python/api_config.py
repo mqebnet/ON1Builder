@@ -864,3 +864,20 @@ class API_Config:
         except Exception as e:
             logger.error(f"Error predicting price: {e}")
             return 0.0
+
+    async def get_dynamic_gas_price(self) -> int:
+        """
+        Fetch the latest gas price from the gas price oracle.
+
+        Returns:
+            int: The latest gas price in wei.
+        """
+        try:
+            gas_price_oracle_address = self.configuration.GAS_PRICE_ORACLE_ADDRESS
+            contract = self.web3.eth.contract(address=gas_price_oracle_address, abi=self.configuration.GAS_PRICE_ORACLE_ABI)
+            latest_gas_price = contract.functions.latestAnswer().call()
+            return latest_gas_price
+        except Exception as e:
+            logger.error(f"Error fetching gas price from oracle: {e}")
+            return self.configuration.DEFAULT_GAS_PRICE  # Fallback to default gas price
+
