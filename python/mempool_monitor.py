@@ -542,20 +542,6 @@ class Mempool_Monitor:
     async def _estimate_eth_transaction_profit(self, tx: Any) -> Decimal:
         """
         Estimate the potential profit of an ETH transaction.
-
-        This method performs the following steps:
-        - Retrieves the dynamic gas price from the safety net.
-        - Estimates the gas used by the transaction if not already provided.
-        - Calculates the total gas cost in ETH.
-        - Converts the transaction value from Wei to ETH.
-        - Computes the potential profit by subtracting the gas cost from the transaction value.
-        - Ensures the profit is non-negative.
-
-        Args:
-            tx: The transaction object to be analyzed.
-
-        Returns:
-            A Decimal representing the estimated profit in ETH.
         """
         try:
             gas_price_gwei = await self.safety_net.get_dynamic_gas_price()
@@ -563,10 +549,12 @@ class Mempool_Monitor:
             gas_cost_eth = Decimal(gas_price_gwei) * Decimal(gas_used) * Decimal("1e-9")
             eth_value = Decimal(self.web3.from_wei(tx.value, "ether"))
             potential_profit = eth_value - gas_cost_eth
+            logger.debug(f"Estimated ETH tx profit for {tx.hash.hex()[:8]}...: {potential_profit:.6f} ETH") # Debug log with profit
             return potential_profit if potential_profit > 0 else Decimal(0)
         except Exception as e:
-            logger.error(f"Error estimating ETH transaction profit: {e}")
+            logger.error(f"Error estimating ETH transaction profit: {e}", exc_info=True) # Include traceback
             return Decimal(0)
+        
 
     async def _estimate_profit(self, tx, function_params: Dict[str, Any]) -> Decimal:
         """ profit estimation with  precision and market analysis."""
@@ -827,6 +815,30 @@ class Mempool_Monitor:
         except Exception as e:
             logger.error(f"Error in final profit calculation: {e}")
             return Decimal(0)
+        
+    async def monitor_high_value_transactions(self) -> None:
+        """
+        Monitor the mempool for high-value transactions and execute back-run strategies.
+        """
+        while self.running:
+            try:
+                tx_hash = await self.pending_transactions.get()
+                tx = await self._get_transaction_with_retry(tx_hash)
+                if not tx:
+                    continue
+
+                # Check if the transaction is high-value
+                if tx.value > self.configuration.HIGH_VALUE_THRESHOLD:
+                    logger.info(f"High-value transaction detected: {tx.hash.hex()}")
+
+                    # Execute back-run strategies
+                    await self.execute_back_run_strategies(tx)
+
+            except asyncio.CancelledError: # Handle cancellation in high value tx monitoring
+                logger.info("High-value transaction monitoring cancelled.")
+                break # Exit high-value tx monitoring loop
+            except Exception as e:
+                logger.error(f"Error monitoring high-value transactions: {e}", exc_info=True) # Include traceback
 
     def _log_profit_calculation(
         self,
@@ -838,14 +850,14 @@ class Mempool_Monitor:
         """Log detailed profit calculation metrics."""
         logger.debug(
             f"Profit Calculation Details:\n"
-            f"Token: {market_data['symbol']}\n"
-            f"Input Amount: {amounts['input_eth']:.9f} ETH\n"
-            f"Expected Output: {amounts['output_eth']:.9f} tokens\n"
-            f"Market Price: {market_data['price']:.9f}\n"
-            f"Slippage: {(1 - float(market_data['slippage'])) * 100:.2f}%\n"
-            f"Gas Cost: {gas_costs['gas_cost_eth']:.9f} ETH\n"
-            f"Gas Price: {gas_costs['gas_price_gwei']:.2f} Gwei\n"
-            f"Final Profit: {profit:.9f} ETH"
+            f"  Token: {market_data['symbol']}\n"
+            f"  Input Amount: {amounts['input_eth']:.9f} ETH\n"
+            f"  Expected Output: {amounts['output_eth']:.9f} tokens\n"
+            f"  Market Price: {market_data['price']:.9f}\n"
+            f"  Slippage: {(1 - float(market_data['slippage'])) * 100:.2f}%\n"
+            f"  Gas Cost: {gas_costs['gas_cost_eth']:.9f} ETH\n"
+            f"  Gas Price: {gas_costs['gas_price_gwei']:.2f} Gwei\n"
+            f"  Final Profit: {profit:.9f} ETH"
         )
 
     async def _log_transaction_details(self, tx, is_eth=False) -> None:
@@ -864,7 +876,7 @@ class Mempool_Monitor:
                 logger.debug(f"Pending Token Transaction Details: {transaction_info}")
         except Exception as e:
             logger.debug(
-                f"Error logging transaction details for {tx.hash.hex()}: {e}"
+                f"Error logging transaction details for {tx.hash.hex()}: {e}", exc_info=True # Include traceback
             )
 
     async def _extract_transaction_params(
