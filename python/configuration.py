@@ -7,7 +7,7 @@ import aiofiles
 import dotenv
 import aiohttp # Import aiohttp for API key validation requests
 
-from eth_utils import function_signature_to_4byte_selector
+from eth_utils import is_checksum_address
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -21,6 +21,10 @@ DEFAULT_GAS_LIMIT = 1_000_000
 DEFAULT_MAX_SLIPPAGE = 0.01
 DEFAULT_MIN_PROFIT = 0.001
 DEFAULT_MIN_BALANCE = 0.000001
+DEFAULT_MEMORY_CHECK_INTERVAL = 300
+DEFAULT_COMPONENT_HEALTH_CHECK_INTERVAL = 60
+DEFAULT_PROFITABLE_TX_PROCESS_TIMEOUT = 1.0
+
 
 # Standard Ethereum addresses
 MAINNET_ADDRESSES = {
@@ -56,6 +60,10 @@ class Configuration:
         self.MAX_SLIPPAGE = self._get_env_float("MAX_SLIPPAGE", DEFAULT_MAX_SLIPPAGE)
         self.MIN_PROFIT = self._get_env_float("MIN_PROFIT", DEFAULT_MIN_PROFIT)
         self.MIN_BALANCE = self._get_env_float("MIN_BALANCE", DEFAULT_MIN_BALANCE)
+        self.MEMORY_CHECK_INTERVAL = self._get_env_int("MEMORY_CHECK_INTERVAL", DEFAULT_MEMORY_CHECK_INTERVAL)
+        self.COMPONENT_HEALTH_CHECK_INTERVAL = self._get_env_int("COMPONENT_HEALTH_CHECK_INTERVAL", DEFAULT_COMPONENT_HEALTH_CHECK_INTERVAL)
+        self.PROFITABLE_TX_PROCESS_TIMEOUT = self._get_env_float("PROFITABLE_TX_PROCESS_TIMEOUT", DEFAULT_PROFITABLE_TX_PROCESS_TIMEOUT)
+
 
         # Standard addresses
         self.WETH_ADDRESS = MAINNET_ADDRESSES['WETH']
@@ -86,12 +94,14 @@ class Configuration:
         self.ERC20_SIGNATURES: Path = self._resolve_path("ERC20_SIGNATURES")
         self.TOKEN_ADDRESSES: Path = self._resolve_path("TOKEN_ADDRESSES")
         self.TOKEN_SYMBOLS: Path = self._resolve_path("TOKEN_SYMBOLS")
+        self.GAS_PRICE_ORACLE_ABI: Path = self._resolve_path("GAS_PRICE_ORACLE_ABI")
 
         # Router Addresses
         self.UNISWAP_ADDRESS: str = self._get_env_str("UNISWAP_ADDRESS")
         self.SUSHISWAP_ADDRESS: str = self._get_env_str("SUSHISWAP_ADDRESS")
         self.AAVE_POOL_ADDRESS: str = self._get_env_str("AAVE_POOL_ADDRESS")
         self.AAVE_FLASHLOAN_ADDRESS: str = self._get_env_str("AAVE_FLASHLOAN_ADDRESS")
+        self.GAS_PRICE_ORACLE_ADDRESS: str = self._get_env_str("GAS_PRICE_ORACLE_ADDRESS")
 
         # Set default values for strategies
         self.SLIPPAGE_DEFAULT: float = 0.1
@@ -102,6 +112,8 @@ class Configuration:
         self.MAX_GAS_PRICE_GWEI: int = 500
         self.MIN_PROFIT_MULTIPLIER: float = 2.0
         self.BASE_GAS_LIMIT: int = 21000
+        self.DEFAULT_CANCEL_GAS_PRICE_GWEI: int = 60  # Default gas price for cancellation in Gwei
+        self.ETH_TX_GAS_PRICE_MULTIPLIER: float = 1.2 # Multiplier for ETH transaction gas price
 
         # ML model configuration
         self.MODEL_RETRAINING_INTERVAL: int = 3600  # 1 hour
@@ -120,10 +132,38 @@ class Configuration:
         # Create directories if they don't exist
         os.makedirs(self.LINEAR_REGRESSION_PATH, exist_ok=True)
 
-        # Configurable Time Intervals
-        self.MEMORY_CHECK_INTERVAL = self._get_env_int("MEMORY_CHECK_INTERVAL", 300)
-        self.COMPONENT_HEALTH_CHECK_INTERVAL = self._get_env_int("COMPONENT_HEALTH_CHECK_INTERVAL", 60)
-        self.PROFITABLE_TX_PROCESS_TIMEOUT = self._get_env_float("PROFITABLE_TX_PROCESS_TIMEOUT", 1.0)
+        # Configurable Time Intervals (moved to top with defaults)
+
+        # Mempool Monitor Configs
+        self.MEMPOOL_MAX_RETRIES: int = self._get_env_int("MEMPOOL_MAX_RETRIES", 3)
+        self.MEMPOOL_RETRY_DELAY: int = self._get_env_int("MEMPOOL_RETRY_DELAY", 2)
+        self.MEMPOOL_BATCH_SIZE: int = self._get_env_int("MEMPOOL_BATCH_SIZE", 10)
+        self.MEMPOOL_MAX_PARALLEL_TASKS: int = self._get_env_int("MEMPOOL_MAX_PARALLEL_TASKS", 5)
+
+        # Nonce Core Configs
+        self.NONCE_CACHE_TTL: int = self._get_env_int("NONCE_CACHE_TTL", 60)
+        self.NONCE_RETRY_DELAY: int = self._get_env_int("NONCE_RETRY_DELAY", 1)
+        self.NONCE_MAX_RETRIES: int = self._get_env_int("NONCE_MAX_RETRIES", 5)
+        self.NONCE_TRANSACTION_TIMEOUT: int = self._get_env_int("NONCE_TRANSACTION_TIMEOUT", 120)
+
+        # Safety Net Configs
+        self.SAFETY_NET_CACHE_TTL: int = self._get_env_int("SAFETY_NET_CACHE_TTL", 300)
+        self.SAFETY_NET_GAS_PRICE_TTL: int = self._get_env_int("SAFETY_NET_GAS_PRICE_TTL", 30)
+
+        # Strategy Net Configs
+        self.AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH: float = self._get_env_float("AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH", 0.1)
+        self.AGGRESSIVE_FRONT_RUN_RISK_SCORE_THRESHOLD: float = self._get_env_float("AGGRESSIVE_FRONT_RUN_RISK_SCORE_THRESHOLD", 0.7)
+        self.FRONT_RUN_OPPORTUNITY_SCORE_THRESHOLD: int = self._get_env_int("FRONT_RUN_OPPORTUNITY_SCORE_THRESHOLD", 75)
+        self.VOLATILITY_FRONT_RUN_SCORE_THRESHOLD: int = self._get_env_int("VOLATILITY_FRONT_RUN_SCORE_THRESHOLD", 75)
+        self.ADVANCED_FRONT_RUN_RISK_SCORE_THRESHOLD: int = self._get_env_int("ADVANCED_FRONT_RUN_RISK_SCORE_THRESHOLD", 75)
+        self.PRICE_DIP_BACK_RUN_THRESHOLD: float = self._get_env_float("PRICE_DIP_BACK_RUN_THRESHOLD", 0.99)
+        self.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE: float = self._get_env_float("FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE", 0.02)
+        self.HIGH_VOLUME_BACK_RUN_DEFAULT_THRESHOLD_USD: float = self._get_env_float("HIGH_VOLUME_BACK_RUN_DEFAULT_THRESHOLD_USD", 100000)
+        self.SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI: int = self._get_env_int("SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI", 200)
+        self.PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD: float = self._get_env_float("PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD", 0.02)
+
+        # High Value Transaction Monitoring
+        self.HIGH_VALUE_THRESHOLD: int = self._get_env_int("HIGH_VALUE_THRESHOLD", 1000000000000000000) # 1 ETH in Wei
 
 
     def _load_env(self) -> None:
@@ -140,29 +180,31 @@ class Configuration:
         if not isinstance(address, str):
             raise ValueError(f"{var_name} must be a string, got {type(address)}")
 
-        clean_address = address.lower().strip()
-        if not clean_address.startswith('0x'):
-            clean_address = '0x' + clean_address
+        address = address.strip()
+        if not is_checksum_address(address):
+            if address.lower() == address: # all lowercase, might be valid but not checksummed
+                address = self.web3.to_checksum_address(address) # attempt to checksum
+            else:
+                raise ValueError(f"Invalid {var_name}: Not a checksummed address.")
+        return address
 
-        if len(clean_address) != 42:
-            raise ValueError(f"Invalid {var_name} length: {len(clean_address)}")
-
-        try:
-            int(clean_address[2:], 16)
-            return clean_address
-        except ValueError:
-            raise ValueError(f"Invalid hex format for {var_name}")
 
     def _get_env_str(self, var_name: str, default: Optional[str] = None) -> str:
         """Get an environment variable as string, raising error if missing."""
         value = os.getenv(var_name, default)
         if value is None:
-            logger.error(f"Missing environment variable: {var_name}")
-            raise ValueError(f"Missing environment variable: {var_name}")
+            if default is None: # Only raise error if no default is provided
+                logger.error(f"Missing environment variable: {var_name}")
+                raise ValueError(f"Missing environment variable: {var_name}")
+            return default # Return default if provided and env var is missing
 
-        # Only validate Ethereum addresses for contract addresses
-        if 'ADDRESS' in var_name and not any(path_suffix in var_name for path_suffix in ['ABI', 'PATH', 'ADDRESSES', 'SIGNATURES', 'SYMBOLS']):
-            return self._validate_ethereum_address(value, var_name)
+        # Only validate Ethereum addresses for contract addresses, and if it's not a default value
+        if 'ADDRESS' in var_name and not any(path_suffix in var_name for path_suffix in ['ABI', 'PATH', 'ADDRESSES', 'SIGNATURES', 'SYMBOLS']) and value != default:
+            try:
+                return self._validate_ethereum_address(value, var_name)
+            except ValueError as e:
+                logger.error(f"Invalid Ethereum address format for {var_name}: {e}")
+                raise
 
         return value
 
@@ -221,18 +263,18 @@ class Configuration:
                     logger.debug(f"Loaded {description} from {file_path}")
                     return data
                 except json.JSONDecodeError as e:
-                    raise ValueError(f"Invalid JSON in {description}: {e}")
+                    raise ValueError(f"Invalid JSON in {description} file: {e} in {file_path}")
         except FileNotFoundError:
             raise FileNotFoundError(f"Missing {description} file: {file_path}")
         except Exception as e:
-            raise RuntimeError(f"Error loading {description}: {e}")
+            raise RuntimeError(f"Error loading {description}: {e} from {file_path}")
 
     async def get_token_addresses(self) -> List[str]:
          """Get the list of monitored token addresses from the config file."""
          data = await self._load_json_safe(self.TOKEN_ADDRESSES, "monitored tokens")
          if not isinstance(data, dict):
              logger.error("Invalid format for token addresses: must be a dictionary")
-             raise ValueError("Invalid format for token addresses: must be a dictionary")
+             raise ValueError("Invalid format for token addresses: must be a dictionary in token addresses file")
 
          # Extract addresses from dictionary keys
          addresses = list(data.keys())
@@ -244,7 +286,7 @@ class Configuration:
         data = await self._load_json_safe(self.TOKEN_SYMBOLS, "token symbols")
         if not isinstance(data, dict):
             logger.error("Invalid format for token symbols: must be a dict")
-            raise ValueError("Invalid format for token symbols: must be a dict")
+            raise ValueError("Invalid format for token symbols: must be a dict in token symbols file")
         return data
 
     async def get_erc20_signatures(self) -> Dict[str, str]:
@@ -252,7 +294,7 @@ class Configuration:
         data = await self._load_json_safe(self.ERC20_SIGNATURES, "ERC20 function signatures")
         if not isinstance(data, dict):
             logger.error("Invalid format for ERC20 signatures: must be a dict")
-            raise ValueError("Invalid format for ERC20 signatures: must be a dict")
+            raise ValueError("Invalid format for ERC20 signatures: must be a dict in ERC20 signatures file")
         return data
 
     def get_config_value(self, key: str, default: Any = None) -> Any:
@@ -282,9 +324,10 @@ class Configuration:
             logger.error(f"Failed to load ABI from {path}: {e}")
             raise
 
-    async def load(self) -> None:
+    async def load(self, web3) -> None: # Pass web3 instance here to Configuration.load()
         """Load and validate all configuration data."""
         try:
+            self.web3 = web3 # Store web3 instance
             # Create required directories if they don't exist
             self._create_required_directories()
 
@@ -320,8 +363,13 @@ class Configuration:
         try:
             self.AAVE_FLASHLOAN_ABI_PATH = self._resolve_path("AAVE_FLASHLOAN_ABI") # Now storing path
             self.AAVE_POOL_ABI_PATH = self._resolve_path("AAVE_POOL_ABI") # Now storing path
+            self.ERC20_ABI_PATH = self._resolve_path("ERC20_ABI") # Now storing path
+            self.UNISWAP_ABI_PATH = self._resolve_path("UNISWAP_ABI") # Now storing path
+            self.SUSHISWAP_ABI_PATH = self._resolve_path("SUSHISWAP_ABI") # Now storing path
+            self.GAS_PRICE_ORACLE_ABI_PATH = self._resolve_path("GAS_PRICE_ORACLE_ABI") # Now storing path
+
         except Exception as e:
-            raise RuntimeError(f"Failed to load critical ABIs: {e}")
+            raise RuntimeError(f"Failed to load critical ABIs paths: {e}")
 
     async def _validate_api_keys(self) -> None:
         """Validate required API keys are set and functional."""
@@ -369,7 +417,8 @@ class Configuration:
             'UNISWAP_ADDRESS',
             'SUSHISWAP_ADDRESS',
             'AAVE_POOL_ADDRESS',
-            'AAVE_FLASHLOAN_ADDRESS'
+            'AAVE_FLASHLOAN_ADDRESS',
+            'GAS_PRICE_ORACLE_ADDRESS'
         ]
 
         for field in address_fields:
