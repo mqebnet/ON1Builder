@@ -411,4 +411,3 @@ class Safety_Net:
         except Exception as e:
             logger.error(f"Error validating transaction data: {e}", exc_info=True) # Include traceback
             return False
-# End of safety_net.py
