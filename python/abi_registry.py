@@ -46,7 +46,7 @@ class ABI_Registry:
         if not base_path:
             base_path = Path(__file__).parent.parent # Default
         abi_dir = base_path / 'abi'
-        logger.debug(f"ABI Directory: {abi_dir}") 
+        logger.debug(f"ABI Directory: {abi_dir}")
 
         abi_files = {
             'erc20': 'erc20_abi.json',
@@ -83,13 +83,13 @@ class ABI_Registry:
             else:
                 logger.warning(f"Skipping non-critical ABI: {abi_type}")
         except json.JSONDecodeError as je:
-            logger.error(f"JSON decode error for {abi_type} ABI: {je}")
+            logger.error(f"JSON decode error for {abi_type} ABI: {je} in file: {abi_path}") # Added file path to error log
             if abi_type in critical_abis:
                 raise
             else:
                 logger.warning(f"Skipping non-critical ABI: {abi_type}")
         except Exception as e:
-            logger.error(f"Unexpected error loading {abi_type} ABI: {e}")
+            logger.error(f"Unexpected error loading {abi_type} ABI from {abi_path}: {e}", exc_info=True) # Include traceback and file path
             if abi_type in critical_abis:
                 raise
             else:
@@ -115,13 +115,13 @@ class ABI_Registry:
             logger.error(f"JSON decode error for {abi_type} in file {abi_path}: {e}")
             raise
         except Exception as e:
-            logger.error(f"Error loading ABI {abi_type}: {e}")
+            logger.error(f"Error loading ABI {abi_type} from {abi_path}: {e}", exc_info=True) # Include traceback and file path
             raise
 
     def _validate_abi(self, abi: List[Dict], abi_type: str) -> bool:
         """Validate the structure and required methods of an ABI."""
         if not isinstance(abi, list):
-            logger.error(f"Invalid ABI format for {abi_type}")
+            logger.error(f"Invalid ABI format for {abi_type}: ABI must be a list.") # More descriptive error
             return False
 
         found_methods = {
@@ -132,7 +132,7 @@ class ABI_Registry:
         required = self.REQUIRED_METHODS.get(abi_type, set())
         if not required.issubset(found_methods):
             missing = required - found_methods
-            logger.error(f"Missing required methods in {abi_type} ABI: {missing}")
+            logger.error(f"Missing required methods in {abi_type} ABI: {missing}. Required methods are: {required}. Found methods are: {found_methods}") # More detailed error message
             return False
 
         return True
