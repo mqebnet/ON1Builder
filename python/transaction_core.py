@@ -8,7 +8,8 @@ import hexbytes
 from web3 import AsyncWeb3
 from web3.exceptions import TransactionNotFound, ContractLogicError
 from eth_account import Account
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+import numpy as np
 from decimal import Decimal
 
 from abi_registry import ABI_Registry
@@ -59,12 +60,12 @@ class Transaction_Core:
         self.nonce_core: Optional["Nonce_Core"] = nonce_core
         self.safety_net: Optional["Safety_Net"] = safety_net
         self.gas_price_multiplier = gas_price_multiplier
-        self.RETRY_ATTEMPTS: int = configuration.MEMPOOL_MAX_RETRIES
+        self.RETRY_ATTEMPTS: int = configuration.MEMPOOL_MAX_RETRIES if configuration else 3  
         self.erc20_abi: List[Dict[str, Any]] = erc20_abi or []
         self.current_profit: Decimal = Decimal("0")
         self.AAVE_FLASHLOAN_ADDRESS: str = AAVE_FLASHLOAN_ADDRESS
         self.AAVE_POOL_ADDRESS: str = AAVE_POOL_ADDRESS
-        self.abi_registry: "ABI_Registry" = ABI_Registry()
+        self.abi_registry: ABI_Registry = ABI_Registry()
         self.uniswap_address: str = uniswap_address
         self.uniswap_abi: List[Dict[str, Any]] = uniswap_abi or []
 
@@ -417,32 +418,46 @@ class Transaction_Core:
             self.handle_error(e, "send_bundle", {"transactions": transactions})
             return False
 
-    async def _validate_transaction(self, tx: Dict[str, Any], operation: str) -> Optional[Dict[str, Any]]:
+    async def _validate_transaction(self, tx: Dict[str, Any], operation: str, min_value: float = 0.0) -> Tuple[bool, Optional[Dict], Optional[str]]:
         """Common transaction validation logic."""
         if not isinstance(tx, dict):
             logger.debug("Invalid transaction format provided!")
-            return None
+            return False, None, None
 
         required_fields = ["input", "to", "value", "gasPrice"]
         if not all(field in tx for field in required_fields):
             missing = [field for field in required_fields if field not in tx]
             logger.debug(f"Missing required parameters for {operation}: {missing}")
-            return None
+            return False, None, None
 
-        decoded_tx = await self.decode_transaction_input(
-            tx.get("input", "0x"),
-            self.web3.to_checksum_address(tx.get("to", ""))
-        )
-        if not decoded_tx or "params" not in decoded_tx:
-            logger.debug(f"Failed to decode transaction input for {operation}")
-            return None
+        try:
+            decoded_tx = await self.decode_transaction_input(
+                tx.get("input", "0x"),
+                self.web3.to_checksum_address(tx.get("to", ""))
+            )
+            if not decoded_tx or "params" not in decoded_tx:
+                logger.debug(f"Failed to decode transaction input for {operation}")
+                return False, None, None
 
-        path = decoded_tx["params"].get("path", [])
-        if not path or not isinstance(path, list) or len(path) < 2:
-            logger.debug(f"Invalid path parameter for {operation}")
-            return None
+            path = decoded_tx["params"].get("path", [])
+            if not path or not isinstance(path, list) or len(path) < 2:
+                logger.debug(f"Invalid path parameter for {operation}")
+                return False, None, None
 
-        return decoded_tx
+            token_symbol = await self.api_config.get_token_symbol(path[0])
+            if not token_symbol:
+                logger.debug("Could not determine token symbol")
+                return False, None, None
+
+            if float(tx.get("value", 0)) < min_value:
+                logger.debug(f"Transaction value below minimum threshold of {min_value}")
+                return False, None, None
+
+            return True, decoded_tx, token_symbol
+
+        except Exception as e:
+            self.handle_error(e, "_validate_transaction", {"tx": tx, "operation": operation})
+            return False, None, None
 
     async def front_run(self, target_tx: Dict[str, Any]) -> bool:
         """Execute front-run transaction with validation."""
@@ -483,27 +498,79 @@ class Transaction_Core:
             self.handle_error(e, "back_run", {"target_tx": target_tx})
             return False
 
-    async def execute_sandwich_attack(self, target_tx: Dict[str, Any]) -> bool:
-        """Execute sandwich attack with validation."""
-        decoded_tx = await self._validate_transaction(target_tx, "sandwich")
-        if not decoded_tx:
+    async def execute_sandwich_attack(self, target_tx: Dict[str, Any], strategy: str = "default") -> bool:
+        """
+        Execute sandwich attack with configurable strategies.
+        Strategies: default, flash_profit, price_boost, arbitrage, advanced
+        """
+        logger.debug(f"Initiating {strategy} sandwich attack strategy...")
+
+        valid, decoded_tx, token_symbol = await self._validate_transaction(target_tx, "sandwich_attack")
+        if not valid:
             return False
 
         try:
+            # Strategy-specific checks
+            should_execute = await self._check_sandwich_strategy(
+                strategy, target_tx, token_symbol, decoded_tx
+            )
+            
+            if not should_execute:
+                logger.debug(f"Conditions not met for {strategy} sandwich strategy")
+                return False
+
+            # Execute the sandwich attack
             path = decoded_tx["params"]["path"]
             flashloan_tx = await self._prepare_flashloan(path[0], target_tx)
             front_tx = await self._prepare_front_run_transaction(target_tx)
             back_tx = await self._prepare_back_run_transaction(target_tx, decoded_tx)
 
             if not all([flashloan_tx, front_tx, back_tx]):
+                logger.warning("Failed to prepare all sandwich components")
                 return False
-            if await self._validate_and_send_bundle([flashloan_tx, front_tx, back_tx]):
-                logger.info("Sandwich attack executed successfully 🥪✅")
-                return True
-            return False
+
+            return await self._validate_and_send_bundle([flashloan_tx, front_tx, back_tx])
+
         except Exception as e:
-            self.handle_error(e, "execute_sandwich_attack", {"target_tx": target_tx})
+            self.handle_error(e, "execute_sandwich_attack", {
+                "target_tx": target_tx,
+                "strategy": strategy
+            })
             return False
+
+    async def _check_sandwich_strategy(
+        self, 
+        strategy: str, 
+        target_tx: Dict[str, Any], 
+        token_symbol: str,
+        decoded_tx: Dict[str, Any]
+    ) -> bool:
+        """Check if conditions are met for the selected sandwich strategy."""
+        if strategy == "flash_profit":
+            estimated_amount = await self.calculate_flashloan_amount(target_tx)
+            estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE))
+            gas_price = await self.get_dynamic_gas_price()
+            
+            return (estimated_profit > self.configuration.min_profit_threshold and 
+                   gas_price <= self.configuration.SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI)
+
+        elif strategy == "price_boost":
+            historical_prices = await self.api_config.get_token_price_data(token_symbol, 'historical')
+            if not historical_prices:
+                return False
+            momentum = await self._analyze_price_momentum(historical_prices)
+            return momentum > self.configuration.PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD
+
+        elif strategy == "arbitrage":
+            return await self.market_monitor.is_arbitrage_opportunity(target_tx)
+
+        elif strategy == "advanced":
+            market_conditions = await self.market_monitor.check_market_conditions(target_tx["to"])
+            return (market_conditions.get("high_volatility", False) and 
+                   market_conditions.get("bullish_trend", False)) 
+        # Default strategy
+        return True 
+    
 
     async def _prepare_flashloan(self, asset: str, target_tx: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Helper to prepare flashloan transaction."""
@@ -683,7 +750,7 @@ class Transaction_Core:
             "to": self.account.address,
             "value": 0,
             "gas": 21_000,
-            "gasPrice": self.web3.to_wei(self.configuration.DEFAULT_CANCEL_GAS_PRICE_GWEI, "gwei"), # Use configurable cancel gas price
+            "gasPrice": self.web3.to_wei(self.configuration.DEFAULT_CANCEL_GAS_PRICE_GWEI, "gwei"),
             "nonce": nonce,
             "chainId": await self.web3.eth.chain_id,
             "from": self.account.address,
@@ -835,64 +902,6 @@ class Transaction_Core:
             error_message += f" | Parameters: {params}"
         logger.error(error_message)
 
-    async def _prepare_flashloan(self, asset: str, target_tx: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Helper to prepare flashloan transaction."""
-        flashloan_amount = self.calculate_flashloan_amount(target_tx)
-        if flashloan_amount <= 0:
-            return None
-        function_call = self.aave_flashloan.functions.fn_RequestFlashLoan(
-            asset,
-            flashloan_amount,
-        )
-        return await self.build_transaction(function_call)
-
-
-    async def _prepare_front_run_transaction(self, target_tx: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Prepares front-run transaction."""
-        decoded_tx = await self.decode_transaction_input(target_tx["input"], target_tx["to"])
-        if not decoded_tx:
-            logger.debug("Failed to decode target transaction input for front-run.")
-            return None
-
-        function_name = decoded_tx["function_name"]
-        function_params = decoded_tx["params"]
-        router_contract = self.uniswap_router_contract # Assuming Uniswap for front-run for now
-
-        front_run_function = getattr(router_contract.functions, function_name)(**function_params)
-        return await self.build_transaction(front_run_function)
-
-
-    async def _prepare_back_run_transaction(self, target_tx: Dict[str, Any], decoded_tx: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Prepares back-run transaction."""
-        function_name = decoded_tx["function_name"]
-        function_params = decoded_tx["params"]
-        router_contract = self.uniswap_router_contract # Assuming Uniswap for back-run for now
-
-        path = function_params.get("path")
-        if path:
-            function_params["path"] = path[::-1]  # Reverse the path for back-run
-
-        back_run_function = getattr(router_contract.functions, function_name)(**function_params)
-        return await self.build_transaction(back_run_function)
-
-
-    async def execute_sandwich_attack(self, target_tx: Dict[str, Any]) -> bool:
-        """Executes a sandwich attack."""
-        decoded_tx = await self.decode_transaction_input(target_tx["input"], target_tx["to"])
-        if not decoded_tx:
-            return False
-
-        path = decoded_tx["params"]["path"]
-        flashloan_tx = await self._prepare_flashloan(path[0], target_tx)
-        front_run_tx = await self._prepare_front_run_transaction(target_tx)
-        back_run_tx = await self._prepare_back_run_transaction(target_tx, decoded_tx)
-
-        if not all([flashloan_tx, front_run_tx, back_run_tx]):
-            logger.warning("Failed to prepare all sandwich components.")
-            return False
-
-        return await self._validate_and_send_bundle([flashloan_tx, front_run_tx, back_run_tx])
-
     async def aggressive_front_run(self, target_tx: Dict[str, Any]) -> bool:
         """
         Execute aggressive front-running strategy with dynamic gas pricing and risk assessment.
@@ -907,7 +916,7 @@ class Transaction_Core:
 
         # Validate transaction
         valid, decoded_tx, token_symbol = await self._validate_transaction(
-            target_tx, "front_run", min_value=self.configuration.AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH # Use configurable min_value
+            target_tx, "front_run", min_value=self.configuration.AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH 
         )
         if not valid:
             return False
@@ -919,7 +928,7 @@ class Transaction_Core:
             price_change=await self.api_config.get_price_change_24h(token_symbol)
         )
 
-        if risk_score >= self.configuration.AGGRESSIVE_FRONT_RUN_RISK_SCORE_THRESHOLD:  # Use configurable risk score threshold
+        if risk_score >= self.configuration.AGGRESSIVE_FRONT_RUN_RISK_SCORE_THRESHOLD:  
             logger.debug(f"Executing aggressive front-run (Risk: {risk_score:.2f})")
             return await self.front_run(target_tx)
 
@@ -987,7 +996,7 @@ class Transaction_Core:
         )
 
         # Execute if conditions are favorable
-        if opportunity_score >= self.configuration.FRONT_RUN_OPPORTUNITY_SCORE_THRESHOLD:  # Use configurable threshold
+        if opportunity_score >= self.configuration.FRONT_RUN_OPPORTUNITY_SCORE_THRESHOLD:  
             logger.debug(
                 f"Executing predictive front-run for {token_symbol} "
                 f"(Score: {opportunity_score}/100, Expected Change: {price_change:.2f}%)"
@@ -1049,7 +1058,7 @@ class Transaction_Core:
         )
 
         # Execute based on volatility thresholds
-        if volatility_score >= self.configuration.VOLATILITY_FRONT_RUN_SCORE_THRESHOLD:  # Use configurable threshold
+        if volatility_score >= self.configuration.VOLATILITY_FRONT_RUN_SCORE_THRESHOLD:
             logger.debug(
                 f"Executing volatility-based front-run for {token_symbol} "
                 f"(Volatility Score: {volatility_score:.2f}/100)"
@@ -1077,7 +1086,7 @@ class Transaction_Core:
             return False
 
         predicted_price = await self.market_monitor.predict_price_movement(token_symbol)
-        if predicted_price < float(current_price) * self.configuration.PRICE_DIP_BACK_RUN_THRESHOLD: # Use configurable threshold
+        if predicted_price < float(current_price) * self.configuration.PRICE_DIP_BACK_RUN_THRESHOLD:
             logger.debug("Predicted price decrease exceeds threshold, proceeding with back-run.")
             return await self.back_run(target_tx)
 
@@ -1088,7 +1097,7 @@ class Transaction_Core:
         """Execute back-run strategy using flash loans."""
         logger.debug("Initiating Flashloan Back-Run Strategy...")
         estimated_amount = await self.calculate_flashloan_amount(target_tx)
-        estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE)) # Use configurable profit percentage
+        estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE)) 
         if estimated_profit > self.configuration.min_profit_threshold:
             logger.debug(f"Estimated profit: {estimated_profit} ETH meets threshold.")
             return await self.back_run(target_tx)
@@ -1119,10 +1128,10 @@ class Transaction_Core:
         """Execute sandwich attack strategy based on flash loans."""
         logger.debug("Initiating Flash Profit Sandwich Strategy...")
         estimated_amount = await self.calculate_flashloan_amount(target_tx)
-        estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE)) # Use configurable profit percentage
+        estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE)) 
         if estimated_profit > self.configuration.min_profit_threshold:
             gas_price = await self.get_dynamic_gas_price()
-            if (gas_price > self.configuration.SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI): # Use configurable gas price threshold
+            if (gas_price > self.configuration.SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI):
                 logger.debug(f"Gas price too high for sandwich attack: {gas_price} Gwei")
                 return False
             logger.debug(f"Executing sandwich with estimated profit: {estimated_profit:.4f} ETH")
@@ -1147,7 +1156,7 @@ class Transaction_Core:
             return False
 
         momentum = await self._analyze_price_momentum(historical_prices)
-        if momentum > self.configuration.PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD: # Use configurable momentum threshold
+        if momentum > self.configuration.PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD: 
             logger.debug(f"Strong price momentum detected: {momentum:.2%}")
             return await self.execute_sandwich_attack(target_tx)
 
@@ -1195,3 +1204,249 @@ class Transaction_Core:
 
         logger.debug("Conditions unfavorable for sandwich attack. Skipping.")
         return False
+
+    async def _calculate_opportunity_score(
+        self,
+        price_change: float,
+        volatility: float,
+        market_conditions: Dict[str, bool],
+        current_price: float,
+        historical_prices: List[float]
+    ) -> float:
+        """
+        Calculate comprehensive opportunity score (0-100) based on multiple metrics.
+        Higher score indicates more favorable conditions for front-running.
+        """
+        score = 0
+
+        # Score components with weights.
+        components = {
+           "price_change": {
+               "very_strong": {"threshold": 5.0, "points": 40},
+               "strong": {"threshold": 3.0, "points": 30},
+               "moderate": {"threshold": 1.0, "points": 20},
+               "slight": {"threshold": 0.5, "points": 10}
+           },
+           "volatility": {
+               "very_low": {"threshold": 0.02, "points": 20},
+               "low": {"threshold": 0.05, "points": 15},
+               "moderate": {"threshold": 0.08, "points": 10},
+           },
+           "market_conditions": {
+                "bullish_trend": {"points": 10},
+                "not_high_volatility": {"points": 5},
+                "not_low_liquidity": {"points": 5},
+           },
+            "price_trend": {
+                "upward": {"points": 20},
+                "stable": {"points": 10},
+           }
+       }
+
+        # Price change component
+        if price_change > components["price_change"]["very_strong"]["threshold"]:
+            score += components["price_change"]["very_strong"]["points"]
+        elif price_change > components["price_change"]["strong"]["threshold"]:
+            score += components["price_change"]["strong"]["points"]
+        elif price_change > components["price_change"]["moderate"]["threshold"]:
+            score += components["price_change"]["moderate"]["points"]
+        elif price_change > components["price_change"]["slight"]["threshold"]:
+            score += components["price_change"]["slight"]["points"]
+
+        # Volatility component
+        if volatility < components["volatility"]["very_low"]["threshold"]:
+           score += components["volatility"]["very_low"]["points"]
+        elif volatility < components["volatility"]["low"]["threshold"]:
+           score += components["volatility"]["low"]["points"]
+        elif volatility < components["volatility"]["moderate"]["threshold"]:
+           score += components["volatility"]["moderate"]["points"]
+
+        # Market conditions component
+        if market_conditions.get("bullish_trend", False):
+            score += components["market_conditions"]["bullish_trend"]["points"]
+        if not market_conditions.get("high_volatility", True):
+            score += components["market_conditions"]["not_high_volatility"]["points"]
+        if not market_conditions.get("low_liquidity", True):
+            score += components["market_conditions"]["not_low_liquidity"]["points"]
+
+        # Price trend component
+        if historical_prices and len(historical_prices) > 1:
+            recent_trend = (historical_prices[-1] / historical_prices[0] - 1) * 100
+            if recent_trend > 0:
+                score += components["price_trend"]["upward"]["points"]
+            elif recent_trend > -1:
+                score += components["price_trend"]["stable"]["points"]
+
+        logger.debug(f"Calculated opportunity score: {score}/100")
+        return score
+
+    async def _calculate_volatility_score(
+        self,
+        historical_prices: List[float],
+        current_price: float,
+        market_conditions: Dict[str, bool]
+    ) -> float:
+        """
+        Calculate volatility score (0-100) based on historical price data and market conditions.
+        Higher score indicates higher volatility.
+        """
+        score = 0
+
+        # Volatility components with weights.
+        components = {
+            "historical_volatility": {
+                "very_high": {"threshold": 0.1, "points": 40},
+                "high": {"threshold": 0.08, "points": 30},
+                "moderate": {"threshold": 0.05, "points": 20},
+                "low": {"threshold": 0.03, "points": 10}
+            },
+            "price_range": {
+                "very_wide": {"threshold": 0.2, "points": 30},
+                "wide": {"threshold": 0.15, "points": 20},
+                "moderate": {"threshold": 0.1, "points": 10}
+            },
+            "market_conditions": {
+                "high_volatility": {"points": 20},
+                "low_liquidity": {"points": 10}
+            }
+        }
+
+        # Historical volatility component
+        if historical_prices and len(historical_prices) > 1:
+            historical_volatility = np.std(historical_prices) / np.mean(historical_prices)
+            if historical_volatility > components["historical_volatility"]["very_high"]["threshold"]:
+                score += components["historical_volatility"]["very_high"]["points"]
+            elif historical_volatility > components["historical_volatility"]["high"]["threshold"]:
+                score += components["historical_volatility"]["high"]["points"]
+            elif historical_volatility > components["historical_volatility"]["moderate"]["threshold"]:
+                score += components["historical_volatility"]["moderate"]["points"]
+            elif historical_volatility > components["historical_volatility"]["low"]["threshold"]:
+                score += components["historical_volatility"]["low"]["points"]
+
+        # Price range component
+        if historical_prices:
+            price_range = (max(historical_prices) - min(historical_prices)) / np.mean(historical_prices)
+            if price_range > components["price_range"]["very_wide"]["threshold"]:
+                score += components["price_range"]["very_wide"]["points"]
+            elif price_range > components["price_range"]["wide"]["threshold"]:
+                score += components["price_range"]["wide"]["points"]
+            elif price_range > components["price_range"]["moderate"]["threshold"]:
+                score += components["price_range"]["moderate"]["points"]
+
+        # Market conditions component
+        if market_conditions.get("high_volatility", False):
+            score += components["market_conditions"]["high_volatility"]["points"]
+        if market_conditions.get("low_liquidity", False):
+            score += components["market_conditions"]["low_liquidity"]["points"]
+
+        logger.debug(f"Calculated volatility score: {score}/100")
+        return score
+
+    async def _calculate_risk_score(
+        self,
+        target_tx: Dict[str, Any],
+        token_symbol: str,
+        price_change: float
+    ) -> Tuple[float, Dict[str, bool]]:
+        """
+        Calculate risk score (0-100) based on multiple risk factors.
+        Higher score indicates higher risk.
+        """
+        score = 0
+
+        # Risk components with weights.
+        components = {
+            "price_change": {
+                "very_high": {"threshold": 10.0, "points": 40},
+                "high": {"threshold": 7.0, "points": 30},
+                "moderate": {"threshold": 4.0, "points": 20},
+                "low": {"threshold": 2.0, "points": 10}
+            },
+            "gas_price": {
+                "very_high": {"threshold": 200, "points": 30},
+                "high": {"threshold": 150, "points": 20},
+                "moderate": {"threshold": 100, "points": 10}
+            },
+            "market_conditions": {
+                "high_volatility": {"points": 20},
+                "low_liquidity": {"points": 10}
+            }
+        }
+
+        # Price change component
+        if price_change > components["price_change"]["very_high"]["threshold"]:
+            score += components["price_change"]["very_high"]["points"]
+        elif price_change > components["price_change"]["high"]["threshold"]:
+            score += components["price_change"]["high"]["points"]
+        elif price_change > components["price_change"]["moderate"]["threshold"]:
+            score += components["price_change"]["moderate"]["points"]
+        elif price_change > components["price_change"]["low"]["threshold"]:
+            score += components["price_change"]["low"]["points"]
+
+        # Gas price component
+        gas_price = await self.get_dynamic_gas_price()
+        if gas_price > components["gas_price"]["very_high"]["threshold"]:
+            score += components["gas_price"]["very_high"]["points"]
+        elif gas_price > components["gas_price"]["high"]["threshold"]:
+            score += components["gas_price"]["high"]["points"]
+        elif gas_price > components["gas_price"]["moderate"]["threshold"]:
+            score += components["gas_price"]["moderate"]["points"]
+
+        # Market conditions component
+        market_conditions = await self.market_monitor.check_market_conditions(target_tx["to"])
+        if market_conditions.get("high_volatility", False):
+            score += components["market_conditions"]["high_volatility"]["points"]
+        if market_conditions.get("low_liquidity", False):
+            score += components["market_conditions"]["low_liquidity"]["points"]
+
+        logger.debug(f"Calculated risk score: {score}/100")
+        return score, market_conditions
+
+    def _get_volume_threshold(self, token_symbol: str) -> float:
+        """
+        Get volume threshold for high volume back-run strategy.
+        """
+        volume_thresholds = {
+            "ETH": 1000000.0,
+            "BTC": 500000.0,
+            "USDT": 200000.0,
+            "BNB": 100000.0,
+            "ADA": 50000.0
+        }
+        return volume_thresholds.get(token_symbol, 10000.0)
+
+    async def _analyze_price_momentum(self, historical_prices: List[float]) -> float:
+        """
+        Analyze price momentum based on historical price data.
+        """
+        if len(historical_prices) < 2:
+            return 0.0
+
+        momentum = (historical_prices[-1] / historical_prices[0] - 1) * 100
+        return momentum
+
+    async def _is_contract_address(self, address: str) -> bool:
+        """
+        Check if the given address is a contract address.
+        """
+        code = await self.web3.eth.get_code(self.web3.to_checksum_address(address))
+        is_contract = code != b'0x'
+        if is_contract:
+            logger.debug(f"Address {address} is a valid contract address.")
+        return is_contract
+
+    async def _validate_contract_interaction(self, tx: Dict[str, Any]) -> bool:
+        """
+        Validate if the transaction interacts with a known contract.
+        """
+        to_address = tx.get("to", "")
+        if not to_address:
+            return False
+
+        is_contract = await self._is_contract_address(to_address)
+        if not is_contract:
+            logger.debug(f"Address {to_address} is not a contract address.")
+            return False
+
+        logger.debug(f"Address {to_address} is a valid contract address.")
+        return True
