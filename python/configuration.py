@@ -45,11 +45,11 @@ class Configuration:
             env_path: Optional path to the .env file. Defaults to the current directory.
         """
         self.env_path = env_path if env_path else ".env"
+        self.BASE_PATH = Path(__file__).parent.parent
         self._load_env()
         self._initialize_defaults()
         self.signatures: Dict[str, Dict[str, str]] = {}
         self.method_selectors: Dict[str, Dict[str, str]] = {}
-        self.BASE_PATH = Path(__file__).parent.parent
 
     def _initialize_defaults(self) -> None:
         """Initialize configuration with default values."""
@@ -373,40 +373,78 @@ class Configuration:
     async def _validate_api_keys(self) -> None:
         """Validate required API keys are set and functional."""
         required_keys = [
-            ('ETHERSCAN_API_KEY', "https://api.etherscan.io/api?module=stats&action=ethprice&apikey={key}"), # Example Etherscan test URL
-            ('INFURA_API_KEY', "https://mainnet.infura.io/v3/{key}"), # Example Infura test URL (might need a real request)
-            ('COINGECKO_API_KEY', "https://pro-api.coingecko.com/api/v3/ping?x_cg_pro_api_key={key}"), # Example CoinGecko Pro API ping
-            ('COINMARKETCAP_API_KEY', "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?CMC_PRO_API_KEY={key}&limit=1"), # Example CMC test URL
-            ('CRYPTOCOMPARE_API_KEY', "https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD&api_key={key}") # Example CryptoCompare test URL
+            ('ETHERSCAN_API_KEY', "https://api.etherscan.io/api?module=stats&action=ethprice&apikey={key}"),
+            ('INFURA_API_KEY', None),  # validated via JSON-RPC POST
+            ('COINGECKO_API_KEY', None),
+            ('COINMARKETCAP_API_KEY', "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?CMC_PRO_API_KEY={key}&limit=1"),
+            ('CRYPTOCOMPARE_API_KEY', "https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD,JPY,EUR&api_key={key}")
         ]
-
         missing_keys = []
-        invalid_keys = [] # To track invalid keys
+        invalid_keys = []
 
-        async with aiohttp.ClientSession() as session: # Create a session for all requests
+        async with aiohttp.ClientSession() as session:
             for key_name, test_url_template in required_keys:
                 api_key = getattr(self, key_name, None)
                 if not api_key:
                     missing_keys.append(key_name)
-                    continue # Skip to next key if missing
+                    continue
 
+                if key_name == "INFURA_API_KEY":
+                    test_url = f"https://mainnet.infura.io/v3/{api_key}"
+                    payload = {"jsonrpc": "2.0", "id": 1, "method": "web3_clientVersion", "params": []}
+                    try:
+                        async with session.post(test_url, json=payload, timeout=10) as response:
+                            data = await response.json()
+                            if "result" not in data:
+                                invalid_keys.append(f"{key_name} (Invalid response)")
+                            else:
+                                logger.debug(f"API key {key_name} validated successfully.")
+                    except Exception as e:
+                        invalid_keys.append(f"{key_name} (Error: {e})")
+                    continue
+
+                if key_name == "COINGECKO_API_KEY":
+                    # Use free endpoint; ignore the provided key for validation.
+                    test_url = "https://api.coingecko.com/api/v3/ping"
+                    try:
+                        async with session.get(test_url, timeout=10) as response:
+                            if response.status != 200:
+                                invalid_keys.append(f"{key_name} (Status: {response.status})")
+                            else:
+                                logger.debug(f"API key {key_name} validated successfully (free endpoint).")
+                    except Exception as e:
+                        invalid_keys.append(f"{key_name} (Error: {e})")
+                    continue
+
+                # For CRYPTOCOMPARE_API_KEY, use the provided multi-currency example.
+                if key_name == "CRYPTOCOMPARE_API_KEY":
+                    test_url = test_url_template.format(key=api_key)
+                    try:
+                        async with session.get(test_url, timeout=10) as response:
+                            if response.status != 200:
+                                invalid_keys.append(f"{key_name} (Status: {response.status})")
+                            else:
+                                logger.debug(f"API key {key_name} validated successfully.")
+                    except Exception as e:
+                        invalid_keys.append(f"{key_name} (Error: {e})")
+                    continue
+
+                # For other keys, use the provided GET test URL.
                 test_url = test_url_template.format(key=api_key)
                 try:
-                    async with session.get(test_url, timeout=10) as response: # Timeout for test requests
-                        if response.status != 200: # Basic check for 200 OK status; might need more specific checks
+                    async with session.get(test_url, timeout=10) as response:
+                        if response.status != 200:
                             invalid_keys.append(f"{key_name} (Status: {response.status})")
                         else:
-                            logger.debug(f"API key {key_name} validated successfully.") # Debug log for successful validation
-                except Exception as e: # Catch any request exceptions
+                            logger.debug(f"API key {key_name} validated successfully.")
+                except Exception as e:
                     invalid_keys.append(f"{key_name} (Error: {e})")
-                    logger.warning(f"API key {key_name} validation request failed: {e}") # Warning for request failures
-
 
         if missing_keys:
             logger.warning(f"Missing API keys: {', '.join(missing_keys)}")
         if invalid_keys:
-            logger.error(f"Invalid API keys: {', '.join(invalid_keys)}") # Log invalid keys as errors
-            raise ValueError(f"Invalid API keys detected: {', '.join(invalid_keys)}") # Raise exception for invalid keys
+            logger.error(f"Invalid API keys: {', '.join(invalid_keys)}")
+            raise ValueError(f"Invalid API keys detected: {', '.join(invalid_keys)}")
 
 
     def _validate_addresses(self) -> None:
