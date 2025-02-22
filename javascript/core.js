@@ -1,15 +1,15 @@
 const { ethers } = require("ethers");
 const axios = require("axios");
-const { ABI_Registry } = require("./abi_registry");
-const { API_Config, Configuration } = require("./configuration");
-const { Market_Monitor, Mempool_Monitor } = require("./monitor");
-const { Nonce_Core } = require("./nonce");
-const { Safety_Net, Strategy_Net } = require("./net");
+const { ABIRegistry } = require("./abiregistry");
+const { APIConfig, Configuration } = require("./configuration");
+const { MarketMonitor, MempoolMonitor } = require("./monitor");
+const { NonceCore } = require("./nonce");
+const { SafetyNet, StrategyNet } = require("./net");
 const hexBytes = require("hexbytes");
 const tracemalloc = require("tracemalloc");
 const logger = require("./logger");
 
-class Transaction_Core {
+class TransactionCore {
     static MAX_RETRIES = 3;
     static RETRY_DELAY = 1.0; // Base delay in seconds for retries
     static DEFAULT_GAS_LIMIT = 100000;
@@ -19,27 +19,27 @@ class Transaction_Core {
 
     constructor(
         web3, account, AAVE_FLASHLOAN_ADDRESS, AAVE_FLASHLOAN_ABI,
-        AAVE_POOL_ADDRESS, AAVE_POOL_ABI, api_config = null, market_monitor = null,
-        mempool_monitor = null, nonce_core = null, safety_net = null, configuration = null,
+        AAVE_POOL_ADDRESS, AAVE_POOL_ABI, apiconfig = null, marketmonitor = null,
+        mempoolmonitor = null, noncecore = null, safetynet = null, configuration = null,
         gas_price_multiplier = 1.1, erc20_abi = null, uniswap_address = null, uniswap_abi = null
     ) {
         this.web3 = web3;
         this.account = account;
         this.configuration = configuration;
-        this.market_monitor = market_monitor;
-        this.mempool_monitor = mempool_monitor;
-        this.api_config = api_config;
-        this.nonce_core = nonce_core;
-        this.safety_net = safety_net;
+        this.marketmonitor = marketmonitor;
+        this.mempoolmonitor = mempoolmonitor;
+        this.apiconfig = apiconfig;
+        this.noncecore = noncecore;
+        this.safetynet = safetynet;
         this.gas_price_multiplier = gas_price_multiplier;
-        this.RETRY_ATTEMPTS = Transaction_Core.MAX_RETRIES;
+        this.RETRY_ATTEMPTS = TransactionCore.MAX_RETRIES;
         this.erc20_abi = erc20_abi || [];
         this.current_profit = ethers.BigNumber.from(0);
         this.AAVE_FLASHLOAN_ADDRESS = AAVE_FLASHLOAN_ADDRESS;
         this.AAVE_FLASHLOAN_ABI = AAVE_FLASHLOAN_ABI;
         this.AAVE_POOL_ADDRESS = AAVE_POOL_ADDRESS;
         this.AAVE_POOL_ABI = AAVE_POOL_ABI;
-        this.abi_registry = new ABI_Registry();
+        this.abiregistry = new ABIRegistry();
         this.uniswap_address = uniswap_address;
         this.uniswap_abi = uniswap_abi || [];
     }
@@ -64,7 +64,7 @@ class Transaction_Core {
             for (const { address, abi_type, name } of router_configs) {
                 try {
                     const normalized_address = this.normalize_address(address);
-                    const abi = this.abi_registry.get_abi(abi_type);
+                    const abi = this.abiregistry.get_abi(abi_type);
                     if (!abi) throw new Error(`Failed to load ${name} ABI`);
                     const contract = new ethers.Contract(normalized_address, abi, this.web3);
 
@@ -142,7 +142,7 @@ class Transaction_Core {
             }
 
             if (successes.length > 0) {
-                await this.nonce_core.refresh_nonce();
+                await this.noncecore.refresh_nonce();
                 logger.info(`Bundle successfully sent to builders: ${successes.join(', ')}`);
                 return true;
             } else {
@@ -278,14 +278,14 @@ class Transaction_Core {
     async decode_transaction_input(input_data, contract_address) {
         try {
             const selector = input_data.slice(0, 10).substring(2);
-            const method_name = this.abi_registry.get_method_selector(selector);
+            const method_name = this.abiregistry.get_method_selector(selector);
 
             if (!method_name) {
                 logger.debug(`Unknown method selector: ${selector}`);
                 return null;
             }
 
-            const abi = await this.abi_registry.get_abi('erc20');
+            const abi = await this.abiregistry.get_abi('erc20');
             const contract = new ethers.Contract(contract_address, abi, this.web3);
             const decoded_params = contract.interface.decodeFunctionData(input_data);
 
@@ -335,7 +335,7 @@ class Transaction_Core {
 
             const tx_params = {
                 chainId: chain_id,
-                nonce: await this.nonce_core.get_nonce(),
+                nonce: await this.noncecore.get_nonce(),
                 from: this.account.address,
             };
 
@@ -362,12 +362,12 @@ class Transaction_Core {
 
     async _get_dynamic_gas_parameters() {
         try {
-            const gas_price_gwei = await this.safety_net.get_dynamic_gas_price();
+            const gas_price_gwei = await this.safetynet.get_dynamic_gas_price();
             logger.debug(`Fetched gas price: ${gas_price_gwei} Gwei`);
             return ethersutils.parseUnits(gas_price_gwei.toString(), "gwei");
         } catch (e) {
             logger.error(`Error fetching dynamic gas price: ${e}`);
-            return ethersutils.parseUnits(Transaction_Core.DEFAULT_GAS_PRICE_GWEI.toString(), "gwei");
+            return ethersutils.parseUnits(TransactionCore.DEFAULT_GAS_PRICE_GWEI.toString(), "gwei");
         }
     }
 
@@ -378,7 +378,7 @@ class Transaction_Core {
             return gas_estimate;
         } catch (e) {
             logger.warning(`Gas estimation failed: ${e}. Using default gas limit.`);
-            return Transaction_Core.DEFAULT_GAS_LIMIT;
+            return TransactionCore.DEFAULT_GAS_LIMIT;
         }
     }
 
@@ -411,8 +411,8 @@ class Transaction_Core {
 
     async stop() {
         try {
-            await this.safety_net.stop();
-            await this.nonce_core.stop();
+            await this.safetynet.stop();
+            await this.noncecore.stop();
             logger.debug("Stopped 0xBuilder.");
         } catch (e) {
             logger.error(`Error stopping 0xBuilder: ${e}`);
@@ -421,13 +421,13 @@ class Transaction_Core {
     }
 }
 
-module.exports = { Transaction_Core };
+module.exports = { TransactionCore };
 
 
 
 const logger = require('./logger');  // Assuming you have a logger configured
 
-class Main_Core {
+class MainCore {
     constructor(configuration) {
         this.configuration = configuration;
         this.web3 = null;
@@ -451,7 +451,7 @@ class Main_Core {
         try {
             // 1. Initialize configuration and load ABIs
             await this._load_configuration();
-            await this.configuration.abi_registry.initialize();
+            await this.configuration.abiregistry.initialize();
             
             // Load and validate ERC20 ABI
             const erc20_abi = await this._load_abi(this.configuration.ERC20_ABI);
@@ -469,58 +469,58 @@ class Main_Core {
             await this._check_account_balance();
 
             // Initialize the components one by one
-            this.components['api_config'] = new API_Config(this.configuration);
-            await this.components['api_config'].initialize();
+            this.components['apiconfig'] = new APIConfig(this.configuration);
+            await this.components['apiconfig'].initialize();
 
-            this.components['nonce_core'] = new Nonce_Core(this.web3, this.account.address, this.configuration);
-            await this.components['nonce_core'].initialize();
+            this.components['noncecore'] = new NonceCore(this.web3, this.account.address, this.configuration);
+            await this.components['noncecore'].initialize();
 
-            this.components['safety_net'] = new Safety_Net(
-                this.web3, this.configuration, this.account, this.components['api_config']
+            this.components['safetynet'] = new SafetyNet(
+                this.web3, this.configuration, this.account, this.components['apiconfig']
             );
-            await this.components['safety_net'].initialize();
+            await this.components['safetynet'].initialize();
 
-            this.components['transaction_core'] = new Transaction_Core(
+            this.components['transactioncore'] = new TransactionCore(
                 this.web3,
                 this.account,
                 this.configuration.AAVE_FLASHLOAN_ADDRESS,
                 this.configuration.AAVE_FLASHLOAN_ABI,
                 this.configuration.AAVE_POOL_ADDRESS,
                 this.configuration.AAVE_POOL_ABI,
-                this.components['api_config'],
-                this.components['nonce_core'],
-                this.components['safety_net'],
+                this.components['apiconfig'],
+                this.components['noncecore'],
+                this.components['safetynet'],
                 this.configuration
             );
-            await this.components['transaction_core'].initialize();
+            await this.components['transactioncore'].initialize();
 
-            this.components['market_monitor'] = new Market_Monitor(
+            this.components['marketmonitor'] = new MarketMonitor(
                 this.web3,
                 this.configuration,
-                this.components['api_config'],
-                this.components['transaction_core']
+                this.components['apiconfig'],
+                this.components['transactioncore']
             );
-            await this.components['market_monitor'].initialize();
+            await this.components['marketmonitor'].initialize();
 
-            this.components['mempool_monitor'] = new Mempool_Monitor(
+            this.components['mempoolmonitor'] = new MempoolMonitor(
                 this.web3,
-                this.components['safety_net'],
-                this.components['nonce_core'],
-                this.components['api_config'],
+                this.components['safetynet'],
+                this.components['noncecore'],
+                this.components['apiconfig'],
                 await this.configuration.get_token_addresses(),
                 this.configuration,
                 erc20_abi,
-                this.components['market_monitor']
+                this.components['marketmonitor']
             );
-            await this.components['mempool_monitor'].initialize();
+            await this.components['mempoolmonitor'].initialize();
 
-            this.components['strategy_net'] = new Strategy_Net(
-                this.components['transaction_core'],
-                this.components['market_monitor'],
-                this.components['safety_net'],
-                this.components['api_config']
+            this.components['strategynet'] = new StrategyNet(
+                this.components['transactioncore'],
+                this.components['marketmonitor'],
+                this.components['safetynet'],
+                this.components['apiconfig']
             );
-            await this.components['strategy_net'].initialize();
+            await this.components['strategynet'].initialize();
 
             logger.info("All components initialized successfully.");
         } catch (e) {
@@ -534,7 +534,7 @@ class Main_Core {
         this.running = true;
 
         try {
-            if (!this.components['mempool_monitor']) {
+            if (!this.components['mempoolmonitor']) {
                 throw new Error("Mempool monitor not properly initialized");
             }
 
@@ -561,13 +561,13 @@ class Main_Core {
 
         try {
             const shutdown_order = [
-                'mempool_monitor',  // Stop monitoring first
-                'strategy_net',     // Stop strategies
-                'transaction_core', // Stop transactions
-                'market_monitor',   // Stop market monitoring
-                'safety_net',       // Stop safety checks
-                'nonce_core',       // Stop nonce management
-                'api_config'        // Stop API connections last
+                'mempoolmonitor',  // Stop monitoring first
+                'strategynet',     // Stop strategies
+                'transactioncore', // Stop transactions
+                'marketmonitor',   // Stop market monitoring
+                'safetynet',       // Stop safety checks
+                'noncecore',       // Stop nonce management
+                'apiconfig'        // Stop API connections last
             ];
 
             // Stop all components in parallel
@@ -602,16 +602,16 @@ class Main_Core {
 
     async _start_monitoring() {
         // Start the mempool monitoring task
-        await this.components['mempool_monitor'].start_monitoring();
+        await this.components['mempoolmonitor'].start_monitoring();
     }
 
     async _process_profitable_transactions() {
         // Processing profitable transactions
         while (this.running) {
             try {
-                const tx = await this.components['mempool_monitor'].get_profitable_transaction();
+                const tx = await this.components['mempoolmonitor'].get_profitable_transaction();
                 logger.debug(`Processing profitable transaction: ${tx.tx_hash}`);
-                await this.components['strategy_net'].execute_best_strategy(tx);
+                await this.components['strategynet'].execute_best_strategy(tx);
             } catch (e) {
                 logger.error(`Error processing profitable transaction: ${e}`);
             }
@@ -707,4 +707,4 @@ class Main_Core {
     // Other helper methods for ABI loading, transaction construction, etc. will be complete next commit -J
 }
 
-module.exports = Main_Core;
+module.exports = MainCore;

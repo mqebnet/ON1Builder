@@ -83,17 +83,17 @@
 │   ├── training_data.csv
 │   └── price_model.joblib
 ├── python/                 # Core Python Scripts & Logic
-│   ├── safety_net.py         # Risk Management & Safety Checks
-│   ├── strategy_net.py       # MEV Strategy Implementation & Execution
-│   ├── mempool_monitor.py    # Ethereum Mempool Monitoring Engine
-│   ├── market_monitor.py     # Market Data Analysis & Prediction
+│   ├── safetynet.py         # Risk Management & Safety Checks
+│   ├── strategynet.py       # MEV Strategy Implementation & Execution
+│   ├── mempoolmonitor.py    # Ethereum Mempool Monitoring Engine
+│   ├── marketmonitor.py     # Market Data Analysis & Prediction
 │   ├── main.py              # Main Bot Entry Point & Orchestration
-│   ├── transaction_core.py   # Transaction Building & Execution Engine
-│   ├── main_core.py          # Core Application Logic & Component Management
-│   ├── nonce_core.py         # Ethereum Nonce Management System
-│   ├── api_config.py         # Cryptocurrency API Integration & Data Handling
+│   ├── transactioncore.py   # Transaction Building & Execution Engine
+│   ├── maincore.py          # Core Application Logic & Component Management
+│   ├── noncecore.py         # Ethereum Nonce Management System
+│   ├── apiconfig.py         # Cryptocurrency API Integration & Data Handling
 │   ├── configuration.py      # Configuration Loading & Validation
-|   ├── abi_registry.py       # Centralized ABI Registry
+|   ├── abiregistry.py       # Centralized ABI Registry
 │   ├── 0xBuilder.log        # Log File (Default)
 |   ├── __init__.py           # Python Package Initialization
 │   └── pyutils/              # Python Utility Modules
@@ -431,7 +431,7 @@ Prepare for liftoff and execute 0xBuilder!
 - **Error & Exception Tracking**: Immediate alerts for any errors or exceptions, enabling rapid troubleshooting.
 - **Detailed Activity Logs**: Comprehensive logs of bot activities, transactions, and market analysis for in-depth performance review.
 
-Customize logging verbosity and formatting in `python/main_core.py` using the `setup_logging()` function.
+Customize logging verbosity and formatting in `python/maincore.py` using the `setup_logging()` function.
 
 ## 🛠️ Troubleshooting
 

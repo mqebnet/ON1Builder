@@ -25,12 +25,12 @@ class ABIRegistry {
 
     async initialize() {
         if (this._initialized) {
-            console.debug("ABI_Registry already initialized.");
+            console.debug("ABIRegistry already initialized.");
             return;
         }
         await this._loadAllAbis();
         this._initialized = true;
-        console.debug("ABI_Registry initialization complete.");
+        console.debug("ABIRegistry initialization complete.");
     }
 
     async _loadAllAbis() {

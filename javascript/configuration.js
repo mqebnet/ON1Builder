@@ -4,7 +4,7 @@ const axios = require('axios');
 const dotenv = require('dotenv');
 const { TTLCache } = require('cachetools');
 const { AsyncWeb3 } = require('web3');
-const { ABI_Registry } = require('./abi_registry');
+const { ABIRegistry } = require('./abiregistry');
 const { Decimal } = require('decimal.js');
 const { setTimeout } = require('timers/promises');
 const { ClientSession } = require('aiohttp');
@@ -55,7 +55,7 @@ class Configuration {
         this.MODEL_PATH = "/linear_regression/price_model.joblib";
         this.TRAINING_DATA_PATH = "/linear_regression/training_data.csv";
 
-        this.abi_registry = new ABI_Registry();
+        this.abiregistry = new ABIRegistry();
 
         this.WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
         this.USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
@@ -67,7 +67,7 @@ class Configuration {
             console.info("Loading configuration... ⏳");
             await setTimeout(1000);
 
-            await this.abi_registry.initialize();
+            await this.abiregistry.initialize();
             await this._loadConfiguration();
             console.info("System reporting go for launch ✅...");
             await setTimeout(3000);
@@ -81,7 +81,7 @@ class Configuration {
 
     async _loadConfiguration() {
         try {
-            if (!this.abi_registry.abis) {
+            if (!this.abiregistry.abis) {
                 throw new Error("Failed to load ABIs");
             }
 
@@ -180,7 +180,7 @@ class Configuration {
     }
 }
 
-class API_Config {
+class APIConfig {
     constructor(configuration = null) {
         this.configuration = configuration;
         this.session = null;
@@ -189,7 +189,7 @@ class API_Config {
         this.market_data_cache = new TTLCache({ maxsize: 1000, ttl: 1800 });  // 30 min cache for market data
         this.token_metadata_cache = new TTLCache({ maxsize: 500, ttl: 86400 });  // 24h cache for metadata
 
-        this.api_configs = {
+        this.apiconfigs = {
             "binance": {
                 "base_url": "https://api.binance.com/api/v3",
                 "market_url": "/ticker/24hr",
@@ -216,7 +216,7 @@ class API_Config {
         };
 
         this.rate_limiters = Object.fromEntries(
-            Object.entries(this.api_configs).map(([provider, config]) => [
+            Object.entries(this.apiconfigs).map(([provider, config]) => [
                 provider,
                 new AsyncSemaphore(config.rate_limit)
             ])
@@ -253,7 +253,7 @@ class API_Config {
     }
 
     async _fetch_price(provider, token, vs_currency) {
-        const config = this.api_configs[provider];
+        const config = this.apiconfigs[provider];
         try {
             const url = `${config.base_url}/simple/price?ids=${token}&vs_currencies=${vs_currency}`;
             const response = await axios.get(url);
@@ -271,7 +271,7 @@ class API_Config {
 
     async _load_abi(abiPath) {
         try {
-            return await this.configuration.abi_registry.get_abi(abiPath);
+            return await this.configuration.abiregistry.get_abi(abiPath);
         } catch (e) {
             console.error(`Failed to load ABI from ${abiPath}: ${e}`);
             throw e;
@@ -285,4 +285,4 @@ class API_Config {
     }
 }
 
-module.exports = { Configuration, API_Config };
+module.exports = { Configuration, APIConfig };
