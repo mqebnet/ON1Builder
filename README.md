@@ -1,48 +1,44 @@
 
-# 🚀 0xBuilder MEV Bot 🚀
+# 0xBuilder
 
 [![License](https://img.shields.io/badge/License-MIT-brightgreen.svg)](LICENSE)
 [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/release/python-3120/)
-[![Geth Version](https://img.shields.io/badge/Execution%20Client-Geth%20v1.14+-blue.svg)](https://geth.ethereum.org/)
-[![Status](https://img.shields.io/badge/Status-Work%20in%20Progress-orange.svg)](#disclaimer)
 
 
 ## Table of Contents
 
-- [✨ Introduction](#✨-introduction)
-- [⚡️ Key Features](#️-key-features)
-- [🏗️ Project Structure](#️-project-structure)
-- [🛠️ Prerequisites](#️-prerequisites)
-  - [System Powerhouse](#system-powerhouse)
-  - [Software Arsenal](#software-arsenal)
+- [Introduction](#introduction)
+- [Key Features](#key-features)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+  - [System](#system)
+  - [Software](#software)
   - [Ethereum Node](#ethereum-node)
-- [🚀 Installation - Get Started in Minutes](#-installation---get-started-in-minutes)
+- [Installation](#installation)
   - [Clone the 0xBuilder](#clone-the-0xbuilder)
-  - [Forge a Virtual Environment](#forge-a-virtual-environment)
-  - [Arm Yourself with Dependencies](#arm-yourself-with-dependencies)
-- [⚙️ Configuration - Tailor 0xBuilder to Your Strategy](#️-configuration---tailor-0xbuilder-to-your-strategy)
+  - [Virtual Environment](#virtual-environment)
+  - [Dependencies](#dependencies)
+- [Configuration](#configuration)
   - [Environment Variables](#environment-variables)
   - [Configuration Files](#configuration-files)
 - [Deploy Your Flashloan Contract](#deploy-your-flashloan-contract)
-- [🔑 Register for API Keys](#🔑-Register-for-API-Keys)
-- [🕹️ Run the Bot - Engage the Engines](#️-run-the-bot---engage-the-engines)
-- [🎯 Strategies](#🎯-strategies)
-- [🔭 Logging](#🔭-logging)
-- [🛠️ Troubleshooting](#️-troubleshooting)
-- [🤝 Contributing](#🤝-contributing)
-- [📜 License](#📜-license)
-- [⚠️ Disclaimer - Proceed with Caution](#⚠️-disclaimer---proceed-with-caution)
-- [🙏 Acknowledgements](#🙏-acknowledgements)
+- [Register for API Keys](#register-for-api-keys)
+- [Run the Bot](#run-the-bot)
+- [Strategies](#strategies)
+- [Logging](#logging)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
-## ✨ Introduction
+## Introduction
 
-**0xBuilder** Built for **traders, developers, and researchers**, 0xBuilder is your gateway to mastering MEV opportunities on the Ethereum network. engineered for **high-frequency trading and maximum profit extraction**. including:
+**0xBuilder** is engineered for **high-frequency trading and maximum profit extraction**. including:
 
-- ⚡️ **Lightning-Fast Front-Running**
-- 🏃 **Strategic Back-Running**
-- 🥪 **Devastating Sandwich Attacks**
-- 💰 **Capital-Efficient Flashloan Arbitrage**
+- **Front-Running**
+- **Strategic Back-Running**
+- **Sandwich Attacks**
+- **Flashloan Arbitrage**
 
 <br>
 
@@ -54,21 +50,21 @@
 
 > **⚠️** **Heads Up!** 0xBuilder is under active development. Expect bugs – use with extreme caution and at your own risk.
 
-## ⚡️ Key Features
+## Key Features
 
-*   **Mempool Mastery**: Relentlessly scans the Ethereum mempool, pinpointing lucrative arbitrage and MEV opportunities.
-*   **Strategic Arsenal**: Deploy cutting-edge strategies like Front-Running, Back-Running, Sandwich Attacks, and Flashloan Arbitrage with surgical precision.
-*   **Flashloan Fury**: Leverage flashloans from Aave V3 for maximum capital efficiency and zero upfront capital requirements.
-*   **Market Intelligence**: Integrated market analysis, powered by real-time data from top-tier cryptocurrency APIs, ensuring data-driven decisions.
-*   **Gas Optimization**: Dynamic gas price adjustments to conquer network congestion and maximize profitability.
-*   **Unbreakable Nonce Management**: Advanced nonce handling to guarantee transaction success and prevent costly failures.
-*   **Ironclad Safety Net**: Multi-layered safety checks and risk assessment protocols to safeguard your assets.
-*   **Transaction Bundling**: Bundle transactions for atomic execution and front-running dominance.
-*   **DeFi Protocol Prowess**: Seamlessly interacts with leading DeFi platforms like Uniswap, Sushiswap, Aave, and more.
-*   **Limitless Customization**: Highly configurable architecture supporting multiple wallets, tokens, trading pairs, and adaptable strategies.
-*   **Crystal-Clear Logging**: Comprehensive, detailed logs for in-depth performance analysis, debugging, and strategy refinement.
+*   **Mempool Monitoring**: scans the Ethereum mempool, pinpointing arbitrage and MEV opportunities.
+*   **Strategic**: Deploys strategies like Front-Running, Back-Running, Sandwich Attacks, and Flashloan Arbitrage with  precision.
+*   **Flashloan**: Leverage flashloans from Aave V3 for maximum capital efficiency and zero upfront capital requirements.
+*   **Market analysis**: Integrated market analysis, real-time data from cryptocurrency APIs, ensuring data-driven decisions.
+*   **Gas Optimization**: Dynamic gas price adjustments.
+*   **Nonce Management**: Nonce handling to guarantee transaction success and prevent costly failures.
+*   **Safety Net**: Multi-layered safety checks and risk assessments.
+*   **Transaction Bundling**: Bundle transactions for atomic execution and front-running.
+*   **DeFi Interaction**: Seamlessly interacts with leading DeFi platforms like Uniswap, Sushiswap, Aave, and more.
+*   **Customization**: Highly configurable architecture supporting multiple wallets, tokens, trading pairs, and adaptable strategies.
+*   **Clear Logging**: Comprehensive, detailed logs for in-depth performance analysis, debugging, and strategy refinement.
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 /0xBuilder/
@@ -107,9 +103,9 @@
 └── requirements.txt          # Python Dependencies List
 ```
 
-## 🛠️ Prerequisites
+## Prerequisites
 
-Prepare your system and environment to harness the full potential of 0xBuilder.
+Prepare your system and environment
 
 ### System 
 
@@ -121,7 +117,7 @@ Prepare your system and environment to harness the full potential of 0xBuilder.
   - RAM: Minimum 16GB, **32GB recommended for heavy-duty operations**
   - Storage: **1.3TB NVMe SSD minimum, 2TB for optimal data handling**
 
-### Software Arsenal
+### Software
 
 - **Ethereum Execution Client**: Choose your weapon:
     - [Geth](https://geth.ethereum.org/) (Go, Recommended for stability and speed)
@@ -134,7 +130,7 @@ Prepare your system and environment to harness the full potential of 0xBuilder.
 
 ### Ethereum Node
 
-Set up your Ethereum Execution and Beacon clients for seamless blockchain interaction.
+Set up your Ethereum Execution and Beacon clients for blockchain interaction.
 
 **Choose Your Execution Client**:
 
@@ -162,7 +158,7 @@ Set up your Ethereum Execution and Beacon clients for seamless blockchain intera
     > eth.syncing
     ```
 
-**Set up a Beacon Node** (Optional, but recommended for advanced monitoring and future features):
+**Set up a Beacon Node**:
 
 1.  **Install Prysm**: Follow the [Prysm guide](https://docs.prylabs.network/docs/install/install-with-script).
 
@@ -179,7 +175,7 @@ Set up your Ethereum Execution and Beacon clients for seamless blockchain intera
 **Alternative Beacon Clients**: 
 - [Lighthouse](https://lighthouse-book.sigmaprime.io/installation.html)
 
-## 🚀 Installation - Get Started in Minutes
+## Installation
 
 ### Clone the 0xBuilder
 
@@ -188,7 +184,7 @@ git clone https://github.com/John0n1/0xBuilder.git
 cd 0xBuilder
 ```
 
-### Forge a Virtual Environment
+### Virtual Environment
 
 Isolate your bot's dependencies:
 
@@ -198,7 +194,7 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-### Install Python Dependencies
+### Dependencies
 
 Install required Python packages:
 
@@ -207,7 +203,7 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## ⚙️ Configuration - Tailor 0xBuilder to Your Strategy
+## Configuration
 
 ### Environment Variables
 
@@ -280,7 +276,7 @@ Validate and customize JSON configuration files in the `utils/` directory:
 
 ## Deploy Your Flashloan Contract
 
-Maximize capital with a flashloan contract.
+Maximize the potential with a flashloan contract.
 
 **Deployment via Remix IDE (Recommended)**
 
@@ -354,27 +350,25 @@ Maximize capital with a flashloan contract.
    }
    ```
 
-## 🔑 Register for API Keys
+## Register for API Keys
 
 Register for API keys from these essential services and add them to your `.env` file:
 
-1.  **[Infura](https://infura.io/)**: Your gateway to Ethereum node infrastructure.
+1.  **[Infura](https://infura.io/)**: Ethereum node infrastructure.
 2.  **[Etherscan](https://etherscan.io/apis)**: For on-chain data and transaction insights.
 3.  **[CoinGecko](https://www.coingecko.com/en/api)**: Real-time and historical crypto market data.
-4.  **[CoinMarketCap](https://coinmarketcap.com/api/)**: Comprehensive cryptocurrency market data.
+4.  **[CoinMarketCap](https://coinmarketcap.com/api/)**: cryptocurrency market data.
 5.  **[CryptoCompare](https://min-api.cryptocompare.com/)**: Another robust source for crypto market data.
 6.  **[Binance](https://www.binance.com/en/support/faq/)** (Optional): For Binance-specific market data and volume analysis.
 
-## 🕹️ Run the Bot - Engage the Engines
+## Run the Bot
 
-Prepare for liftoff and execute 0xBuilder!
+**Checklist**:
 
-**Pre-Flight Checklist**:
-
-- 🚀 **Ethereum Node**: Ensure your node is fully synchronized and running.
-- 🛰️ **Beacon Node**: (Optional) Verify your beacon node is active.
-- 🔑 **Configuration**: Double-check `.env` variables and JSON config files.
-- ⛽ **ETH Balance**: Fund your wallet with enough ETH to cover gas costs.
+-  **Ethereum Node**: Ensure your node is fully synchronized and running.
+-  **Beacon Node**: (Optional) Verify your beacon node is active.
+-  **Configuration**: Double-check `.env` variables and JSON config files.
+-  **ETH Balance**: Fund your wallet with enough ETH to cover gas costs.
 
 **Launch Sequence**:
 
@@ -404,25 +398,25 @@ Prepare for liftoff and execute 0xBuilder!
 - **Log Analysis**: Regularly review logs to identify and resolve issues, and optimize strategies.
 - **Dependency Updates**: Keep Python dependencies updated to benefit from performance improvements and security patches.
 
-## 🎯 Strategies
+## Strategies
 
 0xBuilder is armed with a suite of powerful MEV strategies:
 
-- **Aggressive Front-Running**: Seize immediate profit opportunities by front-running pending transactions with speed and precision.
-- **Predictive Front-Running**: Leverage advanced price prediction models to anticipate market movements and front-run strategically.
-- **Volatility Front-Running**: Capitalize on high market volatility with front-running techniques optimized for volatile tokens.
-- **Advanced Front-Running**: A multi-faceted strategy combining risk assessment, market analysis, and intelligent decision-making for sophisticated front-running executions.
-- **Price Dip Back-Running**: Back-run transactions that trigger price dips, profiting from post-dip rebounds.
-- **Flashloan Back-Running**: Execute back-running strategies with zero upfront capital using flashloans for maximum efficiency.
-- **High Volume Back-Running**: Target high-volume tokens for back-running, leveraging volume for increased profit potential.
-- **Advanced Back-Running**: Employ comprehensive market analysis and condition assessment for optimized back-running executions.
-- **Flash Profit Sandwich Attack**: Maximize profit extraction with sandwich attacks powered by flashloans, minimizing risk and maximizing capital utilization.
-- **Price Boost Sandwich Attack**: Exploit price momentum with sandwich attacks, capitalizing on tokens exhibiting strong upward price action.
-- **Arbitrage Sandwich Attack**: Combine sandwich attacks with arbitrage detection to profit from both MEV and arbitrage opportunities in a single, powerful strategy.
-- **Advanced Sandwich Attack**: Deploy risk-managed sandwich attacks using advanced market condition analysis and dynamic parameter adjustments for optimal execution and profit.
-- **High-Value ETH Transfer**: Intercept and capitalize on high-value ETH transfers, leveraging strategic positioning for MEV extraction.
+- **Aggressive Front-Running** 
+- **Predictive Front-Running**
+- **Volatility Front-Running**
+- **Advanced Front-Running**
+- **Price Dip Back-Running**
+- **Flashloan Back-Running**
+- **High Volume Back-Running**
+- **Advanced Back-Running**
+- **Flash Profit Sandwich Attack**
+- **Price Boost Sandwich Attack**
+- **Arbitrage Sandwich Attack**
+- **Advanced Sandwich Attack**
+- **High-Value ETH Transfer**
 
-## 🔭 Logging
+## Logging
 
 0xBuilder provides detailed logs in `python/0xBuilder.log` to keep you informed:
 
@@ -433,7 +427,7 @@ Prepare for liftoff and execute 0xBuilder!
 
 Customize logging verbosity and formatting in `python/maincore.py` using the `setup_logging()` function.
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 **Common Pitfalls & Solutions**:
 
@@ -452,9 +446,9 @@ Customize logging verbosity and formatting in `python/maincore.py` using the `se
 3.  **Contract Explorer**: Verify your flashloan contract is deployed and functioning correctly using a block explorer (e.g., Etherscan).
 4.  **Testnet Trials**: Thoroughly test strategies and configurations on testnets like Sepolia or Holesky before deploying to mainnet.
 
-## 🤝 Contributing - Join the 0xBuilder Guild
+## Contributing
 
-Become a part of the 0xBuilder community! Contributions are **welcome and highly encouraged**! ❤️❤️
+Contributions are **welcome and highly encouraged**! ❤️❤️
 
 **Contribution Guidelines**:
 
@@ -465,6 +459,6 @@ Become a part of the 0xBuilder community! Contributions are **welcome and highly
 
 For detailed contribution guidelines, please review [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## 📜 License
+## License
 
 0xBuilder is released under the [MIT License](LICENSE).
