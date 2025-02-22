@@ -11,9 +11,9 @@ from eth_utils import is_checksum_address
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import logging as logger
-
-logger = logger.getLogger(__name__)
+from loggingconfig import setup_logging
+import logging
+logger = setup_logging("Configuration", level=logging.INFO)
 
 # Constants
 DEFAULT_MAX_GAS_PRICE = 100_000_000_000  # 100 Gwei in wei
@@ -146,8 +146,8 @@ class Configuration:
         self.NONCE_TRANSACTION_TIMEOUT: int = self._get_env_int("NONCE_TRANSACTION_TIMEOUT", 120)
 
         # Safety Net Configs
-        self.SAFETY_NET_CACHE_TTL: int = self._get_env_int("SAFETY_NET_CACHE_TTL", 300)
-        self.SAFETY_NET_GAS_PRICE_TTL: int = self._get_env_int("SAFETY_NET_GAS_PRICE_TTL", 30)
+        self.SAFETYNET_CACHE_TTL: int = self._get_env_int("SAFETYNET_CACHE_TTL", 300)
+        self.SAFETYNET_GAS_PRICE_TTL: int = self._get_env_int("SAFETYNET_GAS_PRICE_TTL", 30)
 
         # Strategy Net Configs
         self.AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH: float = self._get_env_float("AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH", 0.1)
@@ -339,7 +339,7 @@ class Configuration:
             # Validate addresses
             self._validate_addresses()
 
-            logger.info("Configuration loaded successfully")
+            logger.debug("Configuration loaded successfully")
 
         except Exception as e:
             logger.error(f"Configuration load failed: {str(e)}")
