@@ -1,5 +1,5 @@
 #========================================================================================================================
-# File: abi_registry.py
+# File: abiregistry.py
 #========================================================================================================================
 import json
 import aiofiles
@@ -8,11 +8,11 @@ from eth_utils import function_signature_to_4byte_selector
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import logging as logger
+from loggingconfig import setup_logging
+import logging
+logger = setup_logging("ABIRegistry", level=logging.INFO)
 
-logger = logger.getLogger(__name__)
-
-class ABI_Registry:
+class ABIRegistry:
     """
     Centralized ABI registry with loading, validation, and signature mapping.
     """
@@ -35,11 +35,11 @@ class ABI_Registry:
     async def initialize(self, base_path: Optional[Path] = None) -> None:
         """Asynchronously load and validate all ABIs."""
         if self._initialized:
-            logger.debug("ABI_Registry already initialized.")
+            logger.debug("ABIRegistry already initialized.")
             return
         await self._load_all_abis(base_path)
         self._initialized = True
-        logger.debug("ABI_Registry initialization complete.")
+        logger.debug("ABIRegistry initialization complete.")
 
     async def _load_all_abis(self, base_path: Optional[Path] = None) -> None:
         """Load and validate all ABIs from JSON files."""
