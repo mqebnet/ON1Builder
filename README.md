@@ -1,8 +1,7 @@
 
 # 0xBuilder
 
-[![License](https://img.shields.io/badge/License-MIT-brightgreen.svg)](LICENSE)
-[![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![License](https://img.shields.io/badge/License-MIT-white.svg)](LICENSE)
 [![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 
 
