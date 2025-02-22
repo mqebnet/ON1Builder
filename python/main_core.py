@@ -25,7 +25,8 @@ from strategy_net import Strategy_Net
 from transaction_core import Transaction_Core
 import logging as logger
 
-
+WEB3_MAX_RETRIES = 3
+WEB3_RETRY_DELAY = 2
 logger = logger.getLogger(__name__)
 
 # Constants
@@ -76,6 +77,7 @@ class Main_Core:
             'strategy_net': None,
         }
         self._component_health: Dict[str, bool] = {name: False for name in self.components}
+        self.WEB3_MAX_RETRIES = 3  # Added default number of retries for web3 initialization
         logger.info("Initializing 0xBuilder...")
 
     async def _initialize_components(self) -> None:
@@ -136,22 +138,19 @@ class Main_Core:
             await self.components['safety_net'].initialize()
             logger.info("Safety_Net initialized ✅ ")
 
-            # 5. Initialize transaction core (depends on Web3, Account, Configuration, API_Config, Nonce_Core, Safety_Net)
+            # 5. Initialize transaction core with corrected parameters:
             logger.debug("Initializing Transaction_Core...")
             self.components['transaction_core'] = Transaction_Core(
                 self.web3,
                 self.account,
-                self.configuration.AAVE_FLASHLOAN_ADDRESS,
-                self.configuration.AAVE_FLASHLOAN_ABI_PATH, # Use ABI Path from config
-                self.configuration.AAVE_POOL_ADDRESS,
-                self.configuration.AAVE_POOL_ABI_PATH, # Use ABI Path from config
-                api_config=self.components['api_config'],
+                self.configuration.AAVE_FLASHLOAN_ADDRESS,  # Flashloan address
+                self.configuration.AAVE_POOL_ADDRESS,       # Pool address
                 nonce_core=self.components['nonce_core'],
                 safety_net=self.components['safety_net'],
                 configuration=self.configuration
             )
             await self.components['transaction_core'].initialize()
-            logger.info("Transaction_Core initialized ✅ ")
+            logger.info("Transaction_Core initialized ✅")
 
              # 6. Initialize market monitor (depends on Web3, Configuration, API_Config, Transaction_Core)
             logger.debug("Initializing Market_Monitor...")
