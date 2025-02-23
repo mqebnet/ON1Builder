@@ -1,5 +1,8 @@
 #========================================================================================================================
-# File: abiregistry.py
+# https://github.com/John0n1/0xBuilder
+
+# Centralized ABI registry with loading, validation, and signature mapping.
+# The class is used to load and validate ABIs from JSON files, extract function signatures and method selectors, and provide methods to retrieve ABI data.
 #========================================================================================================================
 import json
 import aiofiles

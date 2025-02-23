@@ -1,6 +1,4 @@
-# Contributing to 0xBuilder MEV Bot 🤖
-
-Welcome! We're excited that you want to contribute to 0xBuilder! 🎉
+# Contributing to 0xBuilder MEV Bot 
 
 ## Quick Start
 
@@ -23,26 +21,25 @@ cp .env.example .env
 # Fill in your API keys
 ```
 
-## What You Need 🛠️
-
+## What You Need
 - Python 3.12+
 - Git
 - Ethereum node access
 - Some API keys (Infura, Etherscan, etc.)
 - A test wallet
 
-## How to Help 🤝
+## How to Help 
 
-### Found a Bug? 🐛
+### Found a Bug?
 Open an issue! Tell us:
 - What happened
 - What should have happened
 - Steps to reproduce
 
-### Have an Idea? 💡
-We love new ideas! Open an issue and tell us about your feature suggestion.
+### Have an Idea? 
+Open an issue and tell us about your feature suggestion.
 
-### Want to Code? 👩‍💻👨‍💻
+### Want to Code? 
 
 1. Create a branch
 ```bash
@@ -65,21 +62,21 @@ git checkout -b feature/cool-new-thing
 - Max 88 chars per line
 - Clear variable names
 
-## Testing 🧪
+## Testing
 
 ```bash
 pytest tests/
 ```
 
-## Questions? 💬
+## Questions? 
 
 - Open an issue
 - Join our community discussions
 
-## License 📄
+## License
 
-MIT Licensed. Code away! 🚀
+MIT License
 
 ---
 
-Remember: Keep it simple, have fun, and happy coding! 🎮
+Remember: Keep it simple, have fun, and happy coding!

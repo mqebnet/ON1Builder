@@ -1,5 +1,8 @@
 #========================================================================================================================
-# File: safetynet.py
+# https://github.com/John0n1/0xBuilder
+
+# This file contains the SafetyNet class, which is responsible for risk management and transaction validation.
+# It includes methods for checking transaction safety, ensuring profit, and adjusting slippage tolerance.
 #========================================================================================================================
 import asyncio
 import time
@@ -33,7 +36,6 @@ class SafetyNet:
     ):
         """
         Initialize Safety Net components.
-        ... (rest of the docstring is the same) ...
         """
         self.web3: AsyncWeb3 = web3
         self.address: Optional[str] = address
@@ -83,14 +85,6 @@ class SafetyNet:
     async def initialize(self) -> None:
         """Initialize Safety Net components."""
         try:
-            # Initialize price cache (already done in __init__, no need to repeat unless TTL needs reset)
-            # self.price_cache = TTLCache(maxsize=1000, ttl=self.configuration.SAFETYNET_CACHE_TTL)
-
-            # Initialize gas price cache (already done in __init__, no need to repeat unless TTL needs reset)
-            # self.gas_price_cache = TTLCache(maxsize=1, ttl=self.configuration.SAFETYNET_GAS_PRICE_TTL)
-
-            # Initialize safety checks cache (already done in __init__, no need to repeat unless TTL needs reset)
-            # self.safety_cache = TTLCache(maxsize=100, ttl=60)
 
             # Verify web3 connection
             if not self.web3:
@@ -126,7 +120,7 @@ class SafetyNet:
                 logger.warning(f"Attempt {attempt+1} failed to fetch balance (Web3Error): {e}")
                 await asyncio.sleep(2 ** attempt)
             except Exception as e: # Catch any other errors
-                logger.error(f"Attempt {attempt+1} failed to fetch balance (Unexpected Error): {e}", exc_info=True) # Include traceback for unexpected errors
+                logger.error(f"Attempt {attempt+1} failed to fetch balance (Unexpected Error): {e}", exc_info=True) 
                 await asyncio.sleep(2 ** attempt)
 
         logger.error("Failed to fetch account balance after multiple retries.")
@@ -366,7 +360,7 @@ class SafetyNet:
     async def get_dynamic_gas_price(self) -> Decimal:
         """
         Fetch dynamic gas price with caching.
-        ... (rest of the docstring is the same) ...
+        
         """
         if self.gas_price_cache and self.gas_price_cache.get("gas_price"):
             return self.gas_price_cache["gas_price"]

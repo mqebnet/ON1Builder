@@ -1,11 +1,11 @@
 #========================================================================================================================
-# File: configuration.py
-#========================================================================================================================
+# https://github.com/John0n1/0xBuilder
+
 import os
 import json
 import aiofiles
 import dotenv
-import aiohttp # Import aiohttp for API key validation requests
+import aiohttp 
 
 from eth_utils import is_checksum_address
 from pathlib import Path
@@ -13,10 +13,11 @@ from typing import Any, Dict, List, Optional
 
 from loggingconfig import setup_logging
 import logging
+
 logger = setup_logging("Configuration", level=logging.INFO)
 
 # Constants
-DEFAULT_MAX_GAS_PRICE = 100_000_000_000  # 100 Gwei in wei
+DEFAULT_MAX_GAS_PRICE = 100_000_000_000 
 DEFAULT_GAS_LIMIT = 1_000_000
 DEFAULT_MAX_SLIPPAGE = 0.01
 DEFAULT_MIN_PROFIT = 0.001
@@ -24,13 +25,6 @@ DEFAULT_MIN_BALANCE = 0.000001
 DEFAULT_MEMORY_CHECK_INTERVAL = 300
 DEFAULT_COMPONENT_HEALTH_CHECK_INTERVAL = 60
 DEFAULT_PROFITABLE_TX_PROCESS_TIMEOUT = 1.0
-
-# Standard Ethereum addresses
-MAINNET_ADDRESSES = {
-    'WETH': '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-    'USDC': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-    'USDT': '0xdAC17F958D2ee523a2206206994597C13D831ec7'
-}
 
 class Configuration:
     """
@@ -41,8 +35,6 @@ class Configuration:
     def __init__(self, env_path: Optional[str] = None) -> None:
         """
         Initialize Configuration with default values.
-        Args:
-            env_path: Optional path to the .env file. Defaults to the current directory.
         """
         self.env_path = env_path if env_path else ".env"
         self.BASE_PATH = Path(__file__).parent.parent
@@ -65,9 +57,9 @@ class Configuration:
 
 
         # Standard addresses
-        self.WETH_ADDRESS = MAINNET_ADDRESSES['WETH']
-        self.USDC_ADDRESS = MAINNET_ADDRESSES['USDC']
-        self.USDT_ADDRESS = MAINNET_ADDRESSES['USDT']
+        self.WETH_ADDRESS = self._get_env_str("WETH_ADDRESS")
+        self.USDC_ADDRESS = self._get_env_str("USDC_ADDRESS")
+        self.USDT_ADDRESS = self._get_env_str("USDT_ADDRESS")
 
         # API Keys and Endpoints
         self.ETHERSCAN_API_KEY: str = self._get_env_str("ETHERSCAN_API_KEY")
@@ -102,36 +94,31 @@ class Configuration:
         self.AAVE_FLASHLOAN_ADDRESS: str = self._get_env_str("AAVE_FLASHLOAN_ADDRESS")
         self.GAS_PRICE_ORACLE_ADDRESS: str = self._get_env_str("GAS_PRICE_ORACLE_ADDRESS")
 
-        # Set default values for strategies
-        self.SLIPPAGE_DEFAULT: float = 0.1
-        self.SLIPPAGE_MIN: float = 0.01
-        self.SLIPPAGE_MAX: float = 0.5
-        self.SLIPPAGE_HIGH_CONGESTION: float = 0.05
-        self.SLIPPAGE_LOW_CONGESTION: float = 0.2
-        self.MAX_GAS_PRICE_GWEI: int = 500
-        self.MIN_PROFIT_MULTIPLIER: float = 2.0
-        self.BASE_GAS_LIMIT: int = 21000
-        self.DEFAULT_CANCEL_GAS_PRICE_GWEI: int = 60  # Default gas price for cancellation in Gwei
-        self.ETH_TX_GAS_PRICE_MULTIPLIER: float = 1.2 # Multiplier for ETH transaction gas price
+        self.SLIPPAGE_DEFAULT: float = self._get_env_float("SLIPPAGE_DEFAULT", 0.1)
+        self.SLIPPAGE_MIN: float = self._get_env_float("SLIPPAGE_MIN", 0.01)
+        self.SLIPPAGE_MAX: float = self._get_env_float("SLIPPAGE_MAX", 0.5)
+        self.SLIPPAGE_HIGH_CONGESTION: float = self._get_env_float("SLIPPAGE_HIGH_CONGESTION", 0.05)
+        self.SLIPPAGE_LOW_CONGESTION: float = self._get_env_float("SLIPPAGE_LOW_CONGESTION", 0.2)
+        self.MAX_GAS_PRICE_GWEI: int = self._get_env_int("MAX_GAS_PRICE_GWEI", 500)
+        self.MIN_PROFIT_MULTIPLIER: float = self._get_env_float("MIN_PROFIT_MULTIPLIER", 2.0)
+        self.BASE_GAS_LIMIT: int = self._get_env_int("BASE_GAS_LIMIT", 21000)
+        self.DEFAULT_CANCEL_GAS_PRICE_GWEI: int = self._get_env_int("DEFAULT_CANCEL_GAS_PRICE_GWEI", 60)  
+        self.ETH_TX_GAS_PRICE_MULTIPLIER: float = self._get_env_float("ETH_TX_GAS_PRICE_MULTIPLIER", 1.2)
 
         # ML model configuration
-        self.MODEL_RETRAINING_INTERVAL: int = 3600  # 1 hour
-        self.MIN_TRAINING_SAMPLES: int = 100
-        self.MODEL_ACCURACY_THRESHOLD: float = 0.7
-        self.PREDICTION_CACHE_TTL: int = 300  # 5 minutes
+        self.MODEL_RETRAINING_INTERVAL: int = self._get_env_int("MODEL_RETRAINING_INTERVAL", 3600) 
+        self.MIN_TRAINING_SAMPLES: int = self._get_env_int("MIN_TRAINING_SAMPLES", 100)
+        self.MODEL_ACCURACY_THRESHOLD: float = self._get_env_float("MODEL_ACCURACY_THRESHOLD", 0.7)
+        self.PREDICTION_CACHE_TTL: int = self._get_env_int("PREDICTION_CACHE_TTL", 300) 
         self.LINEAR_REGRESSION_PATH: str = str(self.BASE_PATH / "linear_regression")
         self.MODEL_PATH: str = str(self.BASE_PATH / "linear_regression" / "price_model.joblib")
         self.TRAINING_DATA_PATH: str = str(self.BASE_PATH / "linear_regression" / "training_data.csv")
 
-        # Ensure ML paths are absolute
         self.LINEAR_REGRESSION_PATH = str(self.BASE_PATH / "linear_regression")
         self.MODEL_PATH = str(self.BASE_PATH / "linear_regression" / "price_model.joblib")
         self.TRAINING_DATA_PATH = str(self.BASE_PATH / "linear_regression" / "training_data.csv")
-
-        # Create directories if they don't exist
         os.makedirs(self.LINEAR_REGRESSION_PATH, exist_ok=True)
 
-        # Configurable Time Intervals (moved to top with defaults)
 
         # Mempool Monitor Configs
         self.MEMPOOL_MAX_RETRIES: int = self._get_env_int("MEMPOOL_MAX_RETRIES", 3)
@@ -161,8 +148,7 @@ class Configuration:
         self.SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI: int = self._get_env_int("SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI", 200)
         self.PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD: float = self._get_env_float("PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD", 0.02)
 
-        # High Value Transaction Monitoring
-        self.HIGH_VALUE_THRESHOLD: int = self._get_env_int("HIGH_VALUE_THRESHOLD", 1000000000000000000) # 1 ETH in Wei
+        self.HIGH_VALUE_THRESHOLD: int = self._get_env_int("HIGH_VALUE_THRESHOLD", 1000000000000000000) 
 
 
     def _load_env(self) -> None:
@@ -172,7 +158,7 @@ class Configuration:
 
     def _validate_ethereum_address(self, address: str, var_name: str) -> str:
         """
-        Validate Ethereum address format with improved checks.
+        Validate Ethereum address format.
         Returns: Normalized address string
         Raises: ValueError if invalid
         """
@@ -181,8 +167,8 @@ class Configuration:
 
         address = address.strip()
         if not is_checksum_address(address):
-            if address.lower() == address: # all lowercase, might be valid but not checksummed
-                address = self.web3.to_checksum_address(address) # attempt to checksum
+            if address.lower() == address: 
+                address = self.web3.to_checksum_address(address) 
             else:
                 raise ValueError(f"Invalid {var_name}: Not a checksummed address.")
         return address
@@ -192,12 +178,12 @@ class Configuration:
         """Get an environment variable as string, raising error if missing."""
         value = os.getenv(var_name, default)
         if value is None:
-            if default is None: # Only raise error if no default is provided
+            if default is None: 
                 logger.error(f"Missing environment variable: {var_name}")
                 raise ValueError(f"Missing environment variable: {var_name}")
-            return default # Return default if provided and env var is missing
+            return default 
 
-        # Only validate Ethereum addresses for contract addresses, and if it's not a default value
+
         if 'ADDRESS' in var_name and not any(path_suffix in var_name for path_suffix in ['ABI', 'PATH', 'ADDRESSES', 'SIGNATURES', 'SYMBOLS']) and value != default:
             try:
                 return self._validate_ethereum_address(value, var_name)
@@ -220,7 +206,6 @@ class Configuration:
                 if default is None:
                     raise ValueError(f"Missing environment variable: {var_name}")
                 return default
-            # Clean the value before parsing
             cleaned_value = self._parse_numeric_string(value)
             return int(cleaned_value)
         except ValueError as e:
@@ -235,7 +220,6 @@ class Configuration:
                 if default is None:
                     raise ValueError(f"Missing environment variable: {var_name}")
                 return default
-            # Clean the value before parsing
             cleaned_value = self._parse_numeric_string(value)
             return float(cleaned_value)
         except ValueError as e:
@@ -275,7 +259,6 @@ class Configuration:
              logger.error("Invalid format for token addresses: must be a dictionary")
              raise ValueError("Invalid format for token addresses: must be a dictionary in token addresses file")
 
-         # Extract addresses from dictionary keys
          addresses = list(data.keys())
          logger.info(f"Loaded {len(addresses)} token addresses")
          return addresses
@@ -323,22 +306,16 @@ class Configuration:
             logger.error(f"Failed to load ABI from {path}: {e}")
             raise
 
-    async def load(self, web3) -> None: # Pass web3 instance here to Configuration.load()
+    async def load(self, web3) -> None: 
         """Load and validate all configuration data."""
         try:
-            self.web3 = web3 # Store web3 instance
-            # Create required directories if they don't exist
+            self.web3 = web3 
+
             self._create_required_directories()
 
-            # Load and validate critical ABIs (Now just loads paths)
             await self._load_critical_abis()
-
-            # Validate API keys (Enhanced API key validation)
             await self._validate_api_keys()
-
-            # Validate addresses
             self._validate_addresses()
-
             logger.debug("Configuration loaded successfully")
 
         except Exception as e:
@@ -360,12 +337,12 @@ class Configuration:
     async def _load_critical_abis(self) -> None:
         """Load and validate critical ABIs (Now just loads paths)."""
         try:
-            self.AAVE_FLASHLOAN_ABI_PATH = self._resolve_path("AAVE_FLASHLOAN_ABI") # Now storing path
-            self.AAVE_POOL_ABI_PATH = self._resolve_path("AAVE_POOL_ABI") # Now storing path
-            self.ERC20_ABI_PATH = self._resolve_path("ERC20_ABI") # Now storing path
-            self.UNISWAP_ABI_PATH = self._resolve_path("UNISWAP_ABI") # Now storing path
-            self.SUSHISWAP_ABI_PATH = self._resolve_path("SUSHISWAP_ABI") # Now storing path
-            self.GAS_PRICE_ORACLE_ABI_PATH = self._resolve_path("GAS_PRICE_ORACLE_ABI") # Now storing path
+            self.AAVE_FLASHLOAN_ABI_PATH = self._resolve_path("AAVE_FLASHLOAN_ABI") 
+            self.AAVE_POOL_ABI_PATH = self._resolve_path("AAVE_POOL_ABI")
+            self.ERC20_ABI_PATH = self._resolve_path("ERC20_ABI") 
+            self.UNISWAP_ABI_PATH = self._resolve_path("UNISWAP_ABI") 
+            self.SUSHISWAP_ABI_PATH = self._resolve_path("SUSHISWAP_ABI") 
+            self.GAS_PRICE_ORACLE_ABI_PATH = self._resolve_path("GAS_PRICE_ORACLE_ABI") 
 
         except Exception as e:
             raise RuntimeError(f"Failed to load critical ABIs paths: {e}")
@@ -374,7 +351,7 @@ class Configuration:
         """Validate required API keys are set and functional."""
         required_keys = [
             ('ETHERSCAN_API_KEY', "https://api.etherscan.io/api?module=stats&action=ethprice&apikey={key}"),
-            ('INFURA_API_KEY', None),  # validated via JSON-RPC POST
+            ('INFURA_API_KEY', None), 
             ('COINGECKO_API_KEY', None),
             ('COINMARKETCAP_API_KEY', "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?CMC_PRO_API_KEY={key}&limit=1"),
             ('CRYPTOCOMPARE_API_KEY', "https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD,JPY,EUR&api_key={key}")
@@ -404,7 +381,6 @@ class Configuration:
                     continue
 
                 if key_name == "COINGECKO_API_KEY":
-                    # Use free endpoint; ignore the provided key for validation.
                     test_url = "https://api.coingecko.com/api/v3/ping"
                     try:
                         async with session.get(test_url, timeout=10) as response:
@@ -416,7 +392,6 @@ class Configuration:
                         invalid_keys.append(f"{key_name} (Error: {e})")
                     continue
 
-                # For CRYPTOCOMPARE_API_KEY, use the provided multi-currency example.
                 if key_name == "CRYPTOCOMPARE_API_KEY":
                     test_url = test_url_template.format(key=api_key)
                     try:
@@ -428,8 +403,6 @@ class Configuration:
                     except Exception as e:
                         invalid_keys.append(f"{key_name} (Error: {e})")
                     continue
-
-                # For other keys, use the provided GET test URL.
                 test_url = test_url_template.format(key=api_key)
                 try:
                     async with session.get(test_url, timeout=10) as response:

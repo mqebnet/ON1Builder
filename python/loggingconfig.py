@@ -1,3 +1,6 @@
+#========================================================================================================================
+# https://github.com/John0n1/0xBuilder
+
 import logging
 import colorlog
 
@@ -10,10 +13,9 @@ def setup_logging(name, level=logging.INFO):
             'INFO': 'green',
             'WARNING': 'yellow',
             'ERROR': 'red',
-            'CRITICAL': 'bold_red',
+            'CRITICAL': 'bold_red'
         }
     ))
-
     logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.addHandler(handler)

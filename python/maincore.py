@@ -1,6 +1,6 @@
 #========================================================================================================================
-# File: maincore.py
-#========================================================================================================================
+# https://github.com/John0n1/0xBuilder
+
 import asyncio
 import tracemalloc
 import async_timeout
@@ -30,11 +30,6 @@ import sys
 logger = setup_logging("MainCore", level=logging.INFO)
 
 # Constants
-
-MIN_ETH_BALANCE = 0.000001  # minimum ETH balance threshold
-PROVIDER_TIMEOUT = 10  # seconds
-WEB3_MAX_RETRIES = 3
-WEB3_RETRY_DELAY = 2
 
 # Custom types
 ComponentType = Union[
@@ -77,9 +72,9 @@ class MainCore:
             'strategynet': None,
         }
         self._component_health: Dict[str, bool] = {name: False for name in self.components}
-        self.WEB3_MAX_RETRIES = 3  # Added default number of retries for web3 initialization
+        self.WEB3_MAX_RETRIES = 3  
         logger.info("Initializing 0xBuilder...")
-        time.sleep(2)  # replaced await asyncio.sleep(2) with synchronous sleep
+        time.sleep(2)  
     async def _initialize_components(self) -> None:
         """Initialize all components in the correct dependency order."""
         try:
@@ -87,12 +82,12 @@ class MainCore:
             logger.debug("Loading Configuration...")
             await self._load_configuration()
             logger.info("Configuration initialized ✅")
-            await asyncio.sleep(1) # Add delay for better logging
+            await asyncio.sleep(1)
 
             logger.debug("Initializing Web3...")
             self.web3 = await self._initialize_web3()
             logger.info("Web3 initialized ✅")
-            await asyncio.sleep(1) # Add delay for better logging
+            await asyncio.sleep(1)
             if not self.web3:
                 raise RuntimeError("Failed to initialize Web3 connection")
             self.configuration.web3 = self.web3 # Set web3 instance in configuration
@@ -100,14 +95,14 @@ class MainCore:
             self.account = Account.from_key(self.configuration.WALLET_KEY)
             await self._check_account_balance()
             logger.info(f"Account {self.account.address} initialized ✅")
-            await asyncio.sleep(1) # Add delay for better logging
+            await asyncio.sleep(1)
 
             # Initialize ABI Registry and load ABIs (needs to be after web3 for chain-aware ABIs if needed)
             logger.debug("Initializing ABI Registry...")
             abiregistry = ABIRegistry()
             await abiregistry.initialize(self.configuration.BASE_PATH)
             logger.info("ABI Registry initialized ✅")
-            await asyncio.sleep(1) # Add delay for better logging
+            await asyncio.sleep(1) 
             # Load and validate ERC20 ABI (needs ABI Registry initialized)
             erc20_abi = abiregistry.get_abi('erc20') # Load directly from registry
             if not erc20_abi:
@@ -118,7 +113,7 @@ class MainCore:
             self.components['apiconfig'] = APIConfig(self.configuration)
             await self.components['apiconfig'].initialize()
             logger.info("API Config initialized ✅")
-            await asyncio.sleep(1) # Add delay for better logging
+            await asyncio.sleep(1) 
 
             # 3. Initialize nonce core (depends on Web3, Configuration)
             logger.debug("Initializing Nonce Core...")
@@ -129,7 +124,7 @@ class MainCore:
             )
             await self.components['noncecore'].initialize()
             logger.info(f"NonceCore initialized with nonce {await self.components['noncecore'].get_nonce()} ✅") # Get nonce after init
-            await asyncio.sleep(1) # Add delay for better logging
+            await asyncio.sleep(1) 
             # 4. Initialize safety net (depends on Web3, Configuration, APIConfig, MarketMonitor - Market Monitor is optional here and could be None initially)
             logger.debug("Initializing SafetyNet...")
             self.components['safetynet'] = SafetyNet(
@@ -138,27 +133,26 @@ class MainCore:
                 self.account.address,
                 self.account,
                 self.components['apiconfig'],
-                marketmonitor = self.components.get('marketmonitor') # Market monitor might be None at this point, that's okay
+                marketmonitor = self.components.get('marketmonitor')
             )
             await self.components['safetynet'].initialize()
             logger.info("SafetyNet initialized ✅ ")
-            await asyncio.sleep(1) # Add delay for better logging
+            await asyncio.sleep(1) 
             # 5. Initialize transaction core with corrected parameters:
             logger.debug("Initializing Transaction Core...")
             self.components['transactioncore'] = TransactionCore(
                 self.web3,
                 self.account,
-                self.configuration.AAVE_FLASHLOAN_ADDRESS,  # Flashloan address
-                self.configuration.AAVE_POOL_ADDRESS,       # Pool address
+                self.configuration.AAVE_FLASHLOAN_ADDRESS, 
+                self.configuration.AAVE_POOL_ADDRESS,      
                 noncecore=self.components['noncecore'],
                 safetynet=self.components['safetynet'],
                 configuration=self.configuration
             )
             await self.components['transactioncore'].initialize()
             logger.info("Transaction Core initialized ✅")
-            await asyncio.sleep(1) # Add delay for better logging
+            await asyncio.sleep(1) 
 
-             # 6. Initialize market monitor (depends on Web3, Configuration, APIConfig, TransactionCore)
             logger.debug("Initializing Market Monitor...")
             self.components['marketmonitor'] = MarketMonitor(
                 web3=self.web3,
@@ -168,9 +162,9 @@ class MainCore:
             )
             await self.components['marketmonitor'].initialize()
             logger.info("Market Monitor initialized ✅ ")
-            await asyncio.sleep(1) # Add delay for better logging
+            await asyncio.sleep(1)
 
-            # 7. Initialize mempool monitor (depends on Web3, SafetyNet, NonceCore, APIConfig, MarketMonitor, Configuration, ERC20 ABI)
+
             logger.debug("Initializing Mempool Monitor...")
             self.components['mempoolmonitor'] = MempoolMonitor(
                 web3=self.web3,
@@ -184,8 +178,8 @@ class MainCore:
             )
             await self.components['mempoolmonitor'].initialize()
             logger.info("Mempool Monitor initialized ✅ ")
-            await asyncio.sleep(1) # Add delay for better logging
-            # 8. Finally initialize strategy net (depends on TransactionCore, MarketMonitor, SafetyNet, APIConfig)
+            await asyncio.sleep(1) 
+
             logger.debug("Initializing StrategyNet...")
             self.components['strategynet'] = StrategyNet(
                 self.components['transactioncore'],
@@ -195,9 +189,9 @@ class MainCore:
             )
             await self.components['strategynet'].initialize()
             logger.info("StrategyNet initialized ✅")
-            await asyncio.sleep(1) # Add delay for better logging
+            await asyncio.sleep(1) 
             logger.info("All vital components initialized successfully ✅")
-            await asyncio.sleep(1) # Add delay for better logging
+            await asyncio.sleep(1) 
         except Exception as e:
             logger.critical(f"Component initialization failed: {e}", exc_info=True)
             raise
@@ -225,15 +219,15 @@ class MainCore:
         """Load all configuration elements in the correct order."""
         try:
             # First load the configuration itself
-            await self.configuration.load(self.web3) # Pass web3 instance to configuration load
+            await self.configuration.load(self.web3) 
 
-        except FileNotFoundError as fnfe: # Catch specific FileNotFoundError
+        except FileNotFoundError as fnfe:
             logger.critical(f"Configuration file not found: {fnfe}")
             raise
-        except ValueError as ve: # Catch specific ValueError for config validation errors
+        except ValueError as ve: 
             logger.critical(f"Configuration validation error: {ve}")
             raise
-        except Exception as e: # Catch any other config loading errors
+        except Exception as e: 
             logger.critical(f"Failed to load configuration: {e}", exc_info=True)
             raise
 
@@ -245,38 +239,36 @@ class MainCore:
             logger.error("No valid endpoints provided!")
             return None
 
+        max_retries = self.configuration.get_config_value("WEB3_MAX_RETRIES", 3)
+        retry_delay = self.configuration.get_config_value("WEB3_RETRY_DELAY", 2)
+
         for provider_name, provider in providers:
-             for attempt in range(self.WEB3_MAX_RETRIES):
+             for attempt in range(max_retries):
                 try:
                     logger.debug(f"Attempting connection with {provider_name} (attempt {attempt + 1})...")
                     web3 = AsyncWeb3(provider, modules={"eth": (AsyncEth,)})
+                    async with async_timeout.timeout(10):
+                        if await web3.is_connected():
+                            chain_id = await web3.eth.chain_id
+                            logger.info(f"Connected to network via {provider_name} (Chain ID: {chain_id})")
+                            await self._add_middleware(web3)
+                            return web3
+                except asyncio.TimeoutError:
+                    logger.warning(f"Connection timeout with {provider_name}")
+                    continue
 
-                    # Test connection with timeout
-                    try:
-                         async with async_timeout.timeout(10):
-                             if await web3.is_connected():
-                                 chain_id = await web3.eth.chain_id
-                                 logger.info(f"Connected to network via {provider_name} (Chain ID: {chain_id})")
-                                 await self._add_middleware(web3)
-                                 return web3
-                    except asyncio.TimeoutError:
-                         logger.warning(f"Connection timeout with {provider_name}")
-                         continue # Continue to next provider on timeout
-
-                except Web3Exception as w3e: # Catch Web3Exception for connection specific errors
+                except Web3Exception as w3e:
                     logger.warning(f"{provider_name} connection attempt {attempt + 1} failed (Web3Exception): {w3e}")
-                    if attempt < self.WEB3_MAX_RETRIES - 1:
-                        await asyncio.sleep(WEB3_RETRY_DELAY * (attempt + 1)) # Use WEB3_RETRY_DELAY constant
-                    continue # Continue to next attempt
-                except Exception as e: # Catch any other connection errors
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(retry_delay * (attempt + 1))
+                    continue
+                except Exception as e:
                     logger.warning(f"{provider_name} connection attempt {attempt + 1} failed: {e}")
-                    if attempt < self.WEB3_MAX_RETRIES - 1:
-                        await asyncio.sleep(WEB3_RETRY_DELAY * (attempt + 1)) # Use WEB3_RETRY_DELAY constant
-                    continue # Continue to next attempt
-
-             logger.error(f"All attempts failed for {provider_name}") # Log error if all attempts for a provider fail
-
-        logger.error("Failed to initialize Web3 with any provider") # Log error if all providers failed
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(retry_delay * (attempt + 1))
+                    continue
+             logger.error(f"All attempts failed for {provider_name}")
+        logger.error("Failed to initialize Web3 with any provider")
         return None
 
     async def _get_providers(self) -> List[Tuple[str, Union[AsyncIPCProvider, AsyncHTTPProvider, WebSocketProvider]]]:
@@ -333,20 +325,21 @@ class MainCore:
             raise
 
     async def _check_account_balance(self) -> None:
-        """Check account balance with improved error handling."""
+        """Check account balance """
         if not self.account or not self.web3:
             raise ValueError("Account or Web3 not initialized before balance check")
 
         try:
+            min_balance = float(self.configuration.get_config_value("MIN_ETH_BALANCE", 0.000001))
             balance = await self.web3.eth.get_balance(self.account.address)
-            balance_eth = self.web3.from_wei(balance, 'ether')
+            balance_eth = float(self.web3.from_wei(balance, 'ether'))
 
             logger.info(f"Account {self.account.address[:8]}...{self.account.address[-6:]}")
             logger.info(f"Balance: {balance_eth:.4f} ETH")
 
-            if balance_eth < MIN_ETH_BALANCE:
-                logger.warning(f"Critical: Low account balance ({balance_eth:.4f} ETH), below threshold of {MIN_ETH_BALANCE} ETH")
-                # Could add automatic safety measures here, pass for now
+            if balance_eth < min_balance:
+                logger.warning(f"Critical: Low account balance ({balance_eth:.4f} ETH), below threshold of {min_balance} ETH")
+
 
         except Exception as e:
             logger.error(f"Balance check failed: {e}", exc_info=True)
@@ -365,7 +358,7 @@ class MainCore:
             raise
 
     async def run(self) -> None:
-        """Enhanced main execution loop with component health monitoring."""
+        """ main execution loop with component health monitoring."""
         logger.info("Starting 0xBuilder main loop...")
         self.running = True
         initial_snapshot = tracemalloc.take_snapshot()
@@ -383,17 +376,16 @@ class MainCore:
         except* Exception as e:
             logger.error(f"Fatal error in run loop: {e}", exc_info=True)
         finally:
-            await self.stop() # Ensure stop is called in finally block
+            await self.stop() 
 
     async def _monitor_memory(self, initial_snapshot: tracemalloc.Snapshot) -> None:
-        """Enhanced memory monitoring with leak detection."""
+        """ memory monitoring with leak detection."""
         last_snapshot = initial_snapshot
         while self.running:
             try:
                 current_snapshot = tracemalloc.take_snapshot()
                 diff_stats = current_snapshot.compare_to(last_snapshot, 'lineno')
 
-                # Log significant memory changes
                 significant_changes = [stat for stat in diff_stats if abs(stat.size_diff) > 1024 * 1024]  # > 1MB
                 if significant_changes:
                     logger.warning("Significant memory changes detected:")
@@ -401,7 +393,7 @@ class MainCore:
                         logger.warning(str(stat))
 
                 last_snapshot = current_snapshot
-                await asyncio.sleep(self.configuration.MEMORY_CHECK_INTERVAL) # Use configurable interval
+                await asyncio.sleep(self.configuration.MEMORY_CHECK_INTERVAL) 
             except asyncio.CancelledError:
                 logger.info("Memory monitoring task cancelled.")
                 break
@@ -416,22 +408,22 @@ class MainCore:
                     if component and hasattr(component, 'is_healthy'):
                         self._component_health[name] = await component.is_healthy()
                     else:
-                        self._component_health[name] = component is not None # Assume healthy if no is_healthy()
+                        self._component_health[name] = component is not None 
 
                 if not all(self._component_health.values()):
                     unhealthy = [name for name, healthy in self._component_health.items() if not healthy]
                     logger.warning(f"Unhealthy components detected: {unhealthy}")
 
-                await asyncio.sleep(self.configuration.COMPONENT_HEALTH_CHECK_INTERVAL) # Use configurable interval
+                await asyncio.sleep(self.configuration.COMPONENT_HEALTH_CHECK_INTERVAL) 
             except asyncio.CancelledError:
                 logger.info("Component health check task cancelled.")
                 break
             except Exception as e:
                 logger.error(f"Health check error: {e}", exc_info=True)
-                await asyncio.sleep(5)  # Back off on error
+                await asyncio.sleep(5) 
 
     async def stop(self) -> None:
-        """Enhanced graceful shutdown."""
+        """graceful shutdown."""
         if not self.running:
             return
 
@@ -440,7 +432,6 @@ class MainCore:
         self._shutdown_event.set()
 
         try:
-            # Stop components in parallel with timeout
             stop_tasks = []
             for name, component in self.components.items():
                 if component and hasattr(component, 'stop'):
@@ -454,12 +445,9 @@ class MainCore:
                     for task in pending:
                         task.cancel()
 
-            # Cleanup web3
             if self.web3 and hasattr(self.web3.provider, 'disconnect'):
                 await self.web3.provider.disconnect()
                 logger.info("Web3 provider disconnected.")
-
-            # Final memory report
             self._log_final_memory_stats()
 
         except Exception as e:
@@ -496,7 +484,7 @@ class MainCore:
         while self.running:
             try:
                 try:
-                    tx = await asyncio.wait_for(monitor.profitable_transactions.get(), timeout=self.configuration.PROFITABLE_TX_PROCESS_TIMEOUT) # Use configurable timeout
+                    tx = await asyncio.wait_for(monitor.profitable_transactions.get(), timeout=self.configuration.PROFITABLE_TX_PROCESS_TIMEOUT) 
                     tx_hash = tx.get('tx_hash', 'Unknown')
                     strategy_type = tx.get('strategy_type', 'Unknown')
                 except asyncio.TimeoutError:
@@ -513,7 +501,7 @@ class MainCore:
                 else:
                     logger.warning(f"Strategy execution failed for tx: {tx_hash[:8]}...")
 
-                # Mark task as done
+
                 monitor.profitable_transactions.task_done()
 
             except Exception as e:
@@ -525,26 +513,21 @@ class MainCore:
         logger.warning("Emergency shutdown initiated...")
         self.running = False
         self._shutdown_event.set()
-
         try:
-            # Cancel all tasks
+
             for task in asyncio.all_tasks():
                 task.cancel()
 
-            # Wait for tasks to finish
             await asyncio.gather(*asyncio.all_tasks())
 
-            # Cleanup web3
             if self.web3 and hasattr(self.web3.provider, 'disconnect'):
                 await self.web3.provider.disconnect()
                 logger.info("Web3 provider disconnected.")
-
-            # Final memory report
+                
             self._log_final_memory_stats()
 
         except Exception as e:
             try:
-                # Force system exit on emergency shutdown
                 sys.exit(1)
             except Exception as se:
                 logger.error(f"Error during emergency shutdown: {se}", exc_info=True)

@@ -1,5 +1,9 @@
 #========================================================================================================================
-# File: noncecore.py
+# https://github.com/John0n1/0xBuilder
+
+# This file contains the NonceCore class, which is responsible for managing nonces for Ethereum transactions.
+# It ensures that we always have the correct nonce for the next transaction, even in the presence of pending transactions.
+# The class uses a TTLCache to store the current nonce, and it refreshes the nonce from the chain when necessary.
 #========================================================================================================================
 import asyncio
 import time

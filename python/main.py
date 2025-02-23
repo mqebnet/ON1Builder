@@ -1,3 +1,6 @@
+#========================================================================================================================
+# https://github.com/John0n1/0xBuilder
+
 import signal
 import asyncio
 import tracemalloc
@@ -6,6 +9,7 @@ from configuration import Configuration
 
 from loggingconfig import setup_logging
 import logging
+
 logger = setup_logging("Main", level=logging.INFO)
 
 async def run_bot():
@@ -15,36 +19,29 @@ async def run_bot():
     def shutdown_handler():
         """Handle shutdown signals."""
         logger.debug("Received shutdown signal. Stopping the bot...")
-
-
     try:
-        # Start memory tracking
         tracemalloc.start()
         logger.debug("Starting 0xBuilder...")
 
-        # Initialize configuration
         configuration = Configuration()
 
-        # Create and initialize main core
+
         core = MainCore(configuration)
 
-        # Register shutdown signals
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, shutdown_handler)
 
-        # Initialize and run
         await core.initialize()
         await core.run()
 
     except Exception as e:
         logger.critical(f"Fatal error: {e}")
-        if tracemalloc.is_tracing(): # Keep snapshot in except block for immediate error info
+        if tracemalloc.is_tracing():
             snapshot = tracemalloc.take_snapshot()
             logger.debug("Top 10 memory allocations:")
             for stat in snapshot.statistics('lineno')[:10]:
                 logger.debug(str(stat))
     finally:
-        # Stop memory tracking
         tracemalloc.stop()
         if tracemalloc.is_tracing(): 
             snapshot = tracemalloc.take_snapshot()
@@ -63,7 +60,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         pass
     except Exception as e:
-        # Get current memory snapshot on error
         snapshot = tracemalloc.take_snapshot()
         logger.critical(f"Program terminated with an error: {e}")
         logger.debug("Top 10 memory allocations at error:")

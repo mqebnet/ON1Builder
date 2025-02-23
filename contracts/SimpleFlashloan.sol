@@ -1,4 +1,3 @@
-```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
@@ -22,13 +21,11 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
         gasPriceOracle = IGasPriceOracle(_gasPriceOracle);
     }
 
-    // Modifier to allow only the owner to perform sensitive functions
     modifier onlyOwner() {
         require(msg.sender == owner, "Not contract owner");
         _;
     }
 
-    // Modifier to prevent reentrancy attacks
     modifier nonReentrant() {
         require(!locked, "Reentrant call");
         locked = true;
@@ -36,20 +33,17 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
         locked = false;
     }
 
-    // Request a flash loan from Aave's pool for multiple tokens
     function fn_RequestFlashLoan(address[] memory _tokens, uint256[] memory _amounts) public {
         require(_tokens.length == _amounts.length, "Tokens and amounts length mismatch");
         for (uint256 i = 0; i < _tokens.length; i++) {
             address receiverAddress = address(this);
             address asset = _tokens[i];
             uint256 amount = _amounts[i];
-            bytes memory params = "";  // Empty params can be expanded for more complex logic
-            uint16 referralCode = 0;   // Optional referral code
+            bytes memory params = "";  
+            uint16 referralCode = 0;  
 
-            // Emit an event before triggering the flash loan
             emit FlashLoanRequested(_tokens[i], _amounts[i]);
             
-            // Execute the flash loan
             POOL.flashLoanSimple(
                 receiverAddress,
                 asset,
@@ -60,7 +54,6 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
         }
     }
 
-    // This function is called by Aave after receiving the loaned amount
     function executeOperation(
         address asset,
         uint256 amount,
@@ -68,23 +61,12 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
         address initiator,
         bytes calldata params
     ) external override nonReentrant returns (bool) {
-        // Custom logic for MEV bot, arbitrage, liquidation, etc., should be placed here
-        // Flash loan execution logic handled outside the contract in Python
 
-        // Advanced arbitrage strategies and MEV bot logic
-        // Implement front-run, back-run, and sandwich attack logic here
-
-        // Approve Aave to withdraw the loan + premium
-        uint256 totalAmount = amount + premium;
-        require(IERC20(asset).approve(address(POOL), totalAmount), "Approval failed");
-
-        // Emit event after execution for monitoring/logging
         emit FlashLoanExecuted(asset, amount, premium, true);
 
         return true;
     }
 
-    // Allow the owner to withdraw any ERC20 tokens stuck in the contract
     function withdrawToken(address _tokenAddress) public onlyOwner {
         IERC20 token = IERC20(_tokenAddress);
         uint256 balance = token.balanceOf(address(this));
@@ -92,14 +74,11 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
         token.transfer(owner, balance);
     }
 
-    // Function to withdraw ETH if the contract receives any
     function withdrawETH() public onlyOwner {
         uint256 balance = address(this).balance;
         require(balance > 0, "No ETH to withdraw");
         owner.transfer(balance);
     }
 
-    // Fallback function to receive ETH
     receive() external payable {}
 }
-```
