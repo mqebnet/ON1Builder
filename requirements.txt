@@ -4,7 +4,7 @@ async_timeout==5.0.1
 cachetools==5.5.0
 colorama==0.4.6
 eth_abi==5.1.0
-eth_account==0.13.4
+eth_account==0.13.5
 eth_utils==5.1.0
 hexbytes==1.2.1
 joblib==1.4.2
