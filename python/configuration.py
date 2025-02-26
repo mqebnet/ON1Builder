@@ -70,14 +70,14 @@ class Configuration:
         self.COINGECKO_API_KEY: str = self._get_env_str("COINGECKO_API_KEY")
         self.COINMARKETCAP_API_KEY: str = self._get_env_str("COINMARKETCAP_API_KEY")
         self.CRYPTOCOMPARE_API_KEY: str = self._get_env_str("CRYPTOCOMPARE_API_KEY")
-        self.HTTP_ENDPOINT: Optional[str] = self._get_env_str("HTTP_ENDPOINT", None)
+        self.HTTP_ENDPOINT: Optional[str] = self._get_env_str("HTTP_ENDPOINT")
         self.WEBSOCKET_ENDPOINT: Optional[str] = self._get_env_str("WEBSOCKET_ENDPOINT", None)
         self.IPC_ENDPOINT: Optional[str] = self._get_env_str("IPC_ENDPOINT", None)
 
         # Account
         self.WALLET_ADDRESS: str = self._get_env_str("WALLET_ADDRESS")
         self.WALLET_KEY: str = self._get_env_str("WALLET_KEY")
-        self.X_GOOG_API_KEY: str = self._get_env_str("X_GOOG_API_KEY")
+        self.API_KEY: str = self._get_env_str("API_KEY")
 
         # Paths
         self.ERC20_ABI: Path = self._resolve_path("ERC20_ABI")

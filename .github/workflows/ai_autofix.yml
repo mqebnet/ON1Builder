@@ -1,0 +1,36 @@
+name: AI Autofix and Optimize Python (DeepSeek-R1) - Ollama Lib
+
+on:
+  push:
+    branches: [ "main" ] 
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  ai_code_review:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12' 
+
+      - name: Install Python dependencies
+        run: |
+          pip install ollama diff-match-patch # Install ollama library
+
+      - name: Run AI Autofix Script (DeepSeek-R1) - Ollama Lib
+        run: python .github/workflows/ai_autofix_script.py
+        env:
+          OLLAMA_MODEL: "deepseek-r1:32b" 
+
+      - name: Display Patch Output
+        if: always() # Always run to show patch even if script fails
+        run: |
+          echo "--- AI Patch Output (Review Carefully) ---"
+          cat ai_patch_output.txt || echo "No patch output generated or script error occurred."
+          echo "--- End Patch Output ---"

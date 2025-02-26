@@ -234,6 +234,14 @@ class MainCore:
             logger.critical(f"Failed to load configuration: {e}", exc_info=True)
             raise
 
+    async def _cleanup_provider(self, provider: Any) -> None:
+        try:
+            if hasattr(provider, 'disconnect'):
+                await provider.disconnect()
+            elif hasattr(provider, 'session') and not provider.session.closed:
+                await provider.session.close()
+        except Exception as e:
+            logger.debug(f"Provider cleanup failed: {e}")
 
     async def _initialize_web3(self) -> Optional[AsyncWeb3]:
         """Initialize Web3 connection with error handling and retries."""
@@ -258,27 +266,27 @@ class MainCore:
                             return web3
                 except asyncio.TimeoutError:
                     logger.warning(f"Connection timeout with {provider_name}")
+                    await self._cleanup_provider(provider)
                     continue
-
                 except Web3Exception as w3e:
                     logger.warning(f"{provider_name} connection attempt {attempt + 1} failed (Web3Exception): {w3e}")
                     if attempt < max_retries - 1:
                         await asyncio.sleep(retry_delay * (attempt + 1))
+                    await self._cleanup_provider(provider)
                     continue
                 except Exception as e:
                     logger.warning(f"{provider_name} connection attempt {attempt + 1} failed: {e}")
                     if attempt < max_retries - 1:
                         await asyncio.sleep(retry_delay * (attempt + 1))
+                    await self._cleanup_provider(provider)
                     continue
              logger.error(f"All attempts failed for {provider_name}")
         logger.error("Failed to initialize Web3 with any provider")
         return None
 
-
     async def _get_providers(self) -> List[Tuple[str, Union[AsyncIPCProvider, AsyncHTTPProvider, WebSocketProvider]]]:
         """Get list of available providers with validation."""
         providers = []
-
         # Basic network connectivity test - try resolving google.com
         try:
             import socket
@@ -288,24 +296,26 @@ class MainCore:
             print(f"DNS resolution for google.com FAILED: {e}")
             logger.critical("DNS resolution failing for google.com! Check your network.")
             return [] # Exit providers if basic DNS fails
-
+        api_key = self.configuration.API_KEY
         if self.configuration.HTTP_ENDPOINT:
             try:
-                print(f"Attempting connection with HTTP Provider to URL: {self.configuration.HTTP_ENDPOINT}") # DEBUG PRINT
-                custom_headers = {
-                    "Content-Type": "application/json",
-                    "X-goog-api-key": self.configuration.get_config_value("X_GOOG_API_KEY", None)  # Use X-goog-api-key header - GCP Doc Method
+                print(f"Attempting connection with HTTP Provider to URL: {self.configuration.HTTP_ENDPOINT}")  # DEBUG PRINT
+                custom_headers = { 
+                    "Content-Type": "application/json", 
+                    "X-Goog-Api-Key": "{api_key}"
                 }
                 http_provider = AsyncHTTPProvider(
                     self.configuration.HTTP_ENDPOINT,
                     request_kwargs={'headers': custom_headers}
                 )
-                await http_provider.make_request('eth_blockNumber', [])
+                response = await http_provider.make_request('eth_blockNumber', [])
+                if response.get('error'):  # Check for errors in response
+                    raise Exception(response['error'])
                 providers.append(("HTTP Provider", http_provider))
                 logger.info("Linked to Ethereum network via HTTP Provider. ✅")
-                return providers
+                # Do not return immediately to allow fallback providers in case of later issues.
             except Exception as e:
-                logger.warning(f"HTTP Provider failed. 400, message='Bad Request', url='{self.configuration.HTTP_ENDPOINT}' ❌ - Attempting WebSocket... ") # Modified warning log
+                logger.warning(f"HTTP Provider failed: {e} ❌ - Attempting WebSocket... ")
 
         if self.configuration.WEBSOCKET_ENDPOINT:
             try:
