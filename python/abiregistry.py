@@ -11,9 +11,12 @@ from eth_utils import function_signature_to_4byte_selector
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from loggingconfig import setup_logging
+
+from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
 import logging
-logger = setup_logging("ABIRegistry", level=logging.INFO)
+
+logger = setup_logging("AbiRegistry", level=logging.DEBUG)
+patch_logger_for_animation(logger)  
 
 class ABIRegistry:
     """

@@ -14,9 +14,12 @@ from web3.exceptions import Web3ValueError,  TransactionNotFound
 
 from configuration import Configuration
 
-from loggingconfig import setup_logging
+
+from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
 import logging
-logger = setup_logging("NonceCore", level=logging.INFO)
+
+logger = setup_logging("NonceCore", level=logging.DEBUG)
+patch_logger_for_animation(logger)  
 
 class NonceCore:
     """

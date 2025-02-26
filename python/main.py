@@ -7,10 +7,11 @@ import tracemalloc
 from maincore import MainCore
 from configuration import Configuration
 
-from loggingconfig import setup_logging
+from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
 import logging
 
-logger = setup_logging("Main", level=logging.INFO)
+logger = setup_logging("Main", level=logging.DEBUG)
+patch_logger_for_animation(logger)  
 
 async def run_bot():
     """Run the bot with graceful shutdown handling."""
@@ -21,7 +22,8 @@ async def run_bot():
         logger.debug("Received shutdown signal. Stopping the bot...")
     try:
         tracemalloc.start()
-        logger.debug("Starting 0xBuilder...")
+        logger.info("Starting 0xBuilder...«")
+        await asyncio.sleep(3)
 
         configuration = Configuration()
 

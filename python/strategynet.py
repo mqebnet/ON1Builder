@@ -14,10 +14,12 @@ from transactioncore import TransactionCore
 from safetynet import SafetyNet  
 from marketmonitor import MarketMonitor  
 
-from loggingconfig import setup_logging
-import logging
-logger = setup_logging("StrategyNet", level=logging.INFO)
 
+from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+import logging
+
+logger = setup_logging("StrategyNet", level=logging.DEBUG)
+patch_logger_for_animation(logger)  
 
 class StrategyNet:
     """Advanced strategy network for MEV operations."""

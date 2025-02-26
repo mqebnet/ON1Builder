@@ -16,10 +16,12 @@ from web3 import AsyncWeb3
 from apiconfig import APIConfig
 from configuration import Configuration
 
-from loggingconfig import setup_logging
+
+from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
 import logging
 
-logger = setup_logging("MarketMonitor", level=logging.INFO)
+logger = setup_logging("MarketMonitor", level=logging.DEBUG)
+patch_logger_for_animation(logger)  
 
 class MarketMonitor:
     """Advanced market monitoring system for real-time analysis and prediction."""

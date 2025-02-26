@@ -16,10 +16,12 @@ from sklearn.linear_model import LinearRegression
 
 from configuration import Configuration
 
-from loggingconfig import setup_logging
+
+from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
 import logging
 
-logger = setup_logging("APIConfig", level=logging.INFO)
+logger = setup_logging("APIConfig", level=logging.DEBUG)
+patch_logger_for_animation(logger)  
 
 
 class APIConfig:

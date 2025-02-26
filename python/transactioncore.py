@@ -26,9 +26,12 @@ from mempoolmonitor import MempoolMonitor
 from noncecore import NonceCore
 from safetynet import SafetyNet
 
-from loggingconfig import setup_logging
+
+from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
 import logging
-logger = setup_logging("TransactionCore", level=logging.INFO)
+
+logger = setup_logging("TransactionCore", level=logging.DEBUG)
+patch_logger_for_animation(logger)  
 
 class TransactionCore:
     """
@@ -111,45 +114,58 @@ class TransactionCore:
     async def _validate_contract(self, contract: Any, name: str, abi_type: str) -> None:
         """Validates contracts using a shared pattern."""
         try:
+            validation_methods = {
+                'Lending Pool': [
+                    ('implementation', []),
+                    ('admin', []),
+                    ('getReservesList', []),
+                    ('getReserveData', ['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2']),  # WETH address
+                    ('ADDRESSES_PROVIDER', [])
+                ],
+                'Flashloan': [
+                    ('ADDRESSES_PROVIDER', []),
+                    ('owner', []),
+                    ('POOL', []),
+                    ('FLASHLOAN_PREMIUM_TOTAL', [])
+                ],
+                'Router': [
+                    ('factory', []),
+                    ('WETH', [])
+                ]
+            }
+
+            # Determine which set of methods to try based on contract type
+            methods_to_try = []
             if 'Lending Pool' in name:
-                try:
-                    await contract.functions.implementation().call()
-                    logger.debug(f"{name} contract validated via getReservesList()")
-                except (ContractLogicError, OverflowError):
-                    await contract.functions.admin().call()
-                    logger.debug(f"{name} contract validated via admin()")
+                methods_to_try = validation_methods['Lending Pool']
             elif 'Flashloan' in name:
-                try:
-                    await contract.functions.ADDRESSES_PROVIDER().call()
-                    logger.debug(f"{name} contract validated via ADDRESSES_PROVIDER()")
-                except (ContractLogicError, OverflowError):
-                    try:
-                        await contract.functions.owner().call()
-                        logger.debug(f"{name} contract validated via owner()")
-                    except (ContractLogicError, OverflowError):
-                        code = await self.web3.eth.get_code(contract.address)
-                        if code and code != '0x':
-                            logger.debug(f"{name} contract validated via code existence")
-                        else:
-                            raise ValueError(f"No code at {contract.address}")
+                methods_to_try = validation_methods['Flashloan']
             elif abi_type in ['uniswap', 'sushiswap']:
+                methods_to_try = validation_methods['Router']
+
+            # Try each validation method until one succeeds
+            for method_name, args in methods_to_try:
                 try:
-                    path = [self.configuration.WETH_ADDRESS, self.configuration.USDC_ADDRESS]
-                    await contract.functions.getAmountsOut(1000000, path).call()
-                    logger.debug(f"{name} contract validated via getAmountsOut()")
-                except (ContractLogicError, OverflowError):
-                    await contract.functions.factory().call()
-                    logger.debug(f"{name} contract validated via factory()")
-            else:
-                code = await self.web3.eth.get_code(contract.address)
-                if code and code != '0x':
-                    logger.debug(f"{name} contract validated via code existence")
-                else:
-                    raise ValueError(f"No code at {contract.address}")
+                    if hasattr(contract.functions, method_name):
+                        await getattr(contract.functions, method_name)(*args).call()
+                        logger.debug(f"{name} contract validated via {method_name}()")
+                        return
+                except (ContractLogicError, OverflowError) as e:
+                    logger.debug(f"Method {method_name} failed: {str(e)}")
+                    continue
+
+            # If no validation methods worked, check if there's code at the address
+            code = await self.web3.eth.get_code(contract.address)
+            if code and code != '0x':
+                logger.debug(f"{name} contract validated via code existence")
+                return
+            
+            raise ValueError(f"No valid validation method found for {name}")
 
         except Exception as e:
             self.handle_error(e, "_validate_contract", {"contract": contract, "name": name, "abi_type": abi_type})
             logger.warning(f"Contract validation warning for {name}: {e}")
+            raise
 
     async def build_transaction(self, function_call: Any, additional_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Build transaction with EIP-1559 support and gas estimation."""

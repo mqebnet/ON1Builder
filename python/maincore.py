@@ -23,11 +23,13 @@ from noncecore import NonceCore
 from safetynet import SafetyNet
 from strategynet import StrategyNet
 from transactioncore import TransactionCore
-
-from loggingconfig import setup_logging
-import logging
 import sys
-logger = setup_logging("MainCore", level=logging.INFO)
+
+from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+import logging
+
+logger = setup_logging("MainCore", level=logging.DEBUG)
+patch_logger_for_animation(logger)  
 
 # Constants
 
@@ -76,22 +78,23 @@ class MainCore:
         logger.info("Initializing 0xBuilder...")
         time.sleep(2)  
     async def _initialize_components(self) -> None:
-        """Initialize all components in the correct dependency order."""
+        """Initialize all components in the correct order."""
         try:
-            # 1. First initialize configuration and load ABIs
+            # 1. First initialize configuration
             logger.debug("Loading Configuration...")
             await self._load_configuration()
             logger.info("Configuration initialized ✅")
             await asyncio.sleep(1)
 
+            # 2. Initialize Web3
             logger.debug("Initializing Web3...")
             self.web3 = await self._initialize_web3()
-            logger.info("Web3 initialized ✅")
-            await asyncio.sleep(1)
             if not self.web3:
                 raise RuntimeError("Failed to initialize Web3 connection")
-            self.configuration.web3 = self.web3 # Set web3 instance in configuration
+            logger.info("Web3 initialized ✅")
+            await asyncio.sleep(1)
 
+            # Initialize account
             self.account = Account.from_key(self.configuration.WALLET_KEY)
             await self._check_account_balance()
             logger.info(f"Account {self.account.address} initialized ✅")
@@ -271,19 +274,38 @@ class MainCore:
         logger.error("Failed to initialize Web3 with any provider")
         return None
 
+
     async def _get_providers(self) -> List[Tuple[str, Union[AsyncIPCProvider, AsyncHTTPProvider, WebSocketProvider]]]:
         """Get list of available providers with validation."""
         providers = []
 
+        # Basic network connectivity test - try resolving google.com
+        try:
+            import socket
+            ip_address = socket.gethostbyname("google.com")
+            print(f"DNS resolution for google.com successful. IP address: {ip_address}")
+        except socket.gaierror as e:
+            print(f"DNS resolution for google.com FAILED: {e}")
+            logger.critical("DNS resolution failing for google.com! Check your network.")
+            return [] # Exit providers if basic DNS fails
+
         if self.configuration.HTTP_ENDPOINT:
-             try:
-                http_provider = AsyncHTTPProvider(self.configuration.HTTP_ENDPOINT)
+            try:
+                print(f"Attempting connection with HTTP Provider to URL: {self.configuration.HTTP_ENDPOINT}") # DEBUG PRINT
+                custom_headers = {
+                    "Content-Type": "application/json",
+                    "X-goog-api-key": self.configuration.get_config_value("X_GOOG_API_KEY", None)  # Use X-goog-api-key header - GCP Doc Method
+                }
+                http_provider = AsyncHTTPProvider(
+                    self.configuration.HTTP_ENDPOINT,
+                    request_kwargs={'headers': custom_headers}
+                )
                 await http_provider.make_request('eth_blockNumber', [])
                 providers.append(("HTTP Provider", http_provider))
                 logger.info("Linked to Ethereum network via HTTP Provider. ✅")
                 return providers
-             except Exception as e:
-                 logger.warning(f"HTTP Provider failed. {e} ❌ - Attempting WebSocket... ")
+            except Exception as e:
+                logger.warning(f"HTTP Provider failed. 400, message='Bad Request', url='{self.configuration.HTTP_ENDPOINT}' ❌ - Attempting WebSocket... ") # Modified warning log
 
         if self.configuration.WEBSOCKET_ENDPOINT:
             try:

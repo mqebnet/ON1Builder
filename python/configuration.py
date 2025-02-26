@@ -5,16 +5,18 @@ import os
 import json
 import aiofiles
 import dotenv
-import aiohttp 
+import aiohttp
 
 from eth_utils import is_checksum_address
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from loggingconfig import setup_logging
+
+from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
 import logging
 
-logger = setup_logging("Configuration", level=logging.INFO)
+logger = setup_logging("Configuration", level=logging.DEBUG)
+patch_logger_for_animation(logger)  
 
 # Constants
 DEFAULT_MAX_GAS_PRICE = 100_000_000_000 
@@ -75,6 +77,7 @@ class Configuration:
         # Account
         self.WALLET_ADDRESS: str = self._get_env_str("WALLET_ADDRESS")
         self.WALLET_KEY: str = self._get_env_str("WALLET_KEY")
+        self.X_GOOG_API_KEY: str = self._get_env_str("X_GOOG_API_KEY")
 
         # Paths
         self.ERC20_ABI: Path = self._resolve_path("ERC20_ABI")
@@ -166,13 +169,17 @@ class Configuration:
             raise ValueError(f"{var_name} must be a string, got {type(address)}")
 
         address = address.strip()
-        if not is_checksum_address(address):
-            if address.lower() == address: 
-                address = self.web3.to_checksum_address(address) 
-            else:
-                raise ValueError(f"Invalid {var_name}: Not a checksummed address.")
-        return address
-
+        try:
+            if not is_checksum_address(address):
+                # Convert lowercase to checksum without using web3
+                if address.lower() == address and len(address) == 42 and address.startswith('0x'): 
+                    from eth_utils import to_checksum_address
+                    address = to_checksum_address(address)
+                else:
+                    raise ValueError(f"Invalid {var_name}: Not a checksummed address.")
+            return address
+        except Exception as e:
+            raise ValueError(f"Invalid {var_name} address format: {str(e)}")
 
     def _get_env_str(self, var_name: str, default: Optional[str] = None) -> str:
         """Get an environment variable as string, raising error if missing."""
@@ -306,18 +313,14 @@ class Configuration:
             logger.error(f"Failed to load ABI from {path}: {e}")
             raise
 
-    async def load(self, web3) -> None: 
+    async def load(self, web3=None) -> None: 
         """Load and validate all configuration data."""
         try:
-            self.web3 = web3 
-
             self._create_required_directories()
-
             await self._load_critical_abis()
             await self._validate_api_keys()
             self._validate_addresses()
             logger.debug("Configuration loaded successfully")
-
         except Exception as e:
             logger.error(f"Configuration load failed: {str(e)}")
             raise
