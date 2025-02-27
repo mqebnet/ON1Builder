@@ -1,28 +1,31 @@
 import os
 import subprocess
-import json
 from diff_match_patch import diff_match_patch
 from ollama import chat, ChatResponse 
+from collections import deque
 
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "deepseek-r1:32b")
 PATCH_OUTPUT_FILE = "ai_patch_output.txt" 
 
-def get_changed_python_files():
-    """Gets a list of changed Python files using git diff."""
-    result = subprocess.run(["git", "diff", "--name-only", "--diff-filter=M", "--cached", "--", "*.py"], capture_output=True, text=True) 
-    if result.returncode != 0:
-        result = subprocess.run(["git", "diff", "--name-only", "--diff-filter=M", "--", "*.py"], capture_output=True, text=True) 
-        if result.returncode != 0:
-            print(f"Error getting changed files: {result.stderr}")
-            return []
-
-    files = result.stdout.strip().split('\n')
-    return [f for f in files if f]
+def get_all_python_files():
+    """Recursively finds all Python files in the repository, excluding the .git directory."""
+    python_files = []
+    for root, dirs, files in os.walk(os.getcwd()):
+        if '.git' in dirs:
+            dirs.remove('.git')
+        for file in files:
+            if file.endswith('.py'):
+                python_files.append(os.path.join(root, file))
+    return python_files
 
 def get_file_content(filepath):
-    """Reads the content of a file."""
-    with open(filepath, "r") as f:
-        return f.read()
+    """Reads the content of a file safely with UTF-8 encoding."""
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        print(f"Error reading {filepath}: {e}")
+        return ""
 
 def send_to_ollama(code, prompt_prefix="""Review this Python code for readability, PEP 8 compliance, and basic optimizations.
 Return the complete improved Python code as a single block.
@@ -58,17 +61,20 @@ def apply_suggestions(filepath, original_code, suggestions):
     try:
         dmp = diff_match_patch()
         diffs = dmp.diff_main(original_code, suggestions)
-        patch_text = dmp.diff_toPatch(diffs)
+        dmp.diff_cleanupSemantic(diffs)
+        patches = dmp.patch_make(diffs)
+        patch_text = dmp.patch_toText(patches)
 
-        with open(PATCH_OUTPUT_FILE, "w") as f_patch_out:
+        with open(PATCH_OUTPUT_FILE, "w", encoding="utf-8") as f_patch_out:
             f_patch_out.write(patch_text)
 
         print(f"\n--- Generated Patch for {filepath} (Review in 'Display Patch Output' step of workflow!) ---")
 
-        patches = dmp.patch_fromText(patch_text)
-        patched_code, _ = dmp.patch_apply(patches, original_code)
+        patched_code, results = dmp.patch_apply(patches, original_code)
+        if not all(results):
+            print(f"Warning: Not all patches applied successfully for {filepath}.")
 
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             f.write(patched_code)
 
         print(f"Successfully applied AI suggestions to {filepath} using patch.")
@@ -80,20 +86,23 @@ def apply_suggestions(filepath, original_code, suggestions):
 
 
 if __name__ == "__main__":
-    changed_files = get_changed_python_files()
-    print(f"Changed Python files: {changed_files}")
+    files_queue = deque(get_all_python_files())
+    print(f"Found {len(files_queue)} Python files.")
 
     if os.path.exists(PATCH_OUTPUT_FILE):
         os.remove(PATCH_OUTPUT_FILE)
 
-    for filepath in changed_files:
+    while files_queue:
+        filepath = files_queue.popleft()
         print(f"\nProcessing file: {filepath}")
         original_code = get_file_content(filepath)
-        ai_suggestions = send_to_ollama(original_code)
-
-        if ai_suggestions:
-            apply_suggestions(filepath, original_code, ai_suggestions)
+        if original_code:
+            ai_suggestions = send_to_ollama(original_code)
+            if ai_suggestions:
+                apply_suggestions(filepath, original_code, ai_suggestions)
+            else:
+                print(f"No suggestions received from AI for {filepath}")
         else:
-            print(f"No suggestions received from AI for {filepath}")
+            print(f"Skipping {filepath} due to file read error.")
 
     print("\nAI Autofix and Optimization process completed.")

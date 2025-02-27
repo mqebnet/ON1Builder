@@ -21,7 +21,8 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install ollama diff-match-patch # Install ollama library
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || pip install ollama diff-match-patch
 
       - name: Run AI Autofix Script (DeepSeek-R1) - Ollama Lib
         run: python .github/workflows/ai_autofix_script.py
@@ -34,3 +35,12 @@ jobs:
           echo "--- AI Patch Output (Review Carefully) ---"
           cat ai_patch_output.txt || echo "No patch output generated or script error occurred."
           echo "--- End Patch Output ---"
+
+      - name: Commit changes
+        if: success()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git commit -m "Auto-fix: Applied AI suggested changes" || echo "No changes to commit"
+          git push
