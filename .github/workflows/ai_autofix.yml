@@ -39,12 +39,14 @@ jobs:
 
       - name: Upload Processing Logs
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ai-autofix-logs
           path: |
             ai_patch_output.txt
             *.log
+          compression-level: 6  # Default compression level
+          retention-days: 5     # Keep logs for 5 days
 
       - name: Commit changes
         if: success()
