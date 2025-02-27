@@ -120,6 +120,12 @@ class ABIRegistry:
         except json.JSONDecodeError as e:
             logger.error(f"JSON decode error for {abi_type} in file {abi_path}: {e}")
             raise
+        except FileNotFoundError as e:
+            logger.error(f"File not found error for {abi_type} in file {abi_path}: {e}")
+            raise
+        except ValueError as e:
+            logger.error(f"Value error for {abi_type} in file {abi_path}: {e}")
+            raise
         except Exception as e:
             logger.error(f"Error loading ABI {abi_type} from {abi_path}: {e}", exc_info=True) # Include traceback and file path
             raise

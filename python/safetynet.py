@@ -138,7 +138,7 @@ class SafetyNet:
         try:
             real_time_price = await self.apiconfig.get_real_time_price(transaction_data['output_token'])
             if real_time_price is None:
-                logger.error("Real-time price unavailable, cannot ensure profit.") # More informative log
+                logger.warning("Real-time price unavailable, cannot ensure profit.") # More informative log
                 return False
 
             gas_cost_eth = self._calculate_gas_cost(

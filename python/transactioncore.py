@@ -156,7 +156,7 @@ class TransactionCore:
 
             # If no validation methods worked, check if there's code at the address
             code = await self.web3.eth.get_code(contract.address)
-            if code and code != '0x':
+            if (code and code != '0x'):
                 logger.debug(f"{name} contract validated via code existence")
                 return
             
@@ -235,19 +235,19 @@ class TransactionCore:
 
     async def execute_transaction(self, tx: Dict[str, Any]) -> Optional[str]:
         """Executes a transaction with retries."""
-        try:
-            for attempt in range(1, self.configuration.MEMPOOL_MAX_RETRIES + 1):
+        for attempt in range(1, self.configuration.MEMPOOL_MAX_RETRIES + 1):
+            try:
                 signed_tx = await self.sign_transaction(tx)
                 tx_hash = await self.call_contract_function(signed_tx)
                 logger.debug(f"Transaction sent successfully: {tx_hash.hex()}")
                 return tx_hash.hex()
-        except TransactionNotFound as e:
-            self.handle_error(e, "execute_transaction", {"tx": tx})
-        except ContractLogicError as e:
-            self.handle_error(e, "execute_transaction", {"tx": tx})
-        except Exception as e:
-            self.handle_error(e, "execute_transaction", {"tx": tx})
-            await asyncio.sleep(self.configuration.MEMPOOL_RETRY_DELAY * (attempt + 1))
+            except TransactionNotFound as e:
+                self.handle_error(e, "execute_transaction", {"tx": tx})
+            except ContractLogicError as e:
+                self.handle_error(e, "execute_transaction", {"tx": tx})
+            except Exception as e:
+                self.handle_error(e, "execute_transaction", {"tx": tx})
+                await asyncio.sleep(self.configuration.MEMPOOL_RETRY_DELAY * (attempt + 1))
         logger.error("Failed to execute transaction after retries")
         return None
 

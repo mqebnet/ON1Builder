@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "https://github.com/aave/aave-v3-core/blob/master/contracts/flashloan/base/FlashLoanSimpleReceiverBase.sol";
@@ -12,6 +11,7 @@ interface IGasPriceOracle {
 contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
     address payable public owner;
     IGasPriceOracle public gasPriceOracle;
+    bool private locked;
 
     event FlashLoanRequested(address token, uint256 amount);
     event FlashLoanExecuted(address token, uint256 amount, uint256 premium, bool success);
@@ -19,6 +19,7 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
     constructor(address _addressProvider, address _gasPriceOracle) FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_addressProvider)) {
         owner = payable(msg.sender); // Contract deployer becomes the owner
         gasPriceOracle = IGasPriceOracle(_gasPriceOracle);
+        locked = false;
     }
 
     modifier onlyOwner() {
