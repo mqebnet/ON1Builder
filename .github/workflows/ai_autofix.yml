@@ -27,7 +27,8 @@ jobs:
       - name: Run AI Autofix Script (DeepSeek-R1) - Ollama Lib
         run: python .github/workflows/ai_autofix_script.py
         env:
-          OLLAMA_MODEL: "deepseek-r1:32b" 
+          OLLAMA_MODEL: "deepseek-r1:32b"
+        timeout-minutes: 30
 
       - name: Display Patch Output
         if: always() # Always run to show patch even if script fails
@@ -35,6 +36,15 @@ jobs:
           echo "--- AI Patch Output (Review Carefully) ---"
           cat ai_patch_output.txt || echo "No patch output generated or script error occurred."
           echo "--- End Patch Output ---"
+
+      - name: Upload Processing Logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: ai-autofix-logs
+          path: |
+            ai_patch_output.txt
+            *.log
 
       - name: Commit changes
         if: success()
