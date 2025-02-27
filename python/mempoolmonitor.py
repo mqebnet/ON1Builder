@@ -174,6 +174,9 @@ class MempoolMonitor:
             logger.error(f"Error handling new transactions: {e}")
 
     async def _queue_transaction(self, tx_hash: str) -> None:
+        if not tx_hash:
+            logger.warning("Invalid transaction hash received")
+            return
         tx_hash_hex = tx_hash.hex() if isinstance(tx_hash, bytes) else tx_hash
         async with self.processed_transactions_lock:
             if tx_hash_hex not in self.processed_transactions:
