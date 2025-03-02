@@ -1,12 +1,6 @@
 #========================================================================================================================
 # https://github.com/John0n1/0xBuilder
 
-# This file contains the TransactionCore class, which is responsible for building and executing Ethereum transactions.
-# Its kinda like the heart of the bot, where all the transaction-related logic is handled.
-# It interacts with the web3.py library to interact with the Ethereum blockchain, and also uses the abiregistry.py,
-# apiconfig.py, marketmonitor.py, mempoolmonitor.py, noncecore.py, and safetynet.py modules to handle various tasks.
-#========================================================================================================================
-
 import asyncio
 import aiohttp
 import hexbytes
@@ -27,11 +21,11 @@ from noncecore import NonceCore
 from safetynet import SafetyNet
 
 
-from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+from loggingconfig import setup_logging  # updated import
 import logging
 
-logger = setup_logging("TransactionCore", level=logging.DEBUG)
-patch_logger_for_animation(logger)  
+logger = setup_logging("TransactionCore", level=logging.INFO)
+
 
 class TransactionCore:
     """

@@ -1,10 +1,6 @@
 #========================================================================================================================
 # https://github.com/John0n1/0xBuilder
 
-# This file contains the NonceCore class, which is responsible for managing nonces for Ethereum transactions.
-# It ensures that we always have the correct nonce for the next transaction, even in the presence of pending transactions.
-# The class uses a TTLCache to store the current nonce, and it refreshes the nonce from the chain when necessary.
-#========================================================================================================================
 import asyncio
 import time
 
@@ -15,11 +11,11 @@ from web3.exceptions import Web3ValueError,  TransactionNotFound
 from configuration import Configuration
 
 
-from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+from loggingconfig import setup_logging  # updated import
 import logging
 
-logger = setup_logging("NonceCore", level=logging.DEBUG)
-patch_logger_for_animation(logger)  
+logger = setup_logging("NonceCore", level=logging.INFO)
+
 
 class NonceCore:
     """

@@ -17,11 +17,11 @@ from apiconfig import APIConfig
 from configuration import Configuration
 
 
-from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+from loggingconfig import setup_logging  # updated import
 import logging
 
-logger = setup_logging("MarketMonitor", level=logging.DEBUG)
-patch_logger_for_animation(logger)  
+logger = setup_logging("MarketMonitor", level=logging.INFO)
+
 
 class MarketMonitor:
     """Advanced market monitoring system for real-time analysis and prediction."""

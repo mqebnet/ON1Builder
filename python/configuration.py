@@ -12,11 +12,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
-from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+from loggingconfig import setup_logging  # updated import
 import logging
 
-logger = setup_logging("Configuration", level=logging.DEBUG)
-patch_logger_for_animation(logger)  
+logger = setup_logging("Configuration", level=logging.INFO)
+
 
 # Constants
 DEFAULT_MAX_GAS_PRICE = 100_000_000_000 
@@ -98,8 +98,8 @@ class Configuration:
         self.GAS_PRICE_ORACLE_ADDRESS: str = self._get_env_str("GAS_PRICE_ORACLE_ADDRESS")
 
         self.SLIPPAGE_DEFAULT: float = self._get_env_float("SLIPPAGE_DEFAULT", 0.1)
-        self.SLIPPAGE_MIN: float = self._get_env_float("SLIPPAGE_MIN", 0.01)
-        self.SLIPPAGE_MAX: float = self._get_env_float("SLIPPAGE_MAX", 0.5)
+        self.MIN_SLIPPAGE: float = self._get_env_float("MIN_SLIPPAGE", 0.01)
+        self.MAX_SLIPPGAGE: float = self._get_env_float("MAX_SLIPPGAGE", 0.5)
         self.SLIPPAGE_HIGH_CONGESTION: float = self._get_env_float("SLIPPAGE_HIGH_CONGESTION", 0.05)
         self.SLIPPAGE_LOW_CONGESTION: float = self._get_env_float("SLIPPAGE_LOW_CONGESTION", 0.2)
         self.MAX_GAS_PRICE_GWEI: int = self._get_env_int("MAX_GAS_PRICE_GWEI", 500)

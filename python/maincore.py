@@ -25,11 +25,11 @@ from strategynet import StrategyNet
 from transactioncore import TransactionCore
 import sys
 
-from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+from loggingconfig import setup_logging  # updated import
 import logging
 
-logger = setup_logging("MainCore", level=logging.DEBUG)
-patch_logger_for_animation(logger)  
+logger = setup_logging("MainCore", level=logging.INFO)
+
 
 # Constants
 
@@ -362,7 +362,7 @@ class MainCore:
             raise ValueError("Account or Web3 not initialized before balance check")
 
         try:
-            min_balance = float(self.configuration.get_config_value("MIN_ETH_BALANCE", 0.000001))
+            min_balance = float(self.configuration.get_config_value("MIN_BALANCE", 0.000001))
             balance = await self.web3.eth.get_balance(self.account.address)
             balance_eth = float(self.web3.from_wei(balance, 'ether'))
 

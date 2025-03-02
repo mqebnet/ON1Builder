@@ -1,9 +1,6 @@
 #========================================================================================================================
 # https://github.com/John0n1/0xBuilder
 
-# Centralized ABI registry with loading, validation, and signature mapping.
-# The class is used to load and validate ABIs from JSON files, extract function signatures and method selectors, and provide methods to retrieve ABI data.
-#========================================================================================================================
 import json
 import aiofiles
 import asyncio
@@ -12,11 +9,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
-from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+from loggingconfig import setup_logging  # updated import
 import logging
 
-logger = setup_logging("AbiRegistry", level=logging.DEBUG)
-patch_logger_for_animation(logger)  
+logger = setup_logging("AbiRegistry", level=logging.INFO)
+
 
 class ABIRegistry:
     """

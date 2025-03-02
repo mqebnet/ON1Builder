@@ -15,11 +15,11 @@ from safetynet import SafetyNet
 from marketmonitor import MarketMonitor  
 
 
-from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+from loggingconfig import setup_logging  # updated import
 import logging
 
-logger = setup_logging("StrategyNet", level=logging.DEBUG)
-patch_logger_for_animation(logger)  
+logger = setup_logging("StrategyNet", level=logging.INFO)
+
 
 class StrategyNet:
     """Advanced strategy network for MEV operations."""
