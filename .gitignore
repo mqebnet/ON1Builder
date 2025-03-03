@@ -40,3 +40,10 @@ Thumbs.db
 
 # Private directories
 private/
+CNAME
+.CNAME
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+.github/
+.github
+

@@ -25,7 +25,7 @@ from strategynet import StrategyNet
 from transactioncore import TransactionCore
 import sys
 
-from loggingconfig import setup_logging  # updated import
+from loggingconfig import setup_logging, LoadingSpinner  # updated import
 import logging
 
 logger = setup_logging("MainCore", level=logging.INFO)
@@ -79,6 +79,9 @@ class MainCore:
         time.sleep(2)  
     async def _initialize_components(self) -> None:
         """Initialize all components in the correct order."""
+        # Initialize a spinner for visual feedback during component initialization.
+        spinner = LoadingSpinner("Initializing components")
+        spinner.start()
         try:
             # 1. First initialize configuration
             logger.debug("Loading Configuration...")
@@ -195,9 +198,8 @@ class MainCore:
             await asyncio.sleep(1) 
             logger.info("All vital components initialized successfully ✅")
             await asyncio.sleep(1) 
-        except Exception as e:
-            logger.critical(f"Component initialization failed: {e}", exc_info=True)
-            raise
+        finally:
+            spinner.stop()
 
     async def initialize(self) -> None:
         """Initialize all components with proper error handling."""

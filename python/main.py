@@ -7,7 +7,7 @@ import tracemalloc
 from maincore import MainCore
 from configuration import Configuration
 
-from loggingconfig import setup_logging 
+from loggingconfig import setup_logging, LoadingSpinner
 import logging
 
 logger = setup_logging("Main", level=logging.INFO)
@@ -20,10 +20,13 @@ async def run_bot():
     def shutdown_handler():
         """Handle shutdown signals."""
         logger.debug("Received shutdown signal. Stopping the bot...")
+    spinner = LoadingSpinner(("Initiating 0xBuilder..."))
+    spinner.start()   
     try:
         tracemalloc.start()
-        logger.info("Initiating 0xBuilder...")
         await asyncio.sleep(3)
+
+       
 
         configuration = Configuration()
 
@@ -51,6 +54,7 @@ async def run_bot():
             for stat in snapshot.statistics('lineno')[:10]:
                 logger.debug(str(stat))
         logger.debug("0xBuilder shutdown complete")
+        spinner.stop()
 
 async def main():
     """Main entry point."""
