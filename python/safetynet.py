@@ -12,9 +12,9 @@ from web3.exceptions import Web3Exception
 
 from apiconfig import APIConfig
 from configuration import Configuration
+from marketmonitor import MarketMonitor
 
-
-from loggingconfig import setup_logging  # updated import
+from loggingconfig import setup_logging
 import logging
 
 logger = setup_logging("SafetyNet", level=logging.INFO)
@@ -32,7 +32,7 @@ class SafetyNet:
         address: Optional[str] = None,
         account: Optional[Account] = None,
         apiconfig: Optional["APIConfig"] = None,
-        marketmonitor: Optional[Any] = None,
+        marketmonitor: Optional[MarketMonitor] = None,
     ):
         """
         Initialize Safety Net components.
@@ -44,11 +44,11 @@ class SafetyNet:
         self.apiconfig: Optional["APIConfig"] = apiconfig
         self.price_cache: TTLCache = TTLCache(maxsize=2000, ttl=self.configuration.SAFETYNET_CACHE_TTL)
         self.gas_price_cache: TTLCache = TTLCache(maxsize=1, ttl=self.configuration.SAFETYNET_GAS_PRICE_TTL) 
-        self.marketmonitor: Optional[Any] = marketmonitor
+        self.marketmonitor: Optional[MarketMonitor] = marketmonitor
 
         self.price_lock: asyncio.Lock = asyncio.Lock()
         logger.info("SafetyNet is reporting for duty 🛡️")
-        time.sleep(1) # ensuring proper initialization
+        time.sleep(1)
 
         # Safety checks cache
         self.safety_cache: TTLCache = TTLCache(maxsize=100, ttl=60) 

@@ -275,3 +275,19 @@ class MarketMonitor:
 
     async def get_token_price(self, token_symbol: str, data_type: str = 'current', timeframe: int = 1, vs_currency: str = 'eth') -> Union[float, List[float]]:
         return await self.apiconfig.get_token_price_data(token_symbol, data_type, timeframe, vs_currency)
+    
+    async def _is_arbitrage_opportunity(self, token_symbol: str) -> bool:
+        try:
+            price = await self.apiconfig.get_real_time_price(token_symbol)
+            if not price:
+                return False
+            price_data = await self.get_price_data(token_symbol, 'historical', 1)
+            if not price_data or len(price_data) < 2:
+                return False
+            price_diff = price - price_data[0]
+            if price_diff > 0:
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error checking arbitrage opportunity: {e}", exc_info=True)
+            return False

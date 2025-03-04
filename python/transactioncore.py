@@ -140,7 +140,7 @@ class TransactionCore:
             elif abi_type in ['uniswap', 'sushiswap']:
                 methods_to_try = validation_methods['Router']
 
-            # Try each validation method until one succeeds
+
             for method_name, args in methods_to_try:
                 try:
                     if hasattr(contract.functions, method_name):
@@ -151,7 +151,7 @@ class TransactionCore:
                     logger.debug(f"Method {method_name} failed: {str(e)}")
                     continue
 
-            # If no validation methods worked, check if there's code at the address
+
             code = await self.web3.eth.get_code(contract.address)
             if (code and code != '0x'):
                 logger.debug(f"{name} contract validated via code existence")
@@ -1149,8 +1149,8 @@ class TransactionCore:
         logger.debug("Initiating Flash Profit Sandwich Strategy...")
         estimated_amount = await self.calculate_flashloan_amount(target_tx)
         estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE)) 
-        if estimated_profit > self.configuration.min_profit_threshold:
-            gas_price = await self.get_dynamic_gas_price()
+        if estimated_profit > self.configuration.MIN_PROFIT:
+            gas_price = await self.safetynet.get_dynamic_gas_price()
             if (gas_price > self.configuration.SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI):
                 logger.debug(f"Gas price too high for sandwich attack: {gas_price} Gwei")
                 return False
@@ -1194,7 +1194,7 @@ class TransactionCore:
         if not valid:
             return False
 
-        is_arbitrage = await self.marketmonitor.is_arbitrage_opportunity(target_tx)
+        is_arbitrage = await self.marketmonitor._is_arbitrage_opportunity(target_tx)
         if is_arbitrage:
             logger.debug(f"Arbitrage opportunity detected for {token_symbol}")
             return await self.execute_sandwich_attack(target_tx)
@@ -1224,13 +1224,14 @@ class TransactionCore:
 
         logger.debug("Conditions unfavorable for sandwich attack. Skipping.")
         return False
+    
 
     async def _calculate_opportunity_score(
         self,
         price_change: float,
         volatility: float,
         market_conditions: Dict[str, bool],
-        current_price: float,
+        current_price: float, 
         historical_prices: List[float]
     ) -> float:
         """
@@ -1263,7 +1264,7 @@ class TransactionCore:
            }
        }
 
-        # Price change component
+        # Price change and current price component
         if price_change > components["price_change"]["very_strong"]["threshold"]:
             score += components["price_change"]["very_strong"]["points"]
         elif price_change > components["price_change"]["strong"]["threshold"]:
@@ -1272,6 +1273,13 @@ class TransactionCore:
             score += components["price_change"]["moderate"]["points"]
         elif price_change > components["price_change"]["slight"]["threshold"]:
             score += components["price_change"]["slight"]["points"]
+
+        if historical_prices:
+            avg_price = sum(historical_prices) / len(historical_prices)
+            if current_price > avg_price * 1.1:  
+                score += 10
+            elif current_price > avg_price * 1.05: 
+                score += 5
 
         # Volatility component
         if volatility < components["volatility"]["very_low"]["threshold"]:
@@ -1365,7 +1373,6 @@ class TransactionCore:
     async def _calculate_risk_score(
         self,
         target_tx: Dict[str, Any],
-        token_symbol: str,
         price_change: float
     ) -> Tuple[float, Dict[str, bool]]:
         """
