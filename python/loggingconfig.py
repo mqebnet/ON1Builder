@@ -7,13 +7,28 @@ import threading
 import time
 import colorlog
 
-def setup_logging(name, level=logging.INFO):
-    # Get the logger and remove any duplicate handlers.
+def setup_logging(name, level=logging.INFO, spinner=False, spinner_message="Loading"):
+    # Nested spinner functions for smoother animation
+    def spinner_task(message, stop_event):
+        spinner_chars = ['|', '/', '-', '\\']
+        idx = 0
+        while not stop_event.is_set():
+            sys.stdout.write(f"\r{message}... {spinner_chars[idx % len(spinner_chars)]}")
+            sys.stdout.flush()
+            time.sleep(0.1)
+            idx += 1
+        sys.stdout.write("\r" + " " * (len(message) + 10) + "\r")
+
+    # Optionally start spinner
+    if spinner:
+        stop_event = threading.Event()
+        thread = threading.Thread(target=spinner_task, args=(spinner_message, stop_event), daemon=True)
+        thread.start()
+    # Stream handler with color formatting for console output
     logger = logging.getLogger(name)
     logger.setLevel(level)
     if logger.hasHandlers():
         logger.handlers.clear()
-    # Stream handler with color formatting for console output
     handler = colorlog.StreamHandler(sys.stdout)
     formatter = colorlog.ColoredFormatter(
         '%(log_color)s%(name)s | %(levelname)-8s: %(message)s',
@@ -27,39 +42,10 @@ def setup_logging(name, level=logging.INFO):
     )
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+    # Stop spinner if it was started
+    if spinner:
+        stop_event.set()
+        thread.join()
     return logger
-
-class LoadingSpinner:
-    """
-    A simple spinner animation for showing progress during loading.
-    Usage:
-      spinner = LoadingSpinner("Loading components")
-      spinner.start()
-      ... load components ...
-      spinner.stop()
-    """
-    spinner_chars = ['|', '/', '-', '\\']
-
-    def __init__(self, message="Loading"):
-        self.message = message
-        self.stop_event = threading.Event()
-        self.thread = threading.Thread(target=self._spinner_task, daemon=True)
-
-    def _spinner_task(self):
-        idx = 0
-        while not self.stop_event.is_set():
-            sys.stdout.write(f"\r{self.message}... {self.spinner_chars[idx % len(self.spinner_chars)]}")
-            sys.stdout.flush()
-            time.sleep(0.1)
-            idx += 1
-        sys.stdout.write("\r" + " " * (len(self.message) + 10) + "\r")
-
-    def start(self):
-        self.stop_event.clear()
-        self.thread.start()
-
-    def stop(self):
-        self.stop_event.set()
-        self.thread.join()
 
 

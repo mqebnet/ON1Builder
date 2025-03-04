@@ -19,9 +19,10 @@ from marketmonitor import MarketMonitor
 from mempoolmonitor import MempoolMonitor
 from noncecore import NonceCore
 from safetynet import SafetyNet
+from strategynet import StrategyNet
 
 
-from loggingconfig import setup_logging  # updated import
+from loggingconfig import setup_logging  
 import logging
 
 logger = setup_logging("TransactionCore", level=logging.INFO)
@@ -33,7 +34,7 @@ class TransactionCore:
     Builds and executes transactions, including front-run, back-run, and sandwich attack strategies.
     It interacts with smart contracts, manages transaction signing, gas price estimation, and handles flashloans
     """
-    DEFAULT_GAS_LIMIT: int = 100_000  # Default gas limit
+    DEFAULT_GAS_LIMIT: int = 100_000  
     DEFAULT_PROFIT_TRANSFER_MULTIPLIER: int = 10**18
     DEFAULT_GAS_PRICE_GWEI: int = 50
 
@@ -44,6 +45,7 @@ class TransactionCore:
         AAVE_FLASHLOAN_ADDRESS: str,
         AAVE_POOL_ADDRESS: str,
         apiconfig: Optional["APIConfig"] = None,
+        strategynet: Optional["StrategyNet"] = None,
         marketmonitor: Optional["MarketMonitor"] = None,
         mempoolmonitor: Optional["MempoolMonitor"] = None,
         noncecore: Optional["NonceCore"] = None,
@@ -60,6 +62,7 @@ class TransactionCore:
         self.configuration: Optional["Configuration"] = configuration
         self.marketmonitor: Optional["MarketMonitor"] = marketmonitor
         self.mempoolmonitor: Optional["MempoolMonitor"] = mempoolmonitor
+        self.strategynet: Optional["StrategyNet"] = strategynet
         self.apiconfig: Optional["APIConfig"] = apiconfig
         self.noncecore: Optional["NonceCore"] = noncecore
         self.safetynet: Optional["SafetyNet"] = safetynet
@@ -566,9 +569,9 @@ class TransactionCore:
         if strategy == "flash_profit":
             estimated_amount = await self.calculate_flashloan_amount(target_tx)
             estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE))
-            gas_price = await self.get_dynamic_gas_price()
+            gas_price = await SafetyNet.get_dynamic_gas_price()
             
-            return (estimated_profit > self.configuration.min_profit_threshold and 
+            return (estimated_profit > self.configuration.MIN_PROFIT and 
                    gas_price <= self.configuration.SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI)
 
         elif strategy == "price_boost":
@@ -579,7 +582,7 @@ class TransactionCore:
             return momentum > self.configuration.PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD
 
         elif strategy == "arbitrage":
-            return await self.marketmonitor.is_arbitrage_opportunity(target_tx)
+            return await self.marketmonitor._is_arbitrage_opportunity(target_tx)
 
         elif strategy == "advanced":
             market_conditions = await self.marketmonitor.check_market_conditions(target_tx["to"])

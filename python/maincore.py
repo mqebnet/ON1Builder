@@ -25,7 +25,7 @@ from strategynet import StrategyNet
 from transactioncore import TransactionCore
 import sys
 
-from loggingconfig import setup_logging, LoadingSpinner  # updated import
+from loggingconfig import setup_logging
 import logging
 
 logger = setup_logging("MainCore", level=logging.INFO)
@@ -79,17 +79,16 @@ class MainCore:
         time.sleep(2)  
     async def _initialize_components(self) -> None:
         """Initialize all components in the correct order."""
-        # Initialize a spinner for visual feedback during component initialization.
-        spinner = LoadingSpinner("Initializing components")
+        spinner = setup_logging("Spinner", level=logging.INFO, spinner=True, spinner_message="Initializing")
         spinner.start()
         try:
-            # 1. First initialize configuration
+            # 1. First initialize configuration (no dependencies)
             logger.debug("Loading Configuration...")
             await self._load_configuration()
             logger.info("Configuration initialized ✅")
             await asyncio.sleep(1)
 
-            # 2. Initialize Web3
+            # 2. Initialize Web3 (depends on Configuration)
             logger.debug("Initializing Web3...")
             self.web3 = await self._initialize_web3()
             if not self.web3:
@@ -97,20 +96,19 @@ class MainCore:
             logger.info("Web3 initialized ✅")
             await asyncio.sleep(1)
 
-            # Initialize account
+            # Initialize account (depends on Configuration)
             self.account = Account.from_key(self.configuration.WALLET_KEY)
             await self._check_account_balance()
             logger.info(f"Account {self.account.address} initialized ✅")
             await asyncio.sleep(1)
 
-            # Initialize ABI Registry and load ABIs (needs to be after web3 for chain-aware ABIs if needed)
+            # Initialize ABI Registry and load ABIs (depends on Configuration)
             logger.debug("Initializing ABI Registry...")
             abiregistry = ABIRegistry()
             await abiregistry.initialize(self.configuration.BASE_PATH)
             logger.info("ABI Registry initialized ✅")
             await asyncio.sleep(1) 
-            # Load and validate ERC20 ABI (needs ABI Registry initialized)
-            erc20_abi = abiregistry.get_abi('erc20') # Load directly from registry
+            erc20_abi = abiregistry.get_abi('erc20') 
             if not erc20_abi:
                 raise ValueError("Failed to load ERC20 ABI from Registry")
 
@@ -131,7 +129,7 @@ class MainCore:
             await self.components['noncecore'].initialize()
             logger.info(f"NonceCore initialized with nonce {await self.components['noncecore'].get_nonce()} ✅") # Get nonce after init
             await asyncio.sleep(1) 
-            # 4. Initialize safety net (depends on Web3, Configuration, APIConfig, MarketMonitor - Market Monitor is optional here and could be None initially)
+            # 4. Initialize safety net (depends on Web3, Configuration, APIConfig, MarketMonitor)
             logger.debug("Initializing SafetyNet...")
             self.components['safetynet'] = SafetyNet(
                 self.web3,
@@ -144,7 +142,7 @@ class MainCore:
             await self.components['safetynet'].initialize()
             logger.info("SafetyNet initialized ✅ ")
             await asyncio.sleep(1) 
-            # 5. Initialize transaction core with corrected parameters:
+            # 5. Initialize transaction core (depends on Web3, Configuration, NonceCore, SafetyNet)
             logger.debug("Initializing Transaction Core...")
             self.components['transactioncore'] = TransactionCore(
                 self.web3,

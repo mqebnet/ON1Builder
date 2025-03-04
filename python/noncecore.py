@@ -7,11 +7,9 @@ import time
 from cachetools import TTLCache
 from web3 import AsyncWeb3
 from web3.exceptions import Web3ValueError,  TransactionNotFound
-
 from configuration import Configuration
 
-
-from loggingconfig import setup_logging  # updated import
+from loggingconfig import setup_logging 
 import logging
 
 logger = setup_logging("NonceCore", level=logging.INFO)
@@ -41,7 +39,7 @@ class NonceCore:
         self.configuration: "Configuration" = configuration
         self.address: str = address
         self.lock: asyncio.Lock = asyncio.Lock()
-        self.nonce_cache: TTLCache = TTLCache(maxsize=1, ttl=self.configuration.NONCE_CACHE_TTL) # Use configurable CACHE_TTL
+        self.nonce_cache: TTLCache = TTLCache(maxsize=1, ttl=self.configuration.NONCE_CACHE_TTL)
         self.last_sync: float = time.monotonic()
         self._initialized: bool = False
 

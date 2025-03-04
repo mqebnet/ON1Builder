@@ -12,21 +12,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
-from loggingconfig import setup_logging  # updated import
+from loggingconfig import setup_logging
 import logging
 
 logger = setup_logging("Configuration", level=logging.INFO)
 
 
-# Constants
-DEFAULT_MAX_GAS_PRICE = 100_000_000_000 
-DEFAULT_GAS_LIMIT = 1_000_000
-DEFAULT_MAX_SLIPPAGE = 0.01
-DEFAULT_MIN_PROFIT = 0.001
-DEFAULT_MIN_BALANCE = 0.000001
-DEFAULT_MEMORY_CHECK_INTERVAL = 300
-DEFAULT_COMPONENT_HEALTH_CHECK_INTERVAL = 60
-DEFAULT_PROFITABLE_TX_PROCESS_TIMEOUT = 1.0
 
 class Configuration:
     """
@@ -47,7 +38,16 @@ class Configuration:
 
     def _initialize_defaults(self) -> None:
         """Initialize configuration with default values."""
-        # General settings
+        # General settings        
+        DEFAULT_MAX_GAS_PRICE = 100_000_000_000 
+        DEFAULT_GAS_LIMIT = 1_000_000
+        DEFAULT_MAX_SLIPPAGE = 0.01
+        DEFAULT_MIN_PROFIT = 0.001
+        DEFAULT_MIN_BALANCE = 0.000001
+        DEFAULT_MEMORY_CHECK_INTERVAL = 300
+        DEFAULT_COMPONENT_HEALTH_CHECK_INTERVAL = 60
+        DEFAULT_PROFITABLE_TX_PROCESS_TIMEOUT = 1.0
+
         self.MAX_GAS_PRICE = self._get_env_int("MAX_GAS_PRICE", DEFAULT_MAX_GAS_PRICE)
         self.GAS_LIMIT = self._get_env_int("GAS_LIMIT", DEFAULT_GAS_LIMIT)
         self.MAX_SLIPPAGE = self._get_env_float("MAX_SLIPPAGE", DEFAULT_MAX_SLIPPAGE)

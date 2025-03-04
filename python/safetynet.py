@@ -1,9 +1,6 @@
 #========================================================================================================================
 # https://github.com/John0n1/0xBuilder
 
-# This file contains the SafetyNet class, which is responsible for risk management and transaction validation.
-# It includes methods for checking transaction safety, ensuring profit, and adjusting slippage tolerance.
-#========================================================================================================================
 import asyncio
 import time
 from decimal import Decimal
@@ -315,7 +312,6 @@ class SafetyNet:
     async def assess_transaction_risk(
         self,
         tx: Dict[str, Any],
-        token_symbol: str,
         market_conditions: Optional[Dict[str, bool]] = None,
         price_change: float = 0,
         volume: float = 0
@@ -324,7 +320,6 @@ class SafetyNet:
         try:
             risk_score = 1.0
 
-            # Get market conditions if not provided and marketmonitor exists
             if not market_conditions and self.marketmonitor:
                 market_conditions = await self.marketmonitor.check_market_conditions(tx.get("to", ""))
             elif not market_conditions:

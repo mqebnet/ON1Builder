@@ -20,7 +20,7 @@ from noncecore import NonceCore
 from safetynet import SafetyNet
 
 
-from loggingconfig import setup_logging  # updated import
+from loggingconfig import setup_logging
 import logging
 
 logger = setup_logging("MempoolMonitor", level=logging.INFO)

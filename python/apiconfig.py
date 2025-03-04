@@ -17,7 +17,7 @@ from sklearn.linear_model import LinearRegression
 from configuration import Configuration
 
 
-from loggingconfig import setup_logging  # updated import
+from loggingconfig import setup_logging
 import logging
 
 logger = setup_logging("APIConfig", level=logging.INFO)
@@ -110,7 +110,7 @@ class APIConfig:
         self.session = aiohttp.ClientSession()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(self, _exc_type, _exc_val, _exc_tb) -> None:
         if self.session:
             await self.session.close()
             logger.debug("APIConfig session closed.")
@@ -751,8 +751,6 @@ class APIConfig:
             async with aiofiles.open(training_data_path, 'w', encoding='utf-8') as file:
                 await file.write(df.to_csv(index=False))
 
-
-           
             await self._cleanup_old_data(training_data_path, days=30)
 
         except Exception as e:
@@ -842,4 +840,4 @@ class APIConfig:
             return latest_gas_price
         except Exception as e:
             logger.error(f"Error fetching gas price from oracle: {e}")
-            return self.configuration.DEFAULT_GAS_PRICE  
+            return self.configuration.DEFAULT_GAS_PRICE

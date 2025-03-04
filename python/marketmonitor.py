@@ -8,7 +8,7 @@ import joblib
 import pandas as pd
 import numpy as np
 
-from typing import Any, Dict, List, Optional, Callable, Union
+from typing import Any, Dict, List, Optional, Union
 from sklearn.linear_model import LinearRegression
 from cachetools import TTLCache
 from web3 import AsyncWeb3
@@ -17,7 +17,7 @@ from apiconfig import APIConfig
 from configuration import Configuration
 
 
-from loggingconfig import setup_logging  # updated import
+from loggingconfig import setup_logging
 import logging
 
 logger = setup_logging("MarketMonitor", level=logging.INFO)
@@ -92,10 +92,10 @@ class MarketMonitor:
             try:
                 current_time = time.time()
                 if current_time - self.update_scheduler['training_data'] >= self.update_scheduler['model_retraining_interval']:
-                    await self.update_training_data()
+                    await self.apiconfig.update_training_data()
                     self.update_scheduler['training_data'] = current_time
                 if current_time - self.update_scheduler['model'] >= self.update_scheduler['model_retraining_interval']:
-                    await self._train_model()
+                    await self.apiconfig.train_price_model()
                     self.update_scheduler['model'] = current_time
                 await asyncio.sleep(60)
             except asyncio.CancelledError:
@@ -258,19 +258,6 @@ class MarketMonitor:
         except Exception as e:
             logger.error(f"Error calculating smart money flow: {e}", exc_info=True)
             return 0.0
-
-    async def update_training_data(self) -> None:
-        try:
-            logger.info("Training data updated successfully.")
-        except Exception as e:
-            logger.error(f"Error updating training data: {e}", exc_info=True)
-
-    async def _train_model(self) -> None:
-        try:
-            self.last_training_time = time.time()
-            logger.info(f"Model trained successfully. Accuracy: {self.model_accuracy:.4f}")
-        except Exception as e:
-            logger.error(f"Error training model: {e}", exc_info=True)
 
     async def get_price_data(self, *args, **kwargs):
         return await self.apiconfig.get_token_price_data(*args, **kwargs)
