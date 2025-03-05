@@ -23,14 +23,9 @@ async def run_bot():
     try:
         tracemalloc.start()
         await asyncio.sleep(3)
-
        
-
         configuration = Configuration()
-
-
         core = MainCore(configuration)
-
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, shutdown_handler)
 

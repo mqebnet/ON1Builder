@@ -79,8 +79,6 @@ class MainCore:
         time.sleep(2)  
     async def _initialize_components(self) -> None:
         """Initialize all components in the correct order."""
-        spinner = setup_logging("Spinner", level=logging.INFO, spinner=True, spinner_message="Initializing")
-        spinner.start()
         try:
             # 1. First initialize configuration (no dependencies)
             logger.debug("Loading Configuration...")
@@ -147,15 +145,13 @@ class MainCore:
             self.components['transactioncore'] = TransactionCore(
                 self.web3,
                 self.account,
-                self.configuration.AAVE_FLASHLOAN_ADDRESS, 
-                self.configuration.AAVE_POOL_ADDRESS,      
+                self.configuration,    
                 noncecore=self.components['noncecore'],
                 safetynet=self.components['safetynet'],
-                configuration=self.configuration
             )
             await self.components['transactioncore'].initialize()
             logger.info("Transaction Core initialized ✅")
-            await asyncio.sleep(1) 
+            await asyncio.sleep(1)
 
             logger.debug("Initializing Market Monitor...")
             self.components['marketmonitor'] = MarketMonitor(
@@ -196,8 +192,9 @@ class MainCore:
             await asyncio.sleep(1) 
             logger.info("All vital components initialized successfully ✅")
             await asyncio.sleep(1) 
-        finally:
-            spinner.stop()
+        except Exception as e:
+            logger.error(f"Error initializing components: {e}", exc_info=True)
+            raise
 
     async def initialize(self) -> None:
         """Initialize all components with proper error handling."""
@@ -287,35 +284,13 @@ class MainCore:
     async def _get_providers(self) -> List[Tuple[str, Union[AsyncIPCProvider, AsyncHTTPProvider, WebSocketProvider]]]:
         """Get list of available providers with validation."""
         providers = []
-        # Basic network connectivity test - try resolving google.com
-        try:
-            import socket
-            ip_address = socket.gethostbyname("google.com")
-            print(f"DNS resolution for google.com successful. IP address: {ip_address}")
-        except socket.gaierror as e:
-            print(f"DNS resolution for google.com FAILED: {e}")
-            logger.critical("DNS resolution failing for google.com! Check your network.")
-            return [] # Exit providers if basic DNS fails
-        api_key = self.configuration.API_KEY
+
         if self.configuration.HTTP_ENDPOINT:
-            try:
-                print(f"Attempting connection with HTTP Provider to URL: {self.configuration.HTTP_ENDPOINT}")  # DEBUG PRINT
-                custom_headers = { 
-                    "Content-Type": "application/json", 
-                    "X-Goog-Api-Key": "{api_key}"
-                }
-                http_provider = AsyncHTTPProvider(
-                    self.configuration.HTTP_ENDPOINT,
-                    request_kwargs={'headers': custom_headers}
-                )
-                response = await http_provider.make_request('eth_blockNumber', [])
-                if response.get('error'):  # Check for errors in response
-                    raise Exception(response['error'])
-                providers.append(("HTTP Provider", http_provider))
-                logger.info("Linked to Ethereum network via HTTP Provider. ✅")
-                # Do not return immediately to allow fallback providers in case of later issues.
-            except Exception as e:
-                logger.warning(f"HTTP Provider failed: {e} ❌ - Attempting WebSocket... ")
+            http_provider = AsyncHTTPProvider(self.configuration.HTTP_ENDPOINT)
+            await http_provider.make_request( 'eth_blockNumber', [])
+            providers.append(("HTTP Provider", http_provider))
+            logger.info("Linked to Ethereum network via HTTP Provider. ✅")
+            return providers
 
         if self.configuration.WEBSOCKET_ENDPOINT:
             try:

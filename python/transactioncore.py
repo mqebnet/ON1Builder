@@ -19,10 +19,9 @@ from marketmonitor import MarketMonitor
 from mempoolmonitor import MempoolMonitor
 from noncecore import NonceCore
 from safetynet import SafetyNet
-from strategynet import StrategyNet
 
 
-from loggingconfig import setup_logging  
+from loggingconfig import setup_logging
 import logging
 
 logger = setup_logging("TransactionCore", level=logging.INFO)
@@ -30,11 +29,11 @@ logger = setup_logging("TransactionCore", level=logging.INFO)
 
 class TransactionCore:
     """
-    TransactionCore is the main transaction engine that handles all transaction-related
+    TransactionCore is the main transaction engine that handles all transaction-related operations.
     Builds and executes transactions, including front-run, back-run, and sandwich attack strategies.
-    It interacts with smart contracts, manages transaction signing, gas price estimation, and handles flashloans
+    It interacts with smart contracts, manages transaction signing, gas price estimation, and handles flashloans.
     """
-    DEFAULT_GAS_LIMIT: int = 100_000  
+    DEFAULT_GAS_LIMIT: int = 100_000
     DEFAULT_PROFIT_TRANSFER_MULTIPLIER: int = 10**18
     DEFAULT_GAS_PRICE_GWEI: int = 50
 
@@ -42,15 +41,12 @@ class TransactionCore:
         self,
         web3: AsyncWeb3,
         account: Account,
-        AAVE_FLASHLOAN_ADDRESS: str,
-        AAVE_POOL_ADDRESS: str,
+        configuration: Optional[Configuration] = None,
         apiconfig: Optional["APIConfig"] = None,
-        strategynet: Optional["StrategyNet"] = None,
         marketmonitor: Optional["MarketMonitor"] = None,
         mempoolmonitor: Optional["MempoolMonitor"] = None,
         noncecore: Optional["NonceCore"] = None,
         safetynet: Optional["SafetyNet"] = None,
-        configuration: Optional["Configuration"] = None,
         gas_price_multiplier: float = 1.1,
         erc20_abi: Optional[List[Dict[str, Any]]] = None,
         uniswap_address: Optional[str] = None,
@@ -59,22 +55,20 @@ class TransactionCore:
         """Initialize the Transaction Core."""
         self.web3: AsyncWeb3 = web3
         self.account: Account = account
-        self.configuration: Optional["Configuration"] = configuration
+        self.configuration: Optional[Configuration] = configuration
         self.marketmonitor: Optional["MarketMonitor"] = marketmonitor
         self.mempoolmonitor: Optional["MempoolMonitor"] = mempoolmonitor
-        self.strategynet: Optional["StrategyNet"] = strategynet
         self.apiconfig: Optional["APIConfig"] = apiconfig
         self.noncecore: Optional["NonceCore"] = noncecore
         self.safetynet: Optional["SafetyNet"] = safetynet
         self.gas_price_multiplier = gas_price_multiplier
-        self.RETRY_ATTEMPTS: int = configuration.MEMPOOL_MAX_RETRIES if configuration else 3  
         self.erc20_abi: List[Dict[str, Any]] = erc20_abi or []
         self.current_profit: Decimal = Decimal("0")
-        self.AAVE_FLASHLOAN_ADDRESS: str = AAVE_FLASHLOAN_ADDRESS
-        self.AAVE_POOL_ADDRESS: str = AAVE_POOL_ADDRESS
         self.abiregistry: ABIRegistry = ABIRegistry()
         self.uniswap_address: str = uniswap_address
         self.uniswap_abi: List[Dict[str, Any]] = uniswap_abi or []
+        self.uniswap_router_contract = None 
+        self.sushiswap_router_contract = None
 
     def normalize_address(self, address: str) -> str:
         """Normalize Ethereum address to checksum format."""
@@ -85,22 +79,49 @@ class TransactionCore:
             raise
 
     async def initialize(self) -> None:
-        """Initialize with proper ABI loading."""
+        """Initialize TransactionCore with ABIs, contracts, and perform validations."""
         try:
             abiregistry = ABIRegistry()
             await abiregistry.initialize(self.configuration.BASE_PATH)
 
+            # Load ABIs from registry
+            aave_flashloan_abi = abiregistry.get_abi('aave_flashloan')
+            aave_pool_abi = abiregistry.get_abi('aave')
+            uniswap_abi = abiregistry.get_abi('uniswap') # Get Uniswap ABI
+            sushiswap_abi = abiregistry.get_abi('sushiswap') # Get Sushiswap ABI
+
+
+            # Initialize contracts using ABIs and addresses from configuration
             self.aave_flashloan = self.web3.eth.contract(
-                address=self.normalize_address(self.AAVE_FLASHLOAN_ADDRESS),
-                abi=abiregistry.get_abi('aave_flashloan')
+                address=self.normalize_address(self.configuration.AAVE_FLASHLOAN_ADDRESS),
+                abi=aave_flashloan_abi
             )
             await self._validate_contract(self.aave_flashloan, "Aave Flashloan", 'aave_flashloan')
 
             self.aave_pool = self.web3.eth.contract(
-                address=self.normalize_address(self.AAVE_POOL_ADDRESS),
-                abi=abiregistry.get_abi('aave')
+                address=self.normalize_address(self.configuration.AAVE_POOL_ADDRESS),
+                abi=aave_pool_abi
             )
             await self._validate_contract(self.aave_pool, "Aave Lending Pool", 'aave')
+
+            if uniswap_abi and self.configuration.UNISWAP_ADDRESS: # Initialize Uniswap contract if ABI and address are available
+                self.uniswap_router_contract = self.web3.eth.contract(
+                    address=self.normalize_address(self.configuration.UNISWAP_ADDRESS),
+                    abi=uniswap_abi
+                )
+                await self._validate_contract(self.uniswap_router_contract, "Uniswap Router", 'uniswap') # Validate Uniswap contract
+            else:
+                logger.warning("Uniswap ABI or address not configured. Uniswap strategies will be unavailable.")
+
+            if sushiswap_abi and self.configuration.SUSHISWAP_ADDRESS: # Initialize Sushiswap contract if ABI and address are available
+                self.sushiswap_router_contract = self.web3.eth.contract(
+                    address=self.normalize_address(self.configuration.SUSHISWAP_ADDRESS),
+                    abi=sushiswap_abi
+                )
+                await self._validate_contract(self.sushiswap_router_contract, "Sushiswap Router", 'sushiswap') # Validate Sushiswap contract
+            else:
+                logger.warning("Sushiswap ABI or address not configured. Sushiswap strategies will be unavailable.")
+
 
             logger.debug("Transaction Core initialized successfully")
 
@@ -207,7 +228,7 @@ class TransactionCore:
              logger.debug(f"Fetched gas price: {gas_price_gwei} Gwei")
         except Exception as e:
             self.handle_error(e, "_get_dynamic_gas_parameters")
-            gas_price_gwei = Decimal(self.DEFAULT_GAS_PRICE_GWEI)
+            gas_price_gwei = Decimal(self.DEFAULT_GAS_PRICE_GWEI) # Fallback to default GWEI, not hardcoded
 
         gas_price = int(
             self.web3.to_wei(gas_price_gwei * self.gas_price_multiplier, "gwei")
@@ -231,8 +252,11 @@ class TransactionCore:
             return self.DEFAULT_GAS_LIMIT
 
     async def execute_transaction(self, tx: Dict[str, Any]) -> Optional[str]:
-        """Executes a transaction with retries."""
-        for attempt in range(1, self.configuration.MEMPOOL_MAX_RETRIES + 1):
+        """Executes a transaction with retries using configuration settings."""
+        max_retries = self.configuration.MEMPOOL_MAX_RETRIES # Get retry settings from config
+        retry_delay = self.configuration.MEMPOOL_RETRY_DELAY
+
+        for attempt in range(1, max_retries + 1):
             try:
                 signed_tx = await self.sign_transaction(tx)
                 tx_hash = await self.call_contract_function(signed_tx)
@@ -244,7 +268,7 @@ class TransactionCore:
                 self.handle_error(e, "execute_transaction", {"tx": tx})
             except Exception as e:
                 self.handle_error(e, "execute_transaction", {"tx": tx})
-                await asyncio.sleep(self.configuration.MEMPOOL_RETRY_DELAY * (attempt + 1))
+                await asyncio.sleep(retry_delay * (attempt + 1)) # Use configurable retry delay
         logger.error("Failed to execute transaction after retries")
         return None
 
@@ -267,7 +291,7 @@ class TransactionCore:
             raise
 
     async def handle_eth_transaction(self, target_tx: Dict[str, Any]) -> bool:
-        """Handles an ETH transfer transaction."""
+        """Handles an ETH transfer transaction, leveraging configuration for gas price multiplier."""
         tx_hash = target_tx.get("tx_hash", "Unknown")
         logger.debug(f"Handling ETH transaction {tx_hash}")
         try:
@@ -289,7 +313,7 @@ class TransactionCore:
                 logger.warning("Original gas price is zero or negative. Skipping.")
                 return False
             tx_details["gasPrice"] = int(
-                original_gas_price * self.configuration.ETH_TX_GAS_PRICE_MULTIPLIER
+                original_gas_price * self.configuration.ETH_TX_GAS_PRICE_MULTIPLIER # Use config multiplier
             )
 
             eth_value_ether = self.web3.from_wei(eth_value, "ether")
@@ -310,11 +334,12 @@ class TransactionCore:
         return False
 
     def calculate_flashloan_amount(self, target_tx: Dict[str, Any]) -> int:
-        """Calculates the flashloan amount based on estimated profit."""
+        """Calculates the flashloan amount based on estimated profit and configuration."""
         estimated_profit = target_tx.get("profit", 0)
         if estimated_profit > 0:
+            flashloan_percentage = self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE # Get percentage from config
             flashloan_amount = int(
-                Decimal(estimated_profit) * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE)) * Decimal("1e18")
+                Decimal(estimated_profit) * Decimal(str(flashloan_percentage)) * Decimal("1e18")
             )
             logger.debug(
                 f"Calculated flashloan amount: {flashloan_amount} Wei based on estimated profit."
@@ -364,7 +389,7 @@ class TransactionCore:
             return None
 
     async def send_bundle(self, transactions: List[Dict[str, Any]]) -> bool:
-        """Sends a bundle of transactions to MEV relays."""
+        """Sends a bundle of transactions to MEV relays, using configured builders and retry settings."""
         try:
             signed_txs = [await self.sign_transaction(tx) for tx in transactions]
             bundle_payload = {
@@ -379,7 +404,9 @@ class TransactionCore:
                 ],
             }
 
-            mev_builders = self.configuration.MEV_BUILDERS # Use configurable MEV builders
+            mev_builders = self.configuration.MEV_BUILDERS # Get builders from configuration
+            max_retries = self.configuration.MEMPOOL_MAX_RETRIES # Get retry settings from config
+            retry_delay = self.configuration.MEMPOOL_RETRY_DELAY
 
             successes = []
 
@@ -389,7 +416,7 @@ class TransactionCore:
                     builder["auth_header"]: f"{self.account.address}:{self.account.key}",
                 }
 
-                for attempt in range(1, self.configuration.MEMPOOL_MAX_RETRIES + 1):
+                for attempt in range(1, max_retries + 1):
                     try:
                         logger.debug(f"Attempt {attempt} to send bundle via {builder['name']}. ℹ️ ")
                         async with aiohttp.ClientSession() as session:
@@ -412,8 +439,8 @@ class TransactionCore:
 
                     except aiohttp.ClientResponseError as e:
                         self.handle_error(e, "send_bundle", {"transactions": transactions})
-                        if attempt < self.configuration.MEMPOOL_MAX_RETRIES:
-                            sleep_time = self.configuration.MEMPOOL_RETRY_DELAY * attempt
+                        if attempt < max_retries:
+                            sleep_time = retry_delay * attempt # Use configurable retry delay
                             logger.warning(f"Retrying in {sleep_time} seconds...")
                             await asyncio.sleep(sleep_time)
                     except ValueError as e:
@@ -421,8 +448,8 @@ class TransactionCore:
                         break
                     except Exception as e:
                         self.handle_error(e, "send_bundle", {"transactions": transactions})
-                        if attempt < self.configuration.MEMPOOL_MAX_RETRIES:
-                            sleep_time = self.configuration.MEMPOOL_RETRY_DELAY * attempt
+                        if attempt < max_retries:
+                            sleep_time = retry_delay * attempt # Use configurable retry delay
                             logger.warning(f"Retrying in {sleep_time} seconds...")
                             await asyncio.sleep(sleep_time)
 
