@@ -94,13 +94,13 @@ class MainCore:
             logger.info("Web3 initialized ✅")
             await asyncio.sleep(1)
 
-            # Initialize account (depends on Configuration)
+            # 3.Initialize account (depends on Configuration)
             self.account = Account.from_key(self.configuration.WALLET_KEY)
             await self._check_account_balance()
             logger.info(f"Account {self.account.address} initialized ✅")
             await asyncio.sleep(1)
 
-            # Initialize ABI Registry and load ABIs (depends on Configuration)
+            # 4. Initialize ABI Registry and load ABIs (depends on Configuration)
             logger.debug("Initializing ABI Registry...")
             abiregistry = ABIRegistry()
             await abiregistry.initialize(self.configuration.BASE_PATH)
@@ -110,14 +110,14 @@ class MainCore:
             if not erc20_abi:
                 raise ValueError("Failed to load ERC20 ABI from Registry")
 
-            # 2. Initialize API config (depends on Configuration)
+            # 5. Initialize API config (depends on Configuration)
             logger.debug("Initializing API Config...")
             self.components['apiconfig'] = APIConfig(self.configuration)
             await self.components['apiconfig'].initialize()
             logger.info("API Config initialized ✅")
             await asyncio.sleep(1) 
 
-            # 3. Initialize nonce core (depends on Web3, Configuration)
+            # 6. Initialize nonce core (depends on Web3, Configuration)
             logger.debug("Initializing Nonce Core...")
             self.components['noncecore'] = NonceCore(
                 self.web3,
@@ -127,7 +127,7 @@ class MainCore:
             await self.components['noncecore'].initialize()
             logger.info(f"NonceCore initialized with nonce {await self.components['noncecore'].get_nonce()} ✅") # Get nonce after init
             await asyncio.sleep(1) 
-            # 4. Initialize safety net (depends on Web3, Configuration, APIConfig, MarketMonitor)
+            # 7. Initialize safety net (depends on Web3, Configuration, APIConfig, MarketMonitor)
             logger.debug("Initializing SafetyNet...")
             self.components['safetynet'] = SafetyNet(
                 self.web3,
@@ -140,7 +140,7 @@ class MainCore:
             await self.components['safetynet'].initialize()
             logger.info("SafetyNet initialized ✅ ")
             await asyncio.sleep(1) 
-            # 5. Initialize transaction core (depends on Web3, Configuration, NonceCore, SafetyNet)
+            # 8. Initialize transaction core (depends on Web3, Configuration, NonceCore, SafetyNet)
             logger.debug("Initializing Transaction Core...")
             self.components['transactioncore'] = TransactionCore(
                 self.web3,
