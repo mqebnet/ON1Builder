@@ -20,11 +20,11 @@ from noncecore import NonceCore
 from safetynet import SafetyNet
 
 
-from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+from loggingconfig import setup_logging
 import logging
 
-logger = setup_logging("MempoolMonitor", level=logging.DEBUG)
-patch_logger_for_animation(logger)  
+logger = setup_logging("MempoolMonitor", level=logging.INFO)
+
 
 class MempoolMonitor:
     def __init__(self, web3: AsyncWeb3, safetynet: "SafetyNet", noncecore: "NonceCore",

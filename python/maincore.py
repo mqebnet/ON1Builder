@@ -25,11 +25,11 @@ from strategynet import StrategyNet
 from transactioncore import TransactionCore
 import sys
 
-from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+from loggingconfig import setup_logging
 import logging
 
-logger = setup_logging("MainCore", level=logging.DEBUG)
-patch_logger_for_animation(logger)  
+logger = setup_logging("MainCore", level=logging.INFO)
+
 
 # Constants
 
@@ -80,13 +80,13 @@ class MainCore:
     async def _initialize_components(self) -> None:
         """Initialize all components in the correct order."""
         try:
-            # 1. First initialize configuration
+            # 1. First initialize configuration (no dependencies)
             logger.debug("Loading Configuration...")
             await self._load_configuration()
             logger.info("Configuration initialized ✅")
             await asyncio.sleep(1)
 
-            # 2. Initialize Web3
+            # 2. Initialize Web3 (depends on Configuration)
             logger.debug("Initializing Web3...")
             self.web3 = await self._initialize_web3()
             if not self.web3:
@@ -94,31 +94,30 @@ class MainCore:
             logger.info("Web3 initialized ✅")
             await asyncio.sleep(1)
 
-            # Initialize account
+            # 3.Initialize account (depends on Configuration)
             self.account = Account.from_key(self.configuration.WALLET_KEY)
             await self._check_account_balance()
             logger.info(f"Account {self.account.address} initialized ✅")
             await asyncio.sleep(1)
 
-            # Initialize ABI Registry and load ABIs (needs to be after web3 for chain-aware ABIs if needed)
+            # 4. Initialize ABI Registry and load ABIs (depends on Configuration)
             logger.debug("Initializing ABI Registry...")
             abiregistry = ABIRegistry()
             await abiregistry.initialize(self.configuration.BASE_PATH)
             logger.info("ABI Registry initialized ✅")
             await asyncio.sleep(1) 
-            # Load and validate ERC20 ABI (needs ABI Registry initialized)
-            erc20_abi = abiregistry.get_abi('erc20') # Load directly from registry
+            erc20_abi = abiregistry.get_abi('erc20') 
             if not erc20_abi:
                 raise ValueError("Failed to load ERC20 ABI from Registry")
 
-            # 2. Initialize API config (depends on Configuration)
+            # 5. Initialize API config (depends on Configuration)
             logger.debug("Initializing API Config...")
             self.components['apiconfig'] = APIConfig(self.configuration)
             await self.components['apiconfig'].initialize()
             logger.info("API Config initialized ✅")
             await asyncio.sleep(1) 
 
-            # 3. Initialize nonce core (depends on Web3, Configuration)
+            # 6. Initialize nonce core (depends on Web3, Configuration)
             logger.debug("Initializing Nonce Core...")
             self.components['noncecore'] = NonceCore(
                 self.web3,
@@ -128,7 +127,7 @@ class MainCore:
             await self.components['noncecore'].initialize()
             logger.info(f"NonceCore initialized with nonce {await self.components['noncecore'].get_nonce()} ✅") # Get nonce after init
             await asyncio.sleep(1) 
-            # 4. Initialize safety net (depends on Web3, Configuration, APIConfig, MarketMonitor - Market Monitor is optional here and could be None initially)
+            # 7. Initialize safety net (depends on Web3, Configuration, APIConfig, MarketMonitor)
             logger.debug("Initializing SafetyNet...")
             self.components['safetynet'] = SafetyNet(
                 self.web3,
@@ -141,20 +140,18 @@ class MainCore:
             await self.components['safetynet'].initialize()
             logger.info("SafetyNet initialized ✅ ")
             await asyncio.sleep(1) 
-            # 5. Initialize transaction core with corrected parameters:
+            # 8. Initialize transaction core (depends on Web3, Configuration, NonceCore, SafetyNet)
             logger.debug("Initializing Transaction Core...")
             self.components['transactioncore'] = TransactionCore(
                 self.web3,
                 self.account,
-                self.configuration.AAVE_FLASHLOAN_ADDRESS, 
-                self.configuration.AAVE_POOL_ADDRESS,      
+                self.configuration,    
                 noncecore=self.components['noncecore'],
                 safetynet=self.components['safetynet'],
-                configuration=self.configuration
             )
             await self.components['transactioncore'].initialize()
             logger.info("Transaction Core initialized ✅")
-            await asyncio.sleep(1) 
+            await asyncio.sleep(1)
 
             logger.debug("Initializing Market Monitor...")
             self.components['marketmonitor'] = MarketMonitor(
@@ -196,7 +193,7 @@ class MainCore:
             logger.info("All vital components initialized successfully ✅")
             await asyncio.sleep(1) 
         except Exception as e:
-            logger.critical(f"Component initialization failed: {e}", exc_info=True)
+            logger.error(f"Error initializing components: {e}", exc_info=True)
             raise
 
     async def initialize(self) -> None:
@@ -287,35 +284,13 @@ class MainCore:
     async def _get_providers(self) -> List[Tuple[str, Union[AsyncIPCProvider, AsyncHTTPProvider, WebSocketProvider]]]:
         """Get list of available providers with validation."""
         providers = []
-        # Basic network connectivity test - try resolving google.com
-        try:
-            import socket
-            ip_address = socket.gethostbyname("google.com")
-            print(f"DNS resolution for google.com successful. IP address: {ip_address}")
-        except socket.gaierror as e:
-            print(f"DNS resolution for google.com FAILED: {e}")
-            logger.critical("DNS resolution failing for google.com! Check your network.")
-            return [] # Exit providers if basic DNS fails
-        api_key = self.configuration.API_KEY
+
         if self.configuration.HTTP_ENDPOINT:
-            try:
-                print(f"Attempting connection with HTTP Provider to URL: {self.configuration.HTTP_ENDPOINT}")  # DEBUG PRINT
-                custom_headers = { 
-                    "Content-Type": "application/json", 
-                    "X-Goog-Api-Key": "{api_key}"
-                }
-                http_provider = AsyncHTTPProvider(
-                    self.configuration.HTTP_ENDPOINT,
-                    request_kwargs={'headers': custom_headers}
-                )
-                response = await http_provider.make_request('eth_blockNumber', [])
-                if response.get('error'):  # Check for errors in response
-                    raise Exception(response['error'])
-                providers.append(("HTTP Provider", http_provider))
-                logger.info("Linked to Ethereum network via HTTP Provider. ✅")
-                # Do not return immediately to allow fallback providers in case of later issues.
-            except Exception as e:
-                logger.warning(f"HTTP Provider failed: {e} ❌ - Attempting WebSocket... ")
+            http_provider = AsyncHTTPProvider(self.configuration.HTTP_ENDPOINT)
+            await http_provider.make_request( 'eth_blockNumber', [])
+            providers.append(("HTTP Provider", http_provider))
+            logger.info("Linked to Ethereum network via HTTP Provider. ✅")
+            return providers
 
         if self.configuration.WEBSOCKET_ENDPOINT:
             try:
@@ -362,7 +337,7 @@ class MainCore:
             raise ValueError("Account or Web3 not initialized before balance check")
 
         try:
-            min_balance = float(self.configuration.get_config_value("MIN_ETH_BALANCE", 0.000001))
+            min_balance = float(self.configuration.get_config_value("MIN_BALANCE", 0.000001))
             balance = await self.web3.eth.get_balance(self.account.address)
             balance_eth = float(self.web3.from_wei(balance, 'ether'))
 

@@ -5,21 +5,18 @@ import asyncio
 import time
 import numpy as np
 import random
-
 from typing import Any, Dict, List, Optional, Callable, Tuple
 from decimal import Decimal
-
 from apiconfig import APIConfig
 from transactioncore import TransactionCore 
 from safetynet import SafetyNet  
 from marketmonitor import MarketMonitor  
 
-
-from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+from loggingconfig import setup_logging  # updated import
 import logging
 
-logger = setup_logging("StrategyNet", level=logging.DEBUG)
-patch_logger_for_animation(logger)  
+logger = setup_logging("StrategyNet", level=logging.INFO)
+
 
 class StrategyNet:
     """Advanced strategy network for MEV operations."""
@@ -621,7 +618,7 @@ class StrategyNet:
         logger.debug("Initiating Flash Profit Sandwich Strategy...")
         estimated_amount = await self.transactioncore.calculate_flashloan_amount(target_tx)
         estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE)) 
-        gas_price = await self.transactioncore.get_dynamic_gas_price()
+        gas_price = await self.safetynet.get_dynamic_gas_price()
         if (gas_price > self.configuration.SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI): 
             logger.debug(f"Gas price too high for sandwich attack: {gas_price} Gwei")
             return False
@@ -703,7 +700,7 @@ class StrategyNet:
             value = getattr(tx, 'value', 0)
             gas_price = getattr(tx, 'gasPrice', 0)
 
-            estimated_profit = await self.transactioncore.estimate_transaction_profit(
+            estimated_profit = await self.safetynet._calculate_profit(
                 tx, path, value, gas_price
             )
             logger.debug(f"Estimated profit: {estimated_profit:.4f} ETH")

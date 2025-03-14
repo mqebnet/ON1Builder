@@ -1,9 +1,6 @@
 #========================================================================================================================
 # https://github.com/John0n1/0xBuilder
 
-# This file contains the SafetyNet class, which is responsible for risk management and transaction validation.
-# It includes methods for checking transaction safety, ensuring profit, and adjusting slippage tolerance.
-#========================================================================================================================
 import asyncio
 import time
 from decimal import Decimal
@@ -15,13 +12,13 @@ from web3.exceptions import Web3Exception
 
 from apiconfig import APIConfig
 from configuration import Configuration
+from marketmonitor import MarketMonitor
 
-
-from loggingconfig import setup_logging, patch_logger_for_animation  # updated import
+from loggingconfig import setup_logging
 import logging
 
-logger = setup_logging("SafetyNet", level=logging.DEBUG)
-patch_logger_for_animation(logger)  
+logger = setup_logging("SafetyNet", level=logging.INFO)
+
 
 class SafetyNet:
     """
@@ -35,7 +32,7 @@ class SafetyNet:
         address: Optional[str] = None,
         account: Optional[Account] = None,
         apiconfig: Optional["APIConfig"] = None,
-        marketmonitor: Optional[Any] = None,
+        marketmonitor: Optional[MarketMonitor] = None,
     ):
         """
         Initialize Safety Net components.
@@ -45,23 +42,23 @@ class SafetyNet:
         self.configuration: Optional["Configuration"] = configuration
         self.account: Optional[Account] = account
         self.apiconfig: Optional["APIConfig"] = apiconfig
-        self.price_cache: TTLCache = TTLCache(maxsize=2000, ttl=self.configuration.SAFETYNET_CACHE_TTL) # Use configurable CACHE_TTL
-        self.gas_price_cache: TTLCache = TTLCache(maxsize=1, ttl=self.configuration.SAFETYNET_GAS_PRICE_TTL) # Use configurable GAS_PRICE_CACHE_TTL
-        self.marketmonitor: Optional[Any] = marketmonitor  # Store marketmonitor reference
+        self.price_cache: TTLCache = TTLCache(maxsize=2000, ttl=self.configuration.SAFETYNET_CACHE_TTL)
+        self.gas_price_cache: TTLCache = TTLCache(maxsize=1, ttl=self.configuration.SAFETYNET_GAS_PRICE_TTL) 
+        self.marketmonitor: Optional[MarketMonitor] = marketmonitor
 
         self.price_lock: asyncio.Lock = asyncio.Lock()
         logger.info("SafetyNet is reporting for duty 🛡️")
-        time.sleep(1) # ensuring proper initialization
+        time.sleep(1)
 
         # Safety checks cache
-        self.safety_cache: TTLCache = TTLCache(maxsize=100, ttl=60)  # 1 minute cache # Keep safety_cache TTL hardcoded for now, or make configurable too if needed.
+        self.safety_cache: TTLCache = TTLCache(maxsize=100, ttl=60) 
 
         # Load settings from config object
         if self.configuration:
             self.SLIPPAGE_CONFIG: Dict[str, float] = {
                 "default": self.configuration.get_config_value("SLIPPAGE_DEFAULT", 0.1),
-                "min": self.configuration.get_config_value("SLIPPAGE_MIN", 0.01),
-                "max": self.configuration.get_config_value("SLIPPAGE_MAX", 0.5),
+                "min": self.configuration.get_config_value("MIN_SLIPPAGE", 0.01),
+                "max": self.configuration.get_config_value("MAX_SLIPPGAGE", 0.5),
                 "high_congestion": self.configuration.get_config_value("SLIPPAGE_HIGH_CONGESTION", 0.05),
                 "low_congestion": self.configuration.get_config_value("SLIPPAGE_LOW_CONGESTION", 0.2),
             }
@@ -99,10 +96,10 @@ class SafetyNet:
 
             logger.debug("SafetyNet initialized successfully ✅")
         except RuntimeError as e:
-            logger.critical(f"Safety Net initialization failed due to runtime error: {e}") # Specific RuntimeError for init failures
+            logger.critical(f"Safety Net initialization failed due to runtime error: {e}") 
             raise
         except Exception as e:
-            logger.critical(f"Safety Net initialization failed: {e}", exc_info=True) # Generic exception with traceback
+            logger.critical(f"Safety Net initialization failed: {e}", exc_info=True) 
             raise
 
 
@@ -119,10 +116,10 @@ class SafetyNet:
                 self.price_cache[cache_key] = balance
                 logger.debug(f"Fetched balance: {balance} ETH")
                 return balance
-            except Web3Exception as e: # Catch Web3 specific exceptions
+            except Web3Exception as e: 
                 logger.warning(f"Attempt {attempt+1} failed to fetch balance (Web3Error): {e}")
                 await asyncio.sleep(2 ** attempt)
-            except Exception as e: # Catch any other errors
+            except Exception as e: 
                 logger.error(f"Attempt {attempt+1} failed to fetch balance (Unexpected Error): {e}", exc_info=True) 
                 await asyncio.sleep(2 ** attempt)
 
@@ -138,7 +135,7 @@ class SafetyNet:
         try:
             real_time_price = await self.apiconfig.get_real_time_price(transaction_data['output_token'])
             if real_time_price is None:
-                logger.warning("Real-time price unavailable, cannot ensure profit.") # More informative log
+                logger.warning("Real-time price unavailable, cannot ensure profit.") 
                 return False
 
             gas_cost_eth = self._calculate_gas_cost(
@@ -155,19 +152,19 @@ class SafetyNet:
 
             return profit > Decimal(minimum_profit_eth or 0.001)
         except KeyError as e:
-            logger.error(f"Missing key in transaction data for profit check: {e}") # More specific error log
+            logger.error(f"Missing key in transaction data for profit check: {e}") 
             return False
         except Exception as e:
-            logger.error(f"Error in ensure_profit: {e}", exc_info=True) # Include traceback
+            logger.error(f"Error in ensure_profit: {e}", exc_info=True)
             return False
 
     def _validate_gas_parameters(self, gas_price_gwei: Decimal, gas_used: int) -> bool:
         """Validate gas parameters against safety thresholds."""
         if gas_used == 0:
-            logger.error("Gas used cannot be zero for transaction validation.") # More informative log
+            logger.error("Gas used cannot be zero for transaction validation.")
             return False
         if gas_price_gwei > self.GAS_CONFIG["max_gas_price_gwei"]:
-            logger.warning(f"Gas price {gas_price_gwei} Gwei exceeds maximum threshold of {self.GAS_CONFIG['max_gas_price_gwei']} Gwei.") # More informative warning
+            logger.warning(f"Gas price {gas_price_gwei} Gwei exceeds maximum threshold of {self.GAS_CONFIG['max_gas_price_gwei']} Gwei.")
             return False
         return True
 
@@ -216,7 +213,7 @@ class SafetyNet:
             gas_estimate = await self.web3.eth.estimate_gas(transaction_data)
             return gas_estimate
         except Exception as e:
-            logger.error(f"Gas estimation failed: {e}", exc_info=True) # Include traceback
+            logger.error(f"Gas estimation failed: {e}", exc_info=True)
             return 0
 
     async def adjust_slippage_tolerance(self) -> float:
@@ -232,10 +229,10 @@ class SafetyNet:
             slippage = min(
                 max(slippage, self.SLIPPAGE_CONFIG["min"]), self.SLIPPAGE_CONFIG["max"]
             )
-            logger.debug(f"Adjusted slippage tolerance to {slippage * 100:.2f}%") # Formatted percentage in log
+            logger.debug(f"Adjusted slippage tolerance to {slippage * 100:.2f}%") 
             return slippage
         except Exception as e:
-            logger.error(f"Error adjusting slippage tolerance: {e}", exc_info=True) # Include traceback
+            logger.error(f"Error adjusting slippage tolerance: {e}", exc_info=True)
             return self.SLIPPAGE_CONFIG["default"]
 
     async def get_network_congestion(self) -> float:
@@ -245,11 +242,11 @@ class SafetyNet:
             gas_used = latest_block["gasUsed"]
             gas_limit = latest_block["gasLimit"]
             congestion_level = gas_used / gas_limit
-            logger.debug(f"Network congestion level: {congestion_level * 100:.2f}%") # Formatted percentage in log
+            logger.debug(f"Network congestion level: {congestion_level * 100:.2f}%")
             return congestion_level
         except Exception as e:
-            logger.error(f"Error fetching network congestion: {e}", exc_info=True) # Include traceback
-            return 0.5 # Return a default congestion level if fetching fails, to avoid division by zero or None errors
+            logger.error(f"Error fetching network congestion: {e}", exc_info=True)
+            return 0.5
 
     async def check_transaction_safety(
         self,
@@ -265,7 +262,7 @@ class SafetyNet:
                 gas_price = await self.get_dynamic_gas_price()
                 if gas_price > self.configuration.MAX_GAS_PRICE_GWEI:
                      is_safe = False
-                     messages.append(f"Gas price too high: {gas_price} Gwei, exceeds limit of {self.configuration.MAX_GAS_PRICE_GWEI} Gwei") # More informative message
+                     messages.append(f"Gas price too high: {gas_price} Gwei, exceeds limit of {self.configuration.MAX_GAS_PRICE_GWEI} Gwei")
 
              # Check profit potential
              if check_type in ['all', 'profit']:
@@ -280,26 +277,26 @@ class SafetyNet:
                 )
                 if profit < self.configuration.MIN_PROFIT:
                      is_safe = False
-                     messages.append(f"Insufficient profit: {profit:.6f} ETH, below minimum of {self.configuration.MIN_PROFIT} ETH") # More informative message
+                     messages.append(f"Insufficient profit: {profit:.6f} ETH, below minimum of {self.configuration.MIN_PROFIT} ETH") 
 
              # Check network congestion
              if check_type in ['all', 'network']:
                 congestion = await self.get_network_congestion()
                 if congestion > 0.8:
                      is_safe = False
-                     messages.append(f"High network congestion: {congestion:.1%}, above threshold of 80%") # More informative message
+                     messages.append(f"High network congestion: {congestion:.1%}, above threshold of 80%")
 
              return is_safe, {
                 'is_safe': is_safe,
                 'gas_ok': is_safe if check_type not in ['all', 'gas'] else gas_price <= self.configuration.MAX_GAS_PRICE_GWEI,
                 'profit_ok': is_safe if check_type not in ['all', 'profit'] else profit >= self.configuration.MIN_PROFIT,
-                'slippage_ok': True, # Not yet implemented slippage checks
+                'slippage_ok': True,
                 'congestion_ok': is_safe if check_type not in ['all', 'network'] else congestion <= 0.8,
                 'messages': messages
             }
 
         except Exception as e:
-            logger.error(f"Safety check error: {e}", exc_info=True) # Include traceback
+            logger.error(f"Safety check error: {e}", exc_info=True) 
             return False, {'is_safe': False, 'messages': [str(e)]}
 
     async def stop(self) -> None:
@@ -309,13 +306,12 @@ class SafetyNet:
                 await self.apiconfig.close()
             logger.info("Safety Net stopped successfully.")
          except Exception as e:
-             logger.error(f"Error stopping safety net: {e}", exc_info=True) # Include traceback
+             logger.error(f"Error stopping safety net: {e}", exc_info=True)
              raise
 
     async def assess_transaction_risk(
         self,
         tx: Dict[str, Any],
-        token_symbol: str,
         market_conditions: Optional[Dict[str, bool]] = None,
         price_change: float = 0,
         volume: float = 0
@@ -324,11 +320,10 @@ class SafetyNet:
         try:
             risk_score = 1.0
 
-            # Get market conditions if not provided and marketmonitor exists
             if not market_conditions and self.marketmonitor:
                 market_conditions = await self.marketmonitor.check_market_conditions(tx.get("to", ""))
             elif not market_conditions:
-                market_conditions = {}  # Default empty if no marketmonitor
+                market_conditions = {}  
 
             # Gas price impact
             gas_price = int(tx.get("gasPrice", 0))
@@ -357,7 +352,7 @@ class SafetyNet:
             return risk_score, market_conditions
 
         except Exception as e:
-            logger.error(f"Error in risk assessment: {e}", exc_debug=True) # Include traceback
+            logger.error(f"Error in risk assessment: {e}", exc_debug=True)
             return 0.0, {}
 
     async def get_dynamic_gas_price(self) -> Decimal:
@@ -386,8 +381,8 @@ class SafetyNet:
              return gas_price_gwei
 
         except Exception as e:
-            logger.error(f"Error fetching dynamic gas price: {e}", exc_debug=True) # Include traceback
-            return Decimal(str(self.configuration.get_config_value("MAX_GAS_PRICE_GWEI", 50))) # Default gas price
+            logger.error(f"Error fetching dynamic gas price: {e}", exc_debug=True)
+            return Decimal(str(self.configuration.get_config_value("MAX_GAS_PRICE_GWEI", 50))) 
 
     async def validate_transaction(self, transaction_data: Dict[str, Any]) -> bool:
         """Validate transaction data before execution."""
@@ -396,7 +391,7 @@ class SafetyNet:
             required_fields = ["output_token", "amountOut", "amountIn", "gas_price", "gas_used"]
             for field in required_fields:
                 if field not in transaction_data:
-                    logger.error(f"Missing required field in transaction data for validation: {field}") # More informative log
+                    logger.error(f"Missing required field in transaction data for validation: {field}") 
                     return False
 
             # Validate gas parameters
@@ -407,5 +402,5 @@ class SafetyNet:
 
             return True
         except Exception as e:
-            logger.error(f"Error validating transaction data: {e}", exc_info=True) # Include traceback
+            logger.error(f"Error validating transaction data: {e}", exc_info=True) 
             return False
