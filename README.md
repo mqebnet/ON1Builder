@@ -7,7 +7,7 @@
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [Key Features](#key-features)
+- [Core Functionality] (#core-functionality)
 - [Project Structure](#project-structure)
 - [Prerequisites](#prerequisites)
   - [System](#system)
@@ -31,12 +31,7 @@
 
 ## Introduction
 
-**0xBuilder** is engineered for **high-frequency trading and maximum profit extraction**. including:
-
-- **Front-Running**
-- **Strategic Back-Running**
-- **Sandwich Attacks**
-- **Flashloan Arbitrage**
+**0xBuilder** is designed for high-frequency trading and optimized for profit maximization.  This includes functionalities such as front-running, strategic back-running, sandwich attacks, and flash loan arbitrage.
 
 <br>
 
@@ -48,19 +43,19 @@
 
 > **⚠️** **Heads Up!** 0xBuilder is under active development. Expect bugs – use with extreme caution and at your own risk.
 
-## Key Features
+## Core Functionality
 
-*   **Mempool Monitoring**: scans the Ethereum mempool, pinpointing arbitrage and MEV opportunities.
-*   **Strategic**: Deploys strategies like Front-Running, Back-Running, Sandwich Attacks, and Flashloan Arbitrage with  precision.
-*   **Flashloan**: Leverage flashloans from Aave V3 for maximum capital efficiency and zero upfront capital requirements.
-*   **Market analysis**: Integrated market analysis, real-time data from cryptocurrency APIs, ensuring data-driven decisions.
-*   **Gas Optimization**: Dynamic gas price adjustments.
-*   **Nonce Management**: Nonce handling to guarantee transaction success and prevent costly failures.
-*   **Safety Net**: Multi-layered safety checks and risk assessments.
-*   **Transaction Bundling**: Bundle transactions for atomic execution and front-running.
-*   **DeFi Interaction**: Seamlessly interacts with leading DeFi platforms like Uniswap, Sushiswap, Aave, and more.
-*   **Customization**: Highly configurable architecture supporting multiple wallets, tokens, trading pairs, and adaptable strategies.
-*   **Clear Logging**: Comprehensive, detailed logs for in-depth performance analysis, debugging, and strategy refinement.
+*   **Mempool Analysis**:  The system continuously monitors the Ethereum mempool to identify arbitrage and maximal extractable value (MEV) opportunities.
+*   **Sophisticated Execution Strategies**:  It employs advanced strategies including front-running, back-running, sandwich attacks, and flash loan arbitrage with precise execution.
+*   **Flash Loan Integration**:  Leveraging Aave V3 flash loans optimizes capital efficiency and eliminates the need for upfront capital.
+*   **Data-Driven Decision Making**:  Integrated market analysis, utilizing real-time data from cryptocurrency APIs, ensures informed decision-making.
+*   **Gas Optimization Engine**:  Dynamic gas price adjustments are implemented to minimize transaction costs.
+*   **Robust Nonce Management**:  The system incorporates robust nonce handling to ensure transaction success and prevent failures.
+*   **Comprehensive Risk Mitigation**:  Multi-layered safety checks and risk assessments are implemented to safeguard operations.
+*   **Atomic Transaction Bundling**:  Transactions are bundled for atomic execution and enhanced protection against front-running.
+*   **DeFi Protocol Integration**:  The system seamlessly interacts with major decentralized finance (DeFi) platforms, including Uniswap, Sushiswap, and Aave.
+*   **Flexible Configuration**:  The highly configurable architecture supports multiple wallets, tokens, trading pairs, and adaptable trading strategies.
+*   **Detailed Transaction Logging**:  Comprehensive logs provide detailed performance analysis, facilitate debugging, and enable strategy refinement.
 
 ## Project Structure
 
@@ -107,17 +102,17 @@ Prepare your system and environment
 
 ### System 
 
-- **Operating System**: Linux (Ubuntu 20.04+ Recommended), Windows 10/11, macOS 12+
-- **Blazing Network**: 
-  - Internet: Minimum 50Mbps, **100Mbps recommended for optimal performance**
-- **Robust Hardware**:
-  - CPU: 4+ Cores, 3.0GHz+ (Intel i7/Ryzen 7 or better for peak efficiency)
-  - RAM: Minimum 16GB, **32GB recommended for heavy-duty operations**
-  - Storage: **1.3TB NVMe SSD minimum, 2TB for optimal data handling**
+- **Operating System**: Linux Ubuntu 20.04+, Windows 10/11, macOS 12+
+- **Networking**: 
+  - Internet: Minimum 50Mbps
+- **Hardware**:
+  - CPU: 4+ Cores, 3.0GHz+ (I
+  - RAM: Minimum 16GB
+  - Storage: 1.5TB NVMe SSD minimum for ethereum node sync
 
 ### Software
 
-- **Ethereum Execution Client**: Choose your weapon:
+- **Ethereum Execution Client**:
     - [Geth](https://geth.ethereum.org/) (Go, Recommended for stability and speed)
     - [Nethermind](https://www.nethermind.io/) (C#/.NET)
     - [Besu](https://besu.hyperledger.org/) (Java)
@@ -128,7 +123,7 @@ Prepare your system and environment
 
 ### Ethereum Node
 
-Set up your Ethereum Execution and Beacon clients for blockchain interaction.
+Set up your Ethereum Execution and Beacon client for blockchain interaction.
 
 **Choose Your Execution Client**:
 
@@ -141,7 +136,7 @@ Set up your Ethereum Execution and Beacon clients for blockchain interaction.
 | [Reth](https://reth.rs/)    | Rust        | Linux, Windows, macOS      | Mainnet, Sepolia, Holesky     | Full                 |
 | [EthereumJS](https://github.com/ethereumjs/ethereumjs-monorepo) | TypeScript    | Linux, Windows, macOS      | Sepolia, Holesky             | Full                 |
 
-**Example: Geth Configuration**
+**Geth Configuration**
 
 1.  **Install Geth**: Follow the [official guide](https://geth.ethereum.org/docs/install-and-build/installing-geth).
 
@@ -216,15 +211,6 @@ pip install -r requirements.txt
     ```
 
 2.  **Edit `.env`**: Configure API keys, node endpoints, wallet details, and more.
-
-3.  **Secure Your Secrets**:
-
-    ```bash
-    ls -la .env
-    chmod 600 .env 
-    ```
-
-**Example `.env`**: (Refer to `.env.example` for a full list of variables)
 
 ```ini
 # API Configuration
@@ -350,7 +336,7 @@ Maximize the potential with a flashloan contract.
 
 ## Register for API Keys
 
-Register for API keys from these essential services and add them to your `.env` file:
+Register for trial-API keys from these services and add them to your `.env` file:
 
 1.  **[Infura](https://infura.io/)**: Ethereum node infrastructure.
 2.  **[Etherscan](https://etherscan.io/apis)**: For on-chain data and transaction insights.
