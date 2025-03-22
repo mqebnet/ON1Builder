@@ -97,7 +97,7 @@ class ABIRegistry:
             else:
                 logger.warning(f"Skipping non-critical ABI: {abi_type}")
 
-    async def _load_abi_from_path(self, abi_path: Path, abi_type: str) -> List[Dict]:
+    async def _load_abi_from_path(self, abi_path: Path, abi_type: str) -> List[Dict[str, Any]]:
         """Load and validate ABI content from the specified path."""
         try:
             if not abi_path.exists():
@@ -126,7 +126,7 @@ class ABIRegistry:
             logger.error(f"Error loading ABI {abi_type} from {abi_path}: {e}", exc_info=True)
             raise
 
-    def _validate_abi(self, abi: List[Dict], abi_type: str) -> bool:
+    def _validate_abi(self, abi: List[Dict[str, Any]], abi_type: str) -> bool:
         """Validate the structure and required methods of an ABI."""
         if not isinstance(abi, list):
             logger.error(f"Invalid ABI format for {abi_type}: ABI must be a list.")
@@ -145,7 +145,7 @@ class ABIRegistry:
 
         return True
 
-    def _extract_signatures(self, abi: List[Dict], abi_type: str) -> None:
+    def _extract_signatures(self, abi: List[Dict[str, Any]], abi_type: str) -> None:
         """Extract function signatures and method selectors from an ABI."""
         signatures = {}
         selectors = {}
@@ -165,7 +165,7 @@ class ABIRegistry:
         self.signatures[abi_type] = signatures
         self.method_selectors[abi_type] = selectors
 
-    def get_abi(self, abi_type: str) -> Optional[List[Dict]]:
+    def get_abi(self, abi_type: str) -> Optional[List[Dict[str, Any]]]:
         """Retrieve a validated ABI by type."""
         return self.abis.get(abi_type)
 
@@ -180,7 +180,7 @@ class ABIRegistry:
         """Retrieve a function signature by ABI type and method name."""
         return self.signatures.get(abi_type, {}).get(method_name)
 
-    async def update_abi(self, abi_type: str, new_abi: List[Dict]) -> None:
+    async def update_abi(self, abi_type: str, new_abi: List[Dict[str, Any]]) -> None:
         """Update an ABI dynamically without restarting the application."""
         if not self._validate_abi(new_abi, abi_type):
             raise ValueError(f"Validation failed for {abi_type} ABI")
