@@ -77,6 +77,7 @@ class MainCore:
         self.WEB3_MAX_RETRIES = 3  
         logger.info("Initializing 0xBuilder...")
         time.sleep(2)  
+
     async def _initialize_components(self) -> None:
         """Initialize all components in the correct order."""
         try:

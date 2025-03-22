@@ -1,4 +1,3 @@
-
 # 0xBuilder
 
 [![License](https://img.shields.io/badge/License-MIT-white.svg)](LICENSE)
@@ -461,3 +460,95 @@ For detailed contribution guidelines, please review [CONTRIBUTING.md](CONTRIBUTI
 ## License
 
 0xBuilder is released under the [MIT License](LICENSE).
+
+## Usage Examples
+
+### Example 1: Running the Bot
+
+To run the bot, follow these steps:
+
+1. Ensure your Ethereum node is fully synchronized and running.
+2. Activate the virtual environment:
+    ```bash
+    source venv/bin/activate
+    ```
+3. Start the bot:
+    ```bash
+    python python/main.py
+    ```
+
+### Example 2: Configuring Environment Variables
+
+To configure environment variables, create a `.env` file and add the necessary variables:
+
+```ini
+# API Configuration
+ETHERSCAN_API_KEY=YOUR_ETHERSCAN_API_KEY
+INFURA_PROJECT_ID=YOUR_INFURA_PROJECT_ID
+COINGECKO_API_KEY=YOUR_COINGECKO_API_KEY
+COINMARKETCAP_API_KEY=YOUR_COINMARKETCAP_API_KEY
+CRYPTOCOMPARE_API_KEY=YOUR_CRYPTOCOMPARE_API_KEY
+
+# Ethereum Node Configuration
+HTTP_ENDPOINT=http://127.0.0.1:8545
+WS_ENDPOINT=wss://127.0.0.1:8546
+IPC_ENDPOINT=/path/to/geth.ipc
+
+# Wallet Configuration
+WALLET_ADDRESS=0xYourWalletAddress
+WALLET_KEY=YOUR_PRIVATE_KEY
+
+# Token Configuration (Paths to JSON files)
+TOKEN_ADDRESSES=utils/token_addresses.json
+TOKEN_SYMBOLS=utils/token_symbols.json
+ERC20_SIGNATURES=utils/erc20_signatures.json
+
+# DEX Router Addresses
+UNISWAP_ADDRESS=0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D # Uniswap V2 Router
+SUSHISWAP_ADDRESS=0xd9e1cE17F2641f24aE83637ab66a2cca9C378B9F # Sushiswap Router
+
+# ABI Paths (Paths to ABI JSON files)
+UNISWAP_ABI=abi/uniswap_abi.json
+SUSHISWAP_ABI=abi/sushiswap_abi.json
+ERC20_ABI=abi/erc20_abi.json
+
+# Flashloan Configuration
+AAVE_FLASHLOAN_ADDRESS=0xYourFlashloanContractAddress # Your deployed Flashloan contract
+AAVE_POOL_ADDRESS=0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2 # Aave V3 Pool Address 
+```
+
+### Example 3: Deploying a Flashloan Contract
+
+To deploy a flashloan contract, follow these steps:
+
+1. Open Remix IDE: Go to [Remix IDE](https://remix.ethereum.org/).
+2. Create a new file `SimpleFlashloan.sol`.
+3. Copy and paste the provided Solidity code into Remix.
+4. Compile using Solidity v0.8.19 or later.
+5. Deploy to Ethereum using MetaMask or your preferred wallet.
+6. Add your deployed contract address to `.env`:
+
+```ini
+AAVE_FLASHLOAN_ADDRESS=0xYourDeployedContractAddress
+```
+
+### Example 4: Monitoring Logs
+
+To monitor logs, check the `python/0xBuilder.log` file for detailed information about the bot's activities, transactions, and strategy performance.
+
+### Example 5: Troubleshooting
+
+If you encounter issues, follow these steps:
+
+1. Increase logging level to `DEBUG` for detailed output.
+2. Ensure all dependencies in `requirements.txt` are up-to-date and correctly installed.
+3. Verify your flashloan contract is deployed and functioning correctly using a block explorer (e.g., Etherscan).
+4. Thoroughly test strategies and configurations on testnets like Sepolia or Holesky before deploying to mainnet.
+
+## Additional Documentation
+
+For more detailed information, refer to the documentation in the `docs/` directory. This includes:
+
+- Architecture diagrams
+- Strategy explanations
+- Troubleshooting guides

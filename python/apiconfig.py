@@ -23,7 +23,6 @@ import logging
 logger = setup_logging("APIConfig", level=logging.INFO)
 
 
-
 class APIConfig:
     """
     Cryptocurrency API Integration and Data Management System
@@ -36,13 +35,13 @@ class APIConfig:
     MAX_REQUEST_ATTEMPTS: int = 5
     REQUEST_BACKOFF_FACTOR: float = 1.5
 
-    def __init__(self, configuration: "Configuration"):
-        self.configuration: "Configuration" = configuration
+    def __init__(self, configuration: Configuration):
+        self.configuration: Configuration = configuration
         self.session: Optional[aiohttp.ClientSession] = None
-        self.price_cache: TTLCache = TTLCache(maxsize=2000, ttl=300)  
-        self.volume_cache: TTLCache = TTLCache(maxsize=1000, ttl=900) 
-        self.market_data_cache: TTLCache = TTLCache(maxsize=1000, ttl=1800)  
-        self.token_metadata_cache: TTLCache = TTLCache(maxsize=500, ttl=86400) 
+        self.price_cache: TTLCache = TTLCache(maxsize=2000, ttl=300)
+        self.volume_cache: TTLCache = TTLCache(maxsize=1000, ttl=900)
+        self.market_data_cache: TTLCache = TTLCache(maxsize=1000, ttl=1800)
+        self.token_metadata_cache: TTLCache = TTLCache(maxsize=500, ttl=86400)
 
         self.rate_limit_counters: Dict[str, Dict[str, Any]] = {
             "coingecko": {"count": 0, "reset_time": time.time(), "limit": 50},
@@ -51,11 +50,11 @@ class APIConfig:
             "binance": {"count": 0, "reset_time": time.time(), "limit": 1200},
         }
 
-        self.high_priority_tokens: set[str] = set()  
+        self.high_priority_tokens: set[str] = set()
         self.update_intervals: Dict[str, int] = {
-            'price': 30, 
+            'price': 30,
             'volume': 300,
-            'market_data': 1800,  
+            'market_data': 1800,
             'metadata': 86400
         }
 
@@ -101,7 +100,6 @@ class APIConfig:
             for provider, config in self.apiconfigs.items()
         }
 
-
         self.token_address_to_symbol: Dict[str, str] = {}
         self.token_symbol_to_address: Dict[str, str] = {}
         self.symbol_to_api_id: Dict[str, str] = {}
@@ -131,7 +129,7 @@ class APIConfig:
 
             self.token_address_to_symbol = {}
             self.token_symbol_to_address = {}
-            self.symbol_to_api_id = {} 
+            self.symbol_to_api_id = {}
 
             for symbol, address in token_addresses.items():
                 normalized_symbol = symbol.upper()
@@ -174,7 +172,7 @@ class APIConfig:
         api_id = self.symbol_to_api_id.get(normalized)
         if api_id:
             if api == "coingecko":
-                return api_id  
+                return api_id
             elif api == "binance":
                 return normalized
             elif api == "coinmarketcap":
@@ -182,12 +180,11 @@ class APIConfig:
             elif api == "cryptocompare":
                 return normalized
 
-        
         return normalized
 
     async def get_token_metadata(self, token: str) -> Optional[Dict[str, Any]]:
         """Get metadata using symbol instead of address."""
-        if token.startswith('0x'): 
+        if token.startswith('0x'):
             token = self.token_address_to_symbol.get(token.lower())
             if not token:
                 logger.warning(f"No symbol found for address {token}")
@@ -247,23 +244,21 @@ class APIConfig:
                         'total_supply': data.get('total_supply', 0),
                         'circulating_supply': data.get('circulating_supply', 0),
                         'trading_pairs': len(data.get('tags', [])),
-                        'exchanges': []  
+                        'exchanges': []
                     }
 
             return None
 
-        except aiohttp.ClientError as e: 
+        except aiohttp.ClientError as e:
             logger.error(f"aiohttp ClientError fetching metadata from {source}: {e}")
             return None
-        except Exception as e: 
-            logger.error(f"Unexpected error fetching metadata from {source}: {e}", exc_debug=True) 
+        except Exception as e:
+            logger.error(f"Unexpected error fetching metadata from {source}: {e}", exc_info=True)
             return None
-
 
     async def get_real_time_price(self, token: str, vs_currency: str = "eth") -> Optional[Decimal]:
         """
         Fetch real-time token price with multi-source aggregation.
-        
         """
         if token.startswith('0x'):
             token = self.token_address_to_symbol.get(token.lower())
@@ -304,7 +299,7 @@ class APIConfig:
 
         try:
             async with self.session.get(config["base_url"] + f"/simple/price?ids={token}&vs_currencies={vs_currency}") as response:
-                response.raise_for_status() 
+                response.raise_for_status()
                 data = await response.json()
                 if token in data and vs_currency in data[token]:
                     price = Decimal(str(data[token][vs_currency]))
@@ -321,9 +316,8 @@ class APIConfig:
             logger.error(f"JSONDecodeError decoding price from {source}: {e}")
             return None
         except Exception as e:
-            logger.error(f"Unexpected error fetching price from {source}: {e}", exc_debug=True) 
+            logger.error(f"Unexpected error fetching price from {source}: {e}", exc_info=True)
             return None
-
 
     async def make_request(
         self,
@@ -332,7 +326,7 @@ class APIConfig:
         params: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> Any:
-        """Make HTTP request with  error handling and timeout management."""
+        """Make HTTP request with error handling and timeout management."""
         if self.session is None or self.session.closed:
             self.session = aiohttp.ClientSession()
 
@@ -346,8 +340,8 @@ class APIConfig:
                 try:
                     timeout = aiohttp.ClientTimeout(
                         total=30,
-                        connect=10, 
-                        sock_read=10 
+                        connect=10,
+                        sock_read=10
                     )
 
                     async with self.session.get(
@@ -356,21 +350,21 @@ class APIConfig:
                         headers=headers,
                         timeout=timeout
                     ) as response:
-                        if response.status == 429: 
+                        if response.status == 429:
                             wait_time = self.REQUEST_BACKOFF_FACTOR ** attempt
                             logger.warning(f"Rate limit for {provider_name}, waiting {wait_time}s")
                             await asyncio.sleep(wait_time)
                             continue
 
-                        response.raise_for_status() 
+                        response.raise_for_status()
                         return await response.json()
 
-                except aiohttp.ClientResponseError as e: 
+                except aiohttp.ClientResponseError as e:
                     logger.warning(f"ClientResponseError {e} from {provider_name}, attempt {attempt + 1}/{self.MAX_REQUEST_ATTEMPTS}")
                     if attempt == self.MAX_REQUEST_ATTEMPTS - 1:
                         logger.error(f"Max retries reached for {provider_name} after ClientResponseError. Returning None.")
                         return None
-                except aiohttp.ClientConnectionError as e: 
+                except aiohttp.ClientConnectionError as e:
                     logger.warning(f"ClientConnectionError {e} for {provider_name}, attempt {attempt + 1}/{self.MAX_REQUEST_ATTEMPTS}")
                     if attempt == self.MAX_REQUEST_ATTEMPTS - 1:
                         logger.error(f"Max retries reached for {provider_name} after ClientConnectionError. Returning None.")
@@ -384,15 +378,14 @@ class APIConfig:
                     logger.error(f"JSONDecodeError from {provider_name}: {e}")
                     return None
                 except Exception as e:
-                    logger.error(f"Unexpected error fetching from {provider_name}: {e}", exc_debug=True) 
+                    logger.error(f"Unexpected error fetching from {provider_name}: {e}", exc_info=True)
                     if attempt == self.MAX_REQUEST_ATTEMPTS - 1:
                         logger.error(f"Max retries reached for {provider_name} after unexpected error. Returning None.")
                         return None
 
-
                 await asyncio.sleep(self.REQUEST_BACKOFF_FACTOR ** attempt)
 
-            logger.error(f"All attempts failed for {provider_name}. Returning None.") 
+            logger.error(f"All attempts failed for {provider_name}. Returning None.")
             return None
 
     async def fetch_historical_prices(self, token: str, days: int = 30) -> List[float]:
@@ -419,21 +412,20 @@ class APIConfig:
         try:
             url = f"{config['base_url']}/coins/{token}/market_chart?vs_currency=eth&days={days}"
             async with self.session.get(url) as response:
-                response.raise_for_status() 
+                response.raise_for_status()
                 data = await response.json()
                 prices = [price[1] for price in data.get("prices", [])]
                 logger.debug(f"Fetched historical prices from {source}: {prices}")
                 return prices
-        except aiohttp.ClientError as e: 
+        except aiohttp.ClientError as e:
             logger.error(f"aiohttp ClientError fetching historical prices from {source}: {e}")
             return None
-        except json.JSONDecodeError as e: 
+        except json.JSONDecodeError as e:
             logger.error(f"JSONDecodeError decoding historical prices from {source}: {e}")
             return None
-        except Exception as e: 
-            logger.error(f"Unexpected error fetching historical prices from {source}: {e}", exc_debug=True) 
+        except Exception as e:
+            logger.error(f"Unexpected error fetching historical prices from {source}: {e}", exc_info=True)
             return None
-
 
     async def get_token_volume(self, token: str) -> float:
         """Get the 24-hour trading volume for a given token symbol."""
@@ -450,7 +442,7 @@ class APIConfig:
         return volume or 0.0
 
     async def _fetch_token_volume(self, source: str, token: str) -> Optional[float]:
-        """ volume fetching with better error handling."""
+        """Volume fetching with better error handling."""
         config = self.apiconfigs.get(source)
         if not config:
             return None
@@ -467,7 +459,7 @@ class APIConfig:
                         response = await self.make_request(source, url, params=params)
                         if response and 'volume' in response:
                             return float(response['quoteVolume'])
-                    except Exception: 
+                    except Exception:
                         continue
 
             elif source == "coingecko":
@@ -497,16 +489,15 @@ class APIConfig:
 
             return None
 
-        except aiohttp.ClientError as e: 
+        except aiohttp.ClientError as e:
             logger.error(f"aiohttp ClientError fetching volume from {source}: {e}")
             return None
-        except json.JSONDecodeError as e: 
+        except json.JSONDecodeError as e:
             logger.error(f"JSONDecodeError decoding volume from {source}: {e}")
             return None
-        except Exception as e: 
-            logger.error(f"Unexpected error fetching volume from {source}: {e}", exc_debug=True) 
+        except Exception as e:
+            logger.error(f"Unexpected error fetching volume from {source}: {e}", exc_info=True)
             return None
-
 
     async def _get_trading_pairs(self, token: str) -> List[str]:
         """Get valid trading pairs for a token."""
@@ -527,18 +518,17 @@ class APIConfig:
         return pairs
 
     async def _fetch_from_services(self, fetch_func: Callable[[str], Any], description: str) -> Optional[Union[List[float], float]]:
-         """Helper method to fetch data from multiple services."""
-         for service in self.apiconfigs.keys():
-             try:
-                 logger.debug(f"Fetching {description} using {service}...")
-                 result = await fetch_func(service)
-                 if result:
-                     return result
-             except Exception as e:
-                 logger.warning(f"failed to fetch {description} using {service}: {e}")
-         logger.warning(f"failed to fetch {description}.")
-         return None
-
+        """Helper method to fetch data from multiple services."""
+        for service in self.apiconfigs.keys():
+            try:
+                logger.debug(f"Fetching {description} using {service}...")
+                result = await fetch_func(service)
+                if result:
+                    return result
+            except Exception as e:
+                logger.warning(f"failed to fetch {description} using {service}: {e}")
+        logger.warning(f"failed to fetch {description}.")
+        return None
 
     async def get_token_price_data(
         self,
@@ -569,11 +559,9 @@ class APIConfig:
             logger.error(f"Error fetching {data_type} price data: {e}")
             return [] if data_type == 'historical' else 0.0
 
-
     def _calculate_volatility(self, price_history: List[float]) -> float:
         """
         Calculate price volatility using standard deviation of returns.
-        
         """
         if not price_history or len(price_history) < 2:
             return 0.0
@@ -645,11 +633,10 @@ class APIConfig:
             if cache_key in self.market_data_cache:
                 return self.market_data_cache[cache_key]
 
-
             data_tasks = [
                 self.get_token_metadata(token),
                 self.get_token_volume(token),
-                self.get_token_price_data(token, 'historical', timeframe=7) 
+                self.get_token_price_data(token, 'historical', timeframe=7)
             ]
 
             metadata, volume, price_history = await asyncio.gather(*data_tasks, return_exceptions=True)
@@ -657,7 +644,6 @@ class APIConfig:
             if any(isinstance(r, Exception) for r in results):
                 logger.warning(f"Some market data fetching failed for {token}")
                 return None
-
 
             price_volatility = self._calculate_volatility(price_history) if price_history else 0
             market_data = {
@@ -691,14 +677,14 @@ class APIConfig:
             return 0.0
 
     async def get_token_supply_data(self, token: str) -> Dict[str, Any]:
-            """Gets total and circulating supply for a given token."""
-            metadata = await self.get_token_metadata(token)
-            if not metadata:
-                return {}
-            return {
-                'total_supply': metadata.get('total_supply', 0),
-                'circulating_supply': metadata.get('circulating_supply', 0)
-            }
+        """Gets total and circulating supply for a given token."""
+        metadata = await self.get_token_metadata(token)
+        if not metadata:
+            return {}
+        return {
+            'total_supply': metadata.get('total_supply', 0),
+            'circulating_supply': metadata.get('circulating_supply', 0)
+        }
 
     async def get_token_market_cap(self, token: str) -> float:
         """Gets token market cap."""
@@ -727,7 +713,7 @@ class APIConfig:
                 await self.train_price_model()
 
         except Exception as e:
-             logger.error(f"Error updating training data: {e}")
+            logger.error(f"Error updating training data: {e}")
 
     async def _write_training_data(self, updates: List[Dict[str, Any]]) -> None:
         """Write updates to training data file."""
@@ -739,7 +725,6 @@ class APIConfig:
             df = pd.DataFrame(updates)
             training_data_path = Path(self.configuration.TRAINING_DATA_PATH)
 
-            
             if training_data_path.exists():
                 async with aiofiles.open(training_data_path, 'r') as f:
                     old_data = await f.read()
@@ -770,14 +755,13 @@ class APIConfig:
                 cutoff_time = int(time.time()) - (days * 86400)
                 df = df[df['timestamp'] >= cutoff_time]
                 async with aiofiles.open(filepath, 'w', encoding='utf-8') as file:
-                  await file.write(df.to_csv(index=False))
+                    await file.write(df.to_csv(index=False))
         except Exception as e:
             logger.error(f"Error cleaning up old data: {e}")
 
     async def train_price_model(self) -> None:
         """
         Train linear regression model for price prediction.
-        
         """
         try:
             training_data_path = Path(self.configuration.TRAINING_DATA_PATH)
@@ -793,7 +777,7 @@ class APIConfig:
                 return
 
             features = ['price_usd', 'volume_24h', 'market_cap', 'volatility',
-                       'liquidity_ratio', 'price_momentum']
+                        'liquidity_ratio', 'price_momentum']
             X = df[features].fillna(0)
             y = df['price_usd'].fillna(0)
 
@@ -831,7 +815,6 @@ class APIConfig:
     async def get_dynamic_gas_price(self) -> int:
         """
         Fetch the latest gas price from the gas price oracle.
-        
         """
         try:
             gas_price_oracle_address = self.configuration.GAS_PRICE_ORACLE_ADDRESS

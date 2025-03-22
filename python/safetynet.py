@@ -33,7 +33,7 @@ class SafetyNet:
         account: Optional[Account] = None,
         apiconfig: Optional["APIConfig"] = None,
         marketmonitor: Optional[MarketMonitor] = None,
-    ):
+    ) -> None:
         """
         Initialize Safety Net components.
         """

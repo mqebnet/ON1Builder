@@ -9,17 +9,19 @@ from configuration import Configuration
 
 from loggingconfig import setup_logging
 import logging
+from typing import Optional
 
 logger = setup_logging("Main", level=logging.INFO)
 
 
-async def run_bot():
+async def run_bot() -> None:
     """Run the bot with graceful shutdown handling."""
     loop = asyncio.get_running_loop()
 
-    def shutdown_handler():
+    def shutdown_handler() -> None:
         """Handle shutdown signals."""
         logger.debug("Received shutdown signal. Stopping the bot...")
+
     try:
         tracemalloc.start()
         await asyncio.sleep(3)
@@ -48,7 +50,7 @@ async def run_bot():
                 logger.debug(str(stat))
         logger.debug("0xBuilder shutdown complete")
 
-async def main():
+async def main() -> None:
     """Main entry point."""
     await run_bot()
 

@@ -6,10 +6,29 @@ import sys
 import threading
 import time
 import colorlog
+from typing import Optional
 
-def setup_logging(name, level=logging.INFO, spinner=False, spinner_message="Loading"):
-    # Nested spinner functions for smoother animation
-    def spinner_task(message, stop_event):
+def setup_logging(name: str, level: int = logging.INFO, spinner: bool = False, spinner_message: str = "Loading") -> logging.Logger:
+    """
+    Set up logging for the application with optional spinner animation.
+
+    Args:
+        name (str): Name of the logger.
+        level (int): Logging level (default: logging.INFO).
+        spinner (bool): Whether to show a spinner animation (default: False).
+        spinner_message (str): Message to display with the spinner (default: "Loading").
+
+    Returns:
+        logging.Logger: Configured logger instance.
+    """
+    def spinner_task(message: str, stop_event: threading.Event) -> None:
+        """
+        Spinner task for smoother animation.
+
+        Args:
+            message (str): Message to display with the spinner.
+            stop_event (threading.Event): Event to stop the spinner.
+        """
         spinner_chars = ['|', '/', '-', '\\']
         idx = 0
         while not stop_event.is_set():
@@ -19,16 +38,16 @@ def setup_logging(name, level=logging.INFO, spinner=False, spinner_message="Load
             idx += 1
         sys.stdout.write("\r" + " " * (len(message) + 10) + "\r")
 
-    # Optionally start spinner
     if spinner:
         stop_event = threading.Event()
         thread = threading.Thread(target=spinner_task, args=(spinner_message, stop_event), daemon=True)
         thread.start()
-    # Stream handler with color formatting for console output
+
     logger = logging.getLogger(name)
     logger.setLevel(level)
     if logger.hasHandlers():
         logger.handlers.clear()
+
     handler = colorlog.StreamHandler(sys.stdout)
     formatter = colorlog.ColoredFormatter(
         '%(log_color)s%(name)s | %(levelname)-8s: %(message)s',
@@ -42,10 +61,9 @@ def setup_logging(name, level=logging.INFO, spinner=False, spinner_message="Load
     )
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-    # Stop spinner if it was started
+
     if spinner:
         stop_event.set()
         thread.join()
+
     return logger
-
-
