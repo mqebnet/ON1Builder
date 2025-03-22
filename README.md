@@ -7,7 +7,7 @@
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [Core Functionality] (#core-functionality)
+- [Core Functionality](#core-functionality)
 - [Project Structure](#project-structure)
 - [Prerequisites](#prerequisites)
   - [System](#system)
