@@ -269,6 +269,13 @@ class TransactionCore:
             except Exception as e:
                 self.handle_error(e, "execute_transaction", {"tx": tx})
                 await asyncio.sleep(retry_delay * (attempt + 1)) # Use configurable retry delay
+
+            # Introduce a gas price cap to prevent excessively high gas prices
+            gas_price_gwei = Decimal(tx.get("gasPrice", self.DEFAULT_GAS_PRICE_GWEI))
+            if gas_price_gwei > self.configuration.MAX_GAS_PRICE_GWEI:
+                logger.warning(f"Gas price {gas_price_gwei} Gwei exceeds maximum threshold of {self.configuration.MAX_GAS_PRICE_GWEI} Gwei.")
+                return None
+
         logger.error("Failed to execute transaction after retries")
         return None
 
