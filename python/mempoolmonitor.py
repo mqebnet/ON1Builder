@@ -5,6 +5,7 @@ import asyncio
 import time
 import async_timeout
 import hexbytes as hexbytes
+import heapq
 
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
@@ -62,6 +63,7 @@ class MempoolMonitor:
         time.sleep(1) 
 
         self.abiregistry = ABIRegistry()
+        self.cache = {}
 
     async def initialize(self) -> None:
         try:
@@ -98,6 +100,7 @@ class MempoolMonitor:
 
     async def _run_monitoring(self) -> None:
         retry_count = 0
+        error_count = 0
         while self.running:
             try:
                 try:
@@ -116,6 +119,11 @@ class MempoolMonitor:
             except Exception as e:
                 logger.error(f"Error in monitoring loop: {e}")
                 retry_count += 1
+                error_count += 1
+                if error_count >= self.configuration.CIRCUIT_BREAKER_THRESHOLD:
+                    logger.error("Circuit breaker activated. Halting monitoring temporarily.")
+                    await asyncio.sleep(self.configuration.CIRCUIT_BREAKER_DELAY)
+                    error_count = 0
                 await asyncio.sleep(self.configuration.MEMPOOL_RETRY_DELAY * retry_count)
 
     async def _poll_pending_transactions(self) -> None:
@@ -181,15 +189,28 @@ class MempoolMonitor:
         async with self.processed_transactions_lock:
             if tx_hash_hex not in self.processed_transactions:
                 self.processed_transactions.add(tx_hash_hex)
-                await self.task_queue.put(tx_hash_hex)
+                priority = await self._calculate_priority(tx_hash_hex)
+                heapq.heappush(self.task_queue, (priority, tx_hash_hex))
+
+    async def _calculate_priority(self, tx_hash: str) -> int:
+        try:
+            tx = await self._get_transaction_with_retry(tx_hash)
+            if not tx:
+                return float('inf')
+            gas_price = tx.get('gasPrice', 0)
+            return -gas_price
+        except Exception as e:
+            logger.error(f"Error calculating priority for transaction {tx_hash}: {e}")
+            return float('inf')
 
     async def _process_task_queue(self) -> None:
         while self.running:
             try:
-                tx_hash = await self.task_queue.get()
+                priority, tx_hash = heapq.heappop(self.task_queue)
                 async with self.semaphore: 
                     await self.process_transaction(tx_hash)
-                self.task_queue.task_done()
+            except IndexError:
+                await asyncio.sleep(1)
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -207,18 +228,25 @@ class MempoolMonitor:
              logger.debug(f"Error processing transaction {tx_hash}: {e}")
 
     async def _get_transaction_with_retry(self, tx_hash: str) -> Optional[Any]:
+        backoff = self.configuration.MEMPOOL_RETRY_DELAY
         for attempt in range(self.configuration.MEMPOOL_MAX_RETRIES):
             try:
-                return await self.web3.eth.get_transaction(tx_hash)
+                if tx_hash in self.cache:
+                    return self.cache[tx_hash]
+                tx = await self.web3.eth.get_transaction(tx_hash)
+                self.cache[tx_hash] = tx
+                return tx
             except TransactionNotFound:
                 if attempt == self.configuration.MEMPOOL_MAX_RETRIES - 1:
                     return None
-                await asyncio.sleep(self.configuration.MEMPOOL_RETRY_DELAY * (attempt + 1))
+                await asyncio.sleep(backoff)
+                backoff *= self.backoff_factor
             except Exception as e:
                 error_str = str(e)
                 if "indexing is in progress" in error_str:
                     if attempt < self.configuration.MEMPOOL_MAX_RETRIES - 1:
-                        await asyncio.sleep(self.configuration.MEMPOOL_RETRY_DELAY * (attempt + 1))
+                        await asyncio.sleep(backoff)
+                        backoff *= self.backoff_factor
                         continue
                 logger.error(f"Error fetching transaction {tx_hash}: {e}")
                 return None

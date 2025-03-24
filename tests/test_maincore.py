@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
-from python.maincore import MainCore
-from python.configuration import Configuration
+from maincore import MainCore
+from configuration import Configuration
 
 @pytest.fixture
 def configuration():
@@ -22,14 +22,14 @@ async def test_initialize_components(maincore):
     with patch.object(maincore, '_load_configuration', new_callable=AsyncMock) as mock_load_config, \
          patch.object(maincore, '_initialize_web3', new_callable=AsyncMock) as mock_init_web3, \
          patch.object(maincore, '_check_account_balance', new_callable=AsyncMock) as mock_check_balance, \
-         patch('python.abiregistry.ABIRegistry.initialize', new_callable=AsyncMock) as mock_abi_init, \
-         patch('python.apiconfig.APIConfig.initialize', new_callable=AsyncMock) as mock_api_config_init, \
-         patch('python.noncecore.NonceCore.initialize', new_callable=AsyncMock) as mock_nonce_init, \
-         patch('python.safetynet.SafetyNet.initialize', new_callable=AsyncMock) as mock_safetynet_init, \
-         patch('python.transactioncore.TransactionCore.initialize', new_callable=AsyncMock) as mock_txcore_init, \
-         patch('python.marketmonitor.MarketMonitor.initialize', new_callable=AsyncMock) as mock_marketmonitor_init, \
-         patch('python.mempoolmonitor.MempoolMonitor.initialize', new_callable=AsyncMock) as mock_mempoolmonitor_init, \
-         patch('python.strategynet.StrategyNet.initialize', new_callable=AsyncMock) as mock_strategynet_init:
+         patch('abiregistry.ABIRegistry.initialize', new_callable=AsyncMock) as mock_abi_init, \
+         patch('apiconfig.APIConfig.initialize', new_callable=AsyncMock) as mock_api_config_init, \
+         patch('noncecore.NonceCore.initialize', new_callable=AsyncMock) as mock_nonce_init, \
+         patch('safetynet.SafetyNet.initialize', new_callable=AsyncMock) as mock_safetynet_init, \
+         patch('transactioncore.TransactionCore.initialize', new_callable=AsyncMock) as mock_txcore_init, \
+         patch('marketmonitor.MarketMonitor.initialize', new_callable=AsyncMock) as mock_marketmonitor_init, \
+         patch('mempoolmonitor.MempoolMonitor.initialize', new_callable=AsyncMock) as mock_mempoolmonitor_init, \
+         patch('strategynet.StrategyNet.initialize', new_callable=AsyncMock) as mock_strategynet_init:
         
         await maincore._initialize_components()
 
