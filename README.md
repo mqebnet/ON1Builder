@@ -1,39 +1,17 @@
-# 0xBuilder
+# 0xBuilder: Your MEV Toolkit for Ethereum
 
-[![License](https://img.shields.io/badge/License-MIT-white.svg)](LICENSE)
 [![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![Latest Release](https://img.shields.io/badge/Release-0.22.03_beta-black.svg)](https://github.com/John0n1/0xBuilder/releases/tag/v0.22.3-beta)
 
 
-## Table of Contents
+**Maximize your Ethereum trading potential with 0xBuilder, a powerful framework designed for high-frequency trading and Maximal Extractable Value (MEV) strategies.**
 
-- [Introduction](#introduction)
-- [Core Functionality](#core-functionality)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-  - [System](#system)
-  - [Software](#software)
-  - [Ethereum Node](#ethereum-node)
-- [Installation](#installation)
-  - [Clone the 0xBuilder](#clone-the-0xbuilder)
-  - [Virtual Environment](#virtual-environment)
-  - [Dependencies](#dependencies)
-- [Configuration](#configuration)
-  - [Environment Variables](#environment-variables)
-  - [Configuration Files](#configuration-files)
-- [Deploy Your Flashloan Contract](#deploy-your-flashloan-contract)
-- [Register for API Keys](#register-for-api-keys)
-- [Run the Bot](#run-the-bot)
-- [Strategies](#strategies)
-- [Logging](#logging)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
+0xBuilder empowers you with tools for:
 
-## Introduction
-
-**0xBuilder** is designed for high-frequency trading and optimized for profit maximization.  This includes functionalities such as front-running, strategic back-running, sandwich attacks, and flash loan arbitrage.
-
-<br>
+*   **Front-running**: Capitalize on pending transactions for profit.
+*   **Back-running**: Strategically execute trades after specific transactions.
+*   **Sandwich Attacks**:  Profit from manipulating transaction order in decentralized exchanges.
+*   **Flash Loan Arbitrage**: Leverage flash loans for zero-capital arbitrage opportunities.
 
 <p align="center">
   <a href="https://mermaid.live/edit#pako:eNp1kttu2zAMhl-FELBdNUBPF2uArcg5aZe0WHLTysbA2YotRJYMWd7qJtmzj5GdwNkwX8j-yU808ZNbFplYsC5LLOYprIaBBnp6_PKtX0oVCwtLh9aF0Ol8gT6faekkKvkudQIDo9cyCesrfU8MOAW1iNwhPxEuBU31G2TgkSGfiyw3RsHcUDVjCW2AoQdGvKdRVe8CVhZ1gVTM6KJBRh4Zb5-tWUuHP5SApzw31pVUq7rf11R9jg_s7kUUO5jwAaqoVOgbQx3D6E1EpVdzUzho1Vs6i04kVdiusjBtZgdkVJ2e-IamV3xsjXadb6UOzxLXvI_R5t_4DV9SG79klELPOUJCOMvf8l78E3Uk4r8bqs_pledmfKywSJVBfd_kp9d1plE3Z-r2qGo98_KBP-VOZvVUF4Z-Ch9hgkfPHzz0SA2vhau-L4Sjycg8J68GqYg2RePM55UtBfyGu8vO3acPzeXH_9l3SsJXXg9DFO2J1yt38rn9ZhcsEzZDGdPmbg_xgLlUZCJgXfqM0W4CFug9cVg6s6x0xLqOmrtg1pRJyrprVAWpMo_J2aFEWv_sFM1Rvxpz1Ps_TBb5rA">
@@ -41,325 +19,346 @@
   </a>
 </p>
 
-> **⚠️** **Heads Up!** 0xBuilder is under active development. Expect bugs – use with extreme caution and at your own risk.
+> **⚠️ Important: Under Active Development**
+> 0xBuilder is currently in active development. Expect potential bugs and use with extreme caution. **Your use is at your own risk.**
 
-## Core Functionality
+## Key Features
 
-*   **Mempool Analysis**:  The system continuously monitors the Ethereum mempool to identify arbitrage and maximal extractable value (MEV) opportunities.
-*   **Sophisticated Execution Strategies**:  It employs advanced strategies including front-running, back-running, sandwich attacks, and flash loan arbitrage with precise execution.
-*   **Flash Loan Integration**:  Leveraging Aave V3 flash loans optimizes capital efficiency and eliminates the need for upfront capital.
-*   **Data-Driven Decision Making**:  Integrated market analysis, utilizing real-time data from cryptocurrency APIs, ensures informed decision-making.
-*   **Gas Optimization Engine**:  Dynamic gas price adjustments are implemented to minimize transaction costs.
-*   **Robust Nonce Management**:  The system incorporates robust nonce handling to ensure transaction success and prevent failures.
-*   **Comprehensive Risk Mitigation**:  Multi-layered safety checks and risk assessments are implemented to safeguard operations.
-*   **Atomic Transaction Bundling**:  Transactions are bundled for atomic execution and enhanced protection against front-running.
-*   **DeFi Protocol Integration**:  The system seamlessly interacts with major decentralized finance (DeFi) platforms, including Uniswap, Sushiswap, and Aave.
-*   **Flexible Configuration**:  The highly configurable architecture supports multiple wallets, tokens, trading pairs, and adaptable trading strategies.
-*   **Detailed Transaction Logging**:  Comprehensive logs provide detailed performance analysis, facilitate debugging, and enable strategy refinement.
+0xBuilder provides a comprehensive suite of features for effective MEV exploitation:
+
+*   **Mempool Monitoring**: Real-time analysis of the Ethereum mempool to identify profitable opportunities.
+*   **Advanced Trading Strategies**: Implements sophisticated strategies like front-running, back-running, sandwich attacks, and flash loan arbitrage.
+*   **Flash Loan Integration (Aave V3)**:  Utilizes Aave V3 flash loans for capital-efficient trading.
+*   **Data-Driven Decisions**: Integrates with cryptocurrency APIs for real-time market data analysis.
+*   **Gas Optimization**: Dynamically adjusts gas prices to minimize transaction costs.
+*   **Robust Transaction Management**: Includes nonce management and atomic transaction bundling for reliable execution.
+*   **Risk Mitigation**: Built-in safety checks and risk assessments to protect operations.
+*   **DeFi Protocol Support**: Seamlessly interacts with popular DeFi platforms like Uniswap, Sushiswap, and Aave.
+*   **Highly Configurable**: Adaptable to various wallets, tokens, trading pairs, and strategies.
+*   **Detailed Logging**: Comprehensive logs for performance analysis, debugging, and strategy refinement.
 
 ## Project Structure
 
+The project is organized into the following key directories:
+
 ```
 /0xBuilder/
-├── abi/                      # Smart Contract ABIs (JSON)
-│   ├── uniswap_abi.json
-│   ├── erc20_abi.json
-│   └── aave_pool_abi.json
-├── contracts/              # Solidity Smart Contracts
-│   ├── SimpleFlashloan.sol
-│   └── IERC20.sol
-├── linear_regression/       # Machine Learning Models & Data
-│   ├── training_data.csv
-│   └── price_model.joblib
-├── python/                 # Core Python Scripts & Logic
+├── abi/                      # Smart Contract ABIs (JSON format)
+├── contracts/              # Solidity Smart Contracts (Flashloan, Interfaces)
+├── linear_regression/       # Machine Learning for Price Prediction (Models, Data)
+├── python/                 # Core Python Bot Logic
 │   ├── safetynet.py         # Risk Management & Safety Checks
-│   ├── strategynet.py       # MEV Strategy Implementation & Execution
-│   ├── mempoolmonitor.py    # Ethereum Mempool Monitoring Engine
-│   ├── marketmonitor.py     # Market Data Analysis & Prediction
-│   ├── main.py              # Main Bot Entry Point & Orchestration
-│   ├── transactioncore.py   # Transaction Building & Execution Engine
-│   ├── maincore.py          # Core Application Logic & Component Management
-│   ├── noncecore.py         # Ethereum Nonce Management System
-│   ├── apiconfig.py         # Cryptocurrency API Integration & Data Handling
-│   ├── configuration.py      # Configuration Loading & Validation
-|   ├── abiregistry.py       # Centralized ABI Registry
-│   ├── 0xBuilder.log        # Log File (Default)
-|   ├── __init__.py           # Python Package Initialization
-│   └── pyutils/              # Python Utility Modules
-│    ├── strategyexecutionerror.py # Custom Strategy Execution Exception
-│    └── strategyconfiguration.py # Strategy Configuration Classes
-├── utils/                    # Utility JSON Configuration Files
-│   ├── token_addresses.json   # Monitored Token Addresses
-│   ├── erc20_signatures.json  # ERC20 Function Signatures
-│   └── token_symbols.json     # Token Symbol Mappings
-├── .env                      # Environment Variable Configuration File
-└── requirements.txt          # Python Dependencies List
+│   ├── strategynet.py       # MEV Strategy Implementation
+│   ├── mempoolmonitor.py    # Mempool Monitoring Engine
+│   ├── marketmonitor.py     # Market Data Analysis
+│   ├── main.py              # Main Bot Entry Point
+│   ├── transactioncore.py   # Transaction Handling & Execution
+│   ├── maincore.py          # Core Application Logic
+│   ├── noncecore.py         # Nonce Management
+│   ├── apiconfig.py         # API Integration & Data Handling
+│   ├── configuration.py      # Configuration Loading
+│   ├── abiregistry.py       # Centralized ABI Management
+│   ├── 0xBuilder.log        # Default Log File
+│   ├── __init__.py
+│   └── pyutils/              # Utility Modules
+├── utils/                    # JSON Configuration Files (Tokens, Signatures)
+├── .env                      # Environment Variable Configuration
+└── requirements.txt          # Python Dependencies
 ```
 
 ## Prerequisites
 
-Prepare your system and environment
+Before you begin, ensure your system meets these requirements:
 
-### System 
+### System Requirements
 
-- **Operating System**: Linux Ubuntu 20.04+, Windows 10/11, macOS 12+
-- **Networking**: 
-  - Internet: Minimum 50Mbps
-- **Hardware**:
-  - CPU: 4+ Cores, 3.0GHz+ (I
-  - RAM: Minimum 16GB
-  - Storage: 1.5TB NVMe SSD minimum for ethereum node sync
+*   **Operating System**: Linux (Ubuntu 20.04+ recommended), Windows 10/11, macOS 12+
+*   **Internet**: Stable internet connection (50Mbps+ recommended)
+*   **Hardware**:
+    *   CPU: 4+ cores, 3.0GHz+ (e.g., Intel i7 or equivalent)
+    *   RAM: 16GB minimum
+    *   Storage: 1.5TB NVMe SSD (for local Ethereum node synchronization)
 
-### Software
+### Software Requirements
 
-- **Ethereum Execution Client**:
-    - [Geth](https://geth.ethereum.org/) (Go, Recommended for stability and speed)
-    - [Nethermind](https://www.nethermind.io/) (C#/.NET)
-    - [Besu](https://besu.hyperledger.org/) (Java)
-    - [Erigon](https://github.com/ledgerwatch/erigon) (Go)
-    - [Reth](https://reth.rs/) (Rust)
-    - [EthereumJS](https://github.com/ethereumjs/ethereumjs-monorepo) (TypeScript, Sepolia/Holesky only)
-- **Python Dependencies**: Arm your environment with packages from `requirements.txt`
+*   **Python**: Version 3.12 or higher (check with `python3 --version`)
+*   **Ethereum Execution Client**: Choose one of the following:
+    *   [Geth](https://geth.ethereum.org/) (Go, **Recommended** for stability and performance)
+    *   [Nethermind](https://www.nethermind.io/) (C#/.NET)
+    *   [Besu](https://besu.hyperledger.org/) (Java)
+    *   [Erigon](https://github.com/ledgerwatch/erigon) (Go)
+    *   [Reth](https://reth.rs/) (Rust)
+    *   [EthereumJS](https://github.com/ethereumjs/ethereumjs-monorepo) (TypeScript, Sepolia/Holesky testnets only)
 
-### Ethereum Node
+### Ethereum Node Setup
 
-Set up your Ethereum Execution and Beacon client for blockchain interaction.
+You'll need to run your own Ethereum Execution client to interact with the blockchain.  **Geth is highly recommended for its stability and speed.**
 
-**Choose Your Execution Client**:
+**Example: Setting up Geth**
 
-| Client          | Language    | OS Support               | Networks                     | Sync Methods         |
-|-----------------|-------------|--------------------------|------------------------------|----------------------|
-| [Geth](https://geth.ethereum.org/)     | Go          | Linux, Windows, macOS      | Mainnet, Sepolia, Holesky     | Snap, Full           |
-| [Nethermind](https://www.nethermind.io/) | C#/.NET     | Linux, Windows, macOS      | Mainnet, Sepolia, Holesky     | Snap, Fast, Full     |
-| [Besu](https://besu.hyperledger.org/)   | Java        | Linux, Windows, macOS      | Mainnet, Sepolia, Holesky     | Snap, Fast, Full     |
-| [Erigon](https://github.com/ledgerwatch/erigon)  | Go          | Linux, Windows, macOS      | Mainnet, Sepolia, Holesky     | Full                 |
-| [Reth](https://reth.rs/)    | Rust        | Linux, Windows, macOS      | Mainnet, Sepolia, Holesky     | Full                 |
-| [EthereumJS](https://github.com/ethereumjs/ethereumjs-monorepo) | TypeScript    | Linux, Windows, macOS      | Sepolia, Holesky             | Full                 |
+1.  **Install Geth**: Follow the [official Geth installation guide](https://geth.ethereum.org/docs/install-and-build/installing-geth).
 
-**Geth Configuration**
+2.  **Start Geth Node**:  Run the following command, adjusting paths as needed:
 
-1.  **Install Geth**: Follow the [official guide](https://geth.ethereum.org/docs/install-and-build/installing-geth).
-
-2.  **Launch Geth Node**:
     ```bash
     ./geth --mainnet --syncmode snap --http --http.api eth,net,admin,web3,txpool --ws --ws.api eth,net,admin,web3,txpool --maxpeers 100 --cache 16000 --ipcpath ~/0xBuilder/geth.ipc --allow-insecure-unlock --http.corsdomain "*"
     ```
+    *   **Explanation**:
+        *   `--mainnet`: Connects to the Ethereum main network.
+        *   `--syncmode snap`: Uses snap sync for faster synchronization.
+        *   `--http` & `--ws`: Enables HTTP and WebSocket APIs.
+        *   `--http.api ...` & `--ws.api ...`:  Specifies API methods to expose.
+        *   `--ipcpath`: Sets the path for IPC communication (used by the bot).
+        *   `--allow-insecure-unlock`: Allows unlocking accounts via HTTP (use with caution).
+        *   `--http.corsdomain "*" `:  Allows CORS requests from any domain (for development).
 
-3.  **Monitor Sync**:
+3.  **Verify Sync**:  Attach to your running Geth instance to monitor synchronization:
+
     ```bash
-    geth attach ipc:/path/to/geth.ipc
+    geth attach ipc:/path/to/geth.ipc  # Replace with your actual ipc path
     > eth.syncing
     ```
+    Wait until `eth.syncing` returns `false` or `null` to confirm full synchronization.
 
-**Set up a Beacon Node**:
+**Beacon Node (Optional)**
 
-1.  **Install Prysm**: Follow the [Prysm guide](https://docs.prylabs.network/docs/install/install-with-script).
-
-    ```bash
-    curl https://raw.githubusercontent.com/prysmaticlabs/prysm/master/prysm.sh --output prysm.sh
-    chmod +x prysm.sh
-    ```
-
-2.  **Launch Prysm Beacon Chain**:
-    ```bash
-    ./prysm.sh beacon-chain --accept-terms-of-use --execution-endpoint ~/0xBuilder/geth.ipc --mainnet --checkpoint-sync-url https://beaconstate.info --genesis-beacon-api-url https://beaconstate.info
-    ```
-
-**Alternative Beacon Clients**: 
-- [Lighthouse](https://lighthouse-book.sigmaprime.io/installation.html)
+While not strictly required for basic bot operation, a Beacon Node can be beneficial for more advanced features and future upgrades.  If needed, refer to clients like [Prysm](https://docs.prylabs.network/docs/install/install-with-script) or [Lighthouse](https://lighthouse-book.sigmaprime.io/installation.html) for setup instructions.
 
 ## Installation
 
-### Clone the 0xBuilder
+Follow these steps to install and set up 0xBuilder:
 
-```bash
-git clone https://github.com/John0n1/0xBuilder.git
-cd 0xBuilder
-```
+1.  **Clone the Repository:**
 
-### Virtual Environment
+    ```bash
+    git clone https://github.com/John0n1/0xBuilder.git
+    cd 0xBuilder
+    ```
 
-Isolate your bot's dependencies:
+2.  **Create a Virtual Environment (Recommended):**
 
-```bash
-# Linux/MacOS
-python3 -m venv venv
-source venv/bin/activate
-```
+    ```bash
+    # Linux/macOS
+    python3 -m venv venv
+    source venv/bin/activate
 
-### Dependencies
+    # Windows
+    python -m venv venv
+    .\venv\Scripts\activate
+    ```
+    This isolates project dependencies and prevents conflicts.
 
-Install required Python packages:
+3.  **Install Dependencies:**
 
-```bash
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
+    ```bash
+    python -m pip install --upgrade pip  # Upgrade pip
+    pip install -r requirements.txt      # Install project dependencies
+    ```
 
 ## Configuration
 
-### Environment Variables
+0xBuilder uses environment variables and JSON configuration files for customization.
 
-1.  **Create `.env` File**:
+### Environment Variables (`.env` file)
+
+1.  **Copy Example `.env`:**
 
     ```bash
-    # Linux/MacOS
+    # Linux/macOS
     cp .env.example .env
 
     # Windows
     copy .env.example .env
     ```
 
-2.  **Edit `.env`**: Configure API keys, node endpoints, wallet details, and more.
+2.  **Edit `.env`**: Open the `.env` file and configure the following:
 
-```ini
-# API Configuration
-ETHERSCAN_API_KEY=YOUR_ETHERSCAN_API_KEY
-INFURA_PROJECT_ID=YOUR_INFURA_PROJECT_ID
-COINGECKO_API_KEY=YOUR_COINGECKO_API_KEY
-COINMARKETCAP_API_KEY=YOUR_COINMARKETCAP_API_KEY
-CRYPTOCOMPARE_API_KEY=YOUR_CRYPTOCOMPARE_API_KEY
+    ```ini
+    # API Keys (Register for free trial keys)
+    ETHERSCAN_API_KEY=YOUR_ETHERSCAN_API_KEY
+    INFURA_PROJECT_ID=YOUR_INFURA_PROJECT_ID
+    COINGECKO_API_KEY=YOUR_COINGECKO_API_KEY
+    COINMARKETCAP_API_KEY=YOUR_COINMARKETCAP_API_KEY
+    CRYPTOCOMPARE_API_KEY=YOUR_CRYPTOCOMPARE_API_KEY
 
-# Ethereum Node Configuration
-HTTP_ENDPOINT=http://127.0.0.1:8545
-WS_ENDPOINT=wss://127.0.0.1:8546
-IPC_ENDPOINT=/path/to/geth.ipc
+    # Ethereum Node Endpoints (Adjust to your Geth setup)
+    HTTP_ENDPOINT=http://127.0.0.1:8545
+    WS_ENDPOINT=wss://127.0.0.1:8546
+    IPC_ENDPOINT=~/0xBuilder/geth.ipc  # Or your Geth IPC path
 
-# Wallet Configuration
-WALLET_ADDRESS=0xYourWalletAddress
-WALLET_KEY=YOUR_PRIVATE_KEY
+    # Wallet Configuration
+    WALLET_ADDRESS=0xYourEthereumWalletAddress
+    WALLET_KEY=YOUR_PRIVATE_KEY # **Keep your private key secure!**
 
-# Token Configuration (Paths to JSON files)
-TOKEN_ADDRESSES=utils/token_addresses.json
-TOKEN_SYMBOLS=utils/token_symbols.json
-ERC20_SIGNATURES=utils/erc20_signatures.json
+    # Token Configuration Files (Paths are relative to the project root)
+    TOKEN_ADDRESSES=utils/token_addresses.json
+    TOKEN_SYMBOLS=utils/token_symbols.json
+    ERC20_SIGNATURES=utils/erc20_signatures.json
 
-# DEX Router Addresses
-UNISWAP_ADDRESS=0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D # Uniswap V2 Router
-SUSHISWAP_ADDRESS=0xd9e1cE17F2641f24aE83637ab66a2cca9C378B9F # Sushiswap Router
+    # DEX Router Addresses (Mainnet addresses)
+    UNISWAP_ADDRESS=0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D # Uniswap V2 Router
+    SUSHISWAP_ADDRESS=0xd9e1cE17F2641f24aE83637ab66a2cca9C378B9F # Sushiswap Router
 
-# ABI Paths (Paths to ABI JSON files)
-UNISWAP_ABI=abi/uniswap_abi.json
-SUSHISWAP_ABI=abi/sushiswap_abi.json
-ERC20_ABI=abi/erc20_abi.json
+    # ABI File Paths (Paths are relative to the project root)
+    UNISWAP_ABI=abi/uniswap_abi.json
+    SUSHISWAP_ABI=abi/sushiswap_abi.json
+    ERC20_ABI=abi/erc20_abi.json
 
-# Flashloan Configuration
-AAVE_FLASHLOAN_ADDRESS=0xYourFlashloanContractAddress # Your deployed Flashloan contract
-AAVE_POOL_ADDRESS=0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2 # Aave V3 Pool Address 
-```
+    # Flash Loan Contract Configuration
+    AAVE_FLASHLOAN_ADDRESS=0xYourDeployedFlashloanContractAddress # Your deployed contract address
+    AAVE_POOL_ADDRESS=0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2 # Aave V3 Pool Address
+    ```
 
-### Configuration Files
+### JSON Configuration Files (`utils/` directory)
 
-Validate and customize JSON configuration files in the `utils/` directory:
+Customize these files to define tokens and function signatures:
 
-| File                   | Description                     | Format                     |
-|------------------------|---------------------------------|----------------------------|
-| `token_addresses.json`   | Monitored token contract addresses | `{"SYMBOL": "ADDRESS", ...}` |
-| `token_symbols.json`     | Token symbol to address mappings    | `{"SYMBOL": "API_ID", ...}` |
-| `erc20_signatures.json`  | ERC20 function signatures       | `{"function_name": "selector"}` |
+*   **`token_addresses.json`**:  Map token symbols to their contract addresses.
+    ```json
+    {
+      "WETH": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "DAI": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+      "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eb48"
+      // ... more tokens
+    }
+    ```
 
-## Deploy Your Flashloan Contract
+*   **`token_symbols.json`**: Map token symbols to API identifiers (for CoinGecko, CoinMarketCap, etc.).
+    ```json
+    {
+      "WETH": "ethereum",
+      "DAI": "dai",
+      "USDC": "usd-coin"
+      // ... more tokens
+    }
+    ```
 
-Maximize the potential with a flashloan contract.
+*   **`erc20_signatures.json`**: Define ERC20 function signatures (selectors). **Generally, you don't need to modify this.**
+    ```json
+    {
+      "transfer": "0xa9059cbb",
+      "approve": "0x095ea7b3",
+      "transferFrom": "0x23b872dd",
+      "balanceOf": "0x70a08231",
+      "totalSupply": "0x18160ddd",
+      "decimals": "0x313ce567",
+      "name": "0x06fd41ca",
+      "symbol": "0x95d89b41",
+      "allowance": "0xdd62ed3e"
+    }
+    ```
 
-**Deployment via Remix IDE (Recommended)**
+## Deploy Your Flash Loan Contract
 
-1.  **Open Remix**: Go to [Remix IDE](https://remix.ethereum.org/).
-2.  **Create Contract**: Create a new file `SimpleFlashloan.sol`.
-3.  **Paste Code**: Copy and paste the [provided Solidity code](#example-flashloan-contract-aave-v3) into Remix.
-4.  **Compile**: Compile using Solidity v0.8.19 or later.
-5.  **Deploy**: Deploy to Ethereum using MetaMask or your preferred wallet.
-6.  **Update `.env`**: Add your deployed contract address to `.env`:
+To utilize flash loan arbitrage strategies, you need to deploy the provided `SimpleFlashloan.sol` contract.
+
+**Recommended Deployment Method: Remix IDE**
+
+1.  **Open Remix Online IDE**: Go to [https://remix.ethereum.org/](https://remix.ethereum.org/).
+2.  **Create `SimpleFlashloan.sol`**: Create a new file named `SimpleFlashloan.sol` in Remix.
+3.  **Paste Contract Code**: Copy the Solidity code below and paste it into `SimpleFlashloan.sol`.
+
+    ```solidity
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.20;
+
+    import "https://github.com/aave/aave-v3-core/blob/master/contracts/flashloan/base/FlashLoanSimpleReceiverBase.sol";
+    import "https://github.com/aave/aave-v3-core/blob/master/contracts/interfaces/IPoolAddressesProvider.sol";
+    import "https://github.com/aave/aave-v3-core/blob/master/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
+
+    contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
+        address payable public owner;
+
+        event FlashLoanRequested(address token, uint256 amount);
+        event FlashLoanExecuted(address token, uint256 amount, uint256 premium, bool success);
+
+        constructor(address _addressProvider) FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_addressProvider)) {
+            owner = payable(msg.sender);
+        }
+
+        modifier onlyOwner() {
+            require(msg.sender == owner, "Not contract owner");
+            _;
+        }
+
+        function fn_RequestFlashLoan(address _token, uint256 _amount) public onlyOwner {
+            emit FlashLoanRequested(_token, _amount);
+            POOL.flashLoanSimple(address(this), _token, _amount, "", 0);
+        }
+
+        function executeOperation(
+            address asset,
+            uint256 amount,
+            uint256 premium,
+            address initiator,
+            bytes calldata params
+        ) external override returns (bool) {
+            require(IERC20(asset).approve(address(POOL), amount + premium), "Approval failed");
+            emit FlashLoanExecuted(asset, amount, premium, true);
+            return true;
+        }
+
+        function withdrawToken(address _tokenAddress) public onlyOwner {
+            IERC20 token = IERC20(_tokenAddress);
+            uint256 balance = token.balanceOf(address(this));
+            require(balance > 0, "No tokens to withdraw");
+            token.transfer(owner, balance);
+        }
+
+        function withdrawETH() public onlyOwner {
+            uint256 balance = address(this).balance;
+            require(balance > 0, "No ETH to withdraw");
+            owner.transfer(balance);
+        }
+
+        receive() external payable {}
+    }
+    ```
+
+4.  **Compile**: In Remix, navigate to the Solidity compiler tab and compile `SimpleFlashloan.sol` using Solidity version `0.8.20` or later.
+5.  **Deploy**:
+    *   Go to the "Deploy & Run Transactions" tab.
+    *   Select "Injected Provider - MetaMask" as the Environment (connect your wallet).
+    *   Ensure the correct network (e.g., Mainnet, Sepolia for testing) is selected in MetaMask.
+    *   In the "Contract" dropdown, choose `SimpleFlashLoan - contracts/SimpleFlashloan.sol`.
+    *   **Important**: In the `addressProvider (address)` field, you need to provide the **Aave V3 Pool Addresses Provider** address for the network you are deploying to.  You can find these addresses in the [Aave documentation](https://docs.aave.com/developers/deployed-contracts/v3-mainnet/ethereum-v3). For Mainnet, it's `0x2f39d218133AFaB97F5bf874E1b0cDF5d987aa37`.
+    *   Click "Deploy". Confirm the transaction in MetaMask.
+6.  **Update `.env`**: Once deployed, copy the contract address from Remix (it will appear after successful deployment) and update your `.env` file:
 
     ```ini
     AAVE_FLASHLOAN_ADDRESS=0xYourDeployedContractAddress
     ```
 
-**Example Flashloan Contract (AAVE V3)**:
-
-   ```solidity
-   // SPDX-License-Identifier: MIT
-   pragma solidity ^0.8.20;
-
-   import "https://github.com/aave/aave-v3-core/blob/master/contracts/flashloan/base/FlashLoanSimpleReceiverBase.sol";
-   import "https://github.com/aave/aave-v3-core/blob/master/contracts/interfaces/IPoolAddressesProvider.sol";
-   import "https://github.com/aave/aave-v3-core/blob/master/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
-
-   contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
-       address payable public owner;
-
-       event FlashLoanRequested(address token, uint256 amount);
-       event FlashLoanExecuted(address token, uint256 amount, uint256 premium, bool success);
-
-       constructor(address _addressProvider) FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_addressProvider)) {
-           owner = payable(msg.sender);
-       }
-
-       modifier onlyOwner() {
-           require(msg.sender == owner, "Not contract owner");
-           _;
-       }
-
-       function fn_RequestFlashLoan(address _token, uint256 _amount) public onlyOwner {
-           emit FlashLoanRequested(_token, _amount);
-           POOL.flashLoanSimple(address(this), _token, _amount, "", 0);
-       }
-
-       function executeOperation(
-           address asset,
-           uint256 amount,
-           uint256 premium,
-           address initiator,
-           bytes calldata params
-       ) external override returns (bool) {
-           require(IERC20(asset).approve(address(POOL), amount + premium), "Approval failed");
-           emit FlashLoanExecuted(asset, amount, premium, true);
-           return true;
-       }
-
-       function withdrawToken(address _tokenAddress) public onlyOwner {
-           IERC20 token = IERC20(_tokenAddress);
-           uint256 balance = token.balanceOf(address(this));
-           require(balance > 0, "No tokens to withdraw");
-           token.transfer(owner, balance);
-       }
-
-       function withdrawETH() public onlyOwner {
-           uint256 balance = address(this).balance;
-           require(balance > 0, "No ETH to withdraw");
-           owner.transfer(balance);
-       }
-
-       receive() external payable {}
-   }
-   ```
-
 ## Register for API Keys
 
-Register for trial-API keys from these services and add them to your `.env` file:
+To access real-time market data and blockchain information, you'll need to register for API keys from the following services. Most offer free tiers for development and testing:
 
-1.  **[Infura](https://infura.io/)**: Ethereum node infrastructure.
-2.  **[Etherscan](https://etherscan.io/apis)**: For on-chain data and transaction insights.
-3.  **[CoinGecko](https://www.coingecko.com/en/api)**: Real-time and historical crypto market data.
-4.  **[CoinMarketCap](https://coinmarketcap.com/api/)**: cryptocurrency market data.
-5.  **[CryptoCompare](https://min-api.cryptocompare.com/)**: Another robust source for crypto market data.
-6.  **[Binance](https://www.binance.com/en/support/faq/)** (Optional): For Binance-specific market data and volume analysis.
+1.  **Infura**: [https://infura.io/](https://infura.io/) (Ethereum node infrastructure)
+2.  **Etherscan**: [https://etherscan.io/apis](https://etherscan.io/apis) (On-chain data and transaction insights)
+3.  **CoinGecko**: [https://www.coingecko.com/en/api](https://www.coingecko.com/en/api) (Cryptocurrency market data)
+4.  **CoinMarketCap**: [https://coinmarketcap.com/api/](https://coinmarketcap.com/api/) (Cryptocurrency market data)
+5.  **CryptoCompare**: [https://min-api.cryptocompare.com/](https://min-api.cryptocompare.com/) (Cryptocurrency market data)
+
+After registering, add your API keys to the `.env` file as described in the [Configuration](#configuration) section.
 
 ## Run the Bot
 
-**Checklist**:
+Before running the bot, ensure:
 
--  **Ethereum Node**: Ensure your node is fully synchronized and running.
--  **Beacon Node**: (Optional) Verify your beacon node is active.
--  **Configuration**: Double-check `.env` variables and JSON config files.
--  **ETH Balance**: Fund your wallet with enough ETH to cover gas costs.
+*   **Ethereum Node**: Your Ethereum Execution client (Geth or another client) is fully synchronized and running.
+*   **Configuration**: You have correctly configured the `.env` file and JSON configuration files.
+*   **Wallet Funding**: Your configured wallet (`WALLET_ADDRESS`) has sufficient ETH to cover transaction gas costs.
 
-**Launch Sequence**:
+**Steps to Run:**
 
 1.  **Activate Virtual Environment**:
 
     ```bash
+    # Linux/macOS
     source venv/bin/activate
+
+    # Windows
+    .\venv\Scripts\activate
     ```
 
 2.  **Start 0xBuilder**:
@@ -368,173 +367,102 @@ Register for trial-API keys from these services and add them to your `.env` file
     python python/main.py
     ```
 
-**Monitor & Control**:
+**Monitoring and Control:**
 
-- **Logs**: Track bot activity and performance in `python/0xBuilder.log`.
-- **Console**: Monitor real-time status updates in your terminal.
-- **Shutdown**: Press `Ctrl+C` in the console to initiate a graceful shutdown.
+*   **Logs**: Check `python/0xBuilder.log` for detailed bot activity, strategy execution, and potential errors.
+*   **Console Output**: Monitor the terminal for real-time status updates and information.
+*   **Stopping the Bot**: Press `Ctrl+C` in the terminal to gracefully shut down the bot.
 
-**Performance Tuning**:
+**Performance Tips:**
 
-- **Node Sync**: Maintain a fully synchronized Ethereum node for optimal performance.
-- **API Limits**: Monitor API usage and respect rate limits; consider upgrading API tiers for higher limits.
-- **ETH Balance**: Ensure your wallet has sufficient ETH to cover transaction fees.
-- **Log Analysis**: Regularly review logs to identify and resolve issues, and optimize strategies.
-- **Dependency Updates**: Keep Python dependencies updated to benefit from performance improvements and security patches.
+*   **Node Synchronization**: A fully synced Ethereum node is crucial for optimal performance.
+*   **API Rate Limits**: Be mindful of API rate limits. Consider upgrading to paid tiers if needed for higher usage.
+*   **Gas Management**: Ensure your wallet has enough ETH for gas. Monitor gas prices and adjust bot parameters if necessary.
+*   **Log Analysis**: Regularly review logs to identify issues, optimize strategies, and track performance.
+*   **Dependency Updates**: Keep your Python dependencies updated for performance improvements and security patches.
 
-## Strategies
+## Strategies Implemented
 
-0xBuilder is armed with a suite of powerful MEV strategies:
+0xBuilder includes a range of MEV strategies, categorized for clarity:
 
-- **Aggressive Front-Running** 
-- **Predictive Front-Running**
-- **Volatility Front-Running**
-- **Advanced Front-Running**
-- **Price Dip Back-Running**
-- **Flashloan Back-Running**
-- **High Volume Back-Running**
-- **Advanced Back-Running**
-- **Flash Profit Sandwich Attack**
-- **Price Boost Sandwich Attack**
-- **Arbitrage Sandwich Attack**
-- **Advanced Sandwich Attack**
-- **High-Value ETH Transfer**
+**Front-Running Strategies:**
 
-## Logging
+*   **Aggressive Front-Running**:  Attempts to front-run any profitable transaction.
+*   **Predictive Front-Running**: Uses market analysis to predict and front-run specific types of transactions.
+*   **Volatility Front-Running**: Targets transactions during periods of high price volatility.
+*   **Advanced Front-Running**: Combines multiple signals and conditions for sophisticated front-running.
 
-0xBuilder provides detailed logs in `python/0xBuilder.log` to keep you informed:
+**Back-Running Strategies:**
 
-- **Transaction Insights**: Real-time detection of profitable transactions in the mempool.
-- **Strategy Performance**: Track the execution and success of each strategy, with detailed profit metrics.
-- **Error & Exception Tracking**: Immediate alerts for any errors or exceptions, enabling rapid troubleshooting.
-- **Detailed Activity Logs**: Comprehensive logs of bot activities, transactions, and market analysis for in-depth performance review.
+*   **Price Dip Back-Running**: Executes back-running trades after detecting price dips.
+*   **Flashloan Back-Running**: Utilizes flash loans to back-run specific transaction patterns.
+*   **High Volume Back-Running**: Targets back-running opportunities during high trading volume periods.
+*   **Advanced Back-Running**:  Employs complex logic and market data for optimized back-running.
 
-Customize logging verbosity and formatting in `python/maincore.py` using the `setup_logging()` function.
+**Sandwich Attack Strategies:**
+
+*   **Flash Profit Sandwich Attack**: Aims to profit from sandwich attacks using flash loans.
+*   **Price Boost Sandwich Attack**: Targets sandwich attacks where price manipulation is likely.
+*   **Arbitrage Sandwich Attack**: Combines sandwich attacks with arbitrage opportunities.
+*   **Advanced Sandwich Attack**: Leverages sophisticated techniques for more effective sandwich attacks.
+
+**Other Strategies:**
+
+*   **High-Value ETH Transfer Monitoring**: Detects and potentially capitalizes on large ETH transfers.
+
+## Logging and Monitoring
+
+0xBuilder provides detailed logging to help you understand bot behavior and performance. Logs are written to `python/0xBuilder.log`.
+
+**Log Information Includes:**
+
+*   **Mempool Activity**: Detection of potential MEV opportunities in real-time.
+*   **Strategy Execution**: Details on strategy execution attempts, successes, and failures.
+*   **Profit Tracking**: Records of profitable transactions and overall performance metrics.
+*   **Error and Exception Reporting**: Immediate logging of errors and exceptions for quick troubleshooting.
+*   **Detailed Activity Logs**: Comprehensive records of bot actions, market analysis, and transactions.
+
+You can adjust logging verbosity in `python/maincore.py` by modifying the `setup_logging()` function.  Consider increasing the log level to `DEBUG` for more detailed information during troubleshooting.
 
 ## Troubleshooting
 
-**Common Pitfalls & Solutions**:
+**Common Issues and Solutions:**
 
-| Issue                      | Solution                                                     |
-|----------------------------|--------------------------------------------------------------|
-| Node Connection Failures     | Verify Ethereum node is running and endpoints are correct   |
-| API Rate Limit Reached     | Implement request throttling; consider upgrading API tiers    |
-| Insufficient Gas Balance   | Fund your wallet with adequate ETH for transaction fees     |
-| Nonce Synchronization Errors | Reset Nonce Core or manually synchronize nonce with node     |
-| Node Synchronization Status  | Ensure your Ethereum node is fully synchronized with network |
+| Issue                               | Solution                                                                     |
+| ----------------------------------- | ---------------------------------------------------------------------------- |
+| **Node Connection Errors**            | Verify your Ethereum node is running and that the endpoints in `.env` are correct. |
+| **API Rate Limit Exceeded**         | Implement request throttling or upgrade your API plan for higher limits.       |
+| **Insufficient ETH Balance**        | Fund your wallet (`WALLET_ADDRESS`) with enough ETH to cover gas costs.          |
+| **Nonce Synchronization Problems**  | Restart the bot or manually reset the nonce if necessary.                     |
+| **Ethereum Node Not Synced**       | Ensure your Ethereum Execution client is fully synchronized with the network.  |
+| **Flash Loan Contract Issues**       | Verify your flash loan contract is deployed correctly and the address is correct in `.env`. |
 
-**Debugging**:
+[![Report Issue](https://img.shields.io/badge/Report_issue-red.svg)](https://github.com/John0n1/0xBuilder/issues)
 
-1.  **Verbose Logging**: Increase logging level to `DEBUG` for detailed output.
-2.  **Dependency Sanity Check**: Ensure all dependencies in `requirements.txt` are up-to-date and correctly installed.
-3.  **Contract Explorer**: Verify your flashloan contract is deployed and functioning correctly using a block explorer (e.g., Etherscan).
-4.  **Testnet Trials**: Thoroughly test strategies and configurations on testnets like Sepolia or Holesky before deploying to mainnet.
+**Debugging Tips:**
+
+1.  **Enable Verbose Logging**: Set the logging level to `DEBUG` in `python/maincore.py` for detailed output.
+2.  **Check Dependencies**: Ensure all Python dependencies in `requirements.txt` are correctly installed and up-to-date (`pip install -r requirements.txt`).
+3.  **Verify Contract Deployment**: Use a block explorer (like Etherscan) to confirm your flash loan contract is deployed to the correct address and is functioning as expected.
+4.  **Test on Testnets**: Thoroughly test your configuration and strategies on test networks like Sepolia or Holesky before deploying to the mainnet.
 
 ## Contributing
 
-Contributions are **welcome and highly encouraged**! ❤️❤️
+Contributions to 0xBuilder are **highly welcome and encouraged!** ❤️
 
-**Contribution Guidelines**:
+**How to Contribute:**
 
-- **Fork & Branch**: Fork the repository and create a dedicated feature branch for your contributions.
-- **Code Style**: Adhere to PEP 8 guidelines for Python code style.
-- **Unit Tests**: Include comprehensive unit tests to ensure the quality and reliability of your contributions.
-- **Pull Requests**: Submit well-documented pull requests with clear descriptions of your changes and their benefits.
+1.  **Fork the Repository**: Fork the 0xBuilder repository to your own GitHub account.
+2.  **Create a Branch**: Create a new branch for your feature or bug fix (e.g., `git checkout -b feature/new-strategy`).
+3.  **Code and Test**: Implement your changes, ensuring your code adheres to PEP 8 style guidelines. Write comprehensive unit tests to cover your changes.
+4.  **Submit a Pull Request**: Create a well-documented pull request from your branch to the main repository's `main` branch.  Clearly describe your changes and their benefits.
 
-For detailed contribution guidelines, please review [CONTRIBUTING.md](CONTRIBUTING.md).
+Please review `CONTRIBUTING.md` (if present in the repository) for more detailed contribution guidelines.
 
 ## License
 
-0xBuilder is released under the [MIT License](LICENSE).
+0xBuilder is released under the [MIT License](LICENSE).  See the `LICENSE` file for details.
 
-## Usage Examples
+---
 
-### Example 1: Running the Bot
-
-To run the bot, follow these steps:
-
-1. Ensure your Ethereum node is fully synchronized and running.
-2. Activate the virtual environment:
-    ```bash
-    source venv/bin/activate
-    ```
-3. Start the bot:
-    ```bash
-    python python/main.py
-    ```
-
-### Example 2: Configuring Environment Variables
-
-To configure environment variables, create a `.env` file and add the necessary variables:
-
-```ini
-# API Configuration
-ETHERSCAN_API_KEY=YOUR_ETHERSCAN_API_KEY
-INFURA_PROJECT_ID=YOUR_INFURA_PROJECT_ID
-COINGECKO_API_KEY=YOUR_COINGECKO_API_KEY
-COINMARKETCAP_API_KEY=YOUR_COINMARKETCAP_API_KEY
-CRYPTOCOMPARE_API_KEY=YOUR_CRYPTOCOMPARE_API_KEY
-
-# Ethereum Node Configuration
-HTTP_ENDPOINT=http://127.0.0.1:8545
-WS_ENDPOINT=wss://127.0.0.1:8546
-IPC_ENDPOINT=/path/to/geth.ipc
-
-# Wallet Configuration
-WALLET_ADDRESS=0xYourWalletAddress
-WALLET_KEY=YOUR_PRIVATE_KEY
-
-# Token Configuration (Paths to JSON files)
-TOKEN_ADDRESSES=utils/token_addresses.json
-TOKEN_SYMBOLS=utils/token_symbols.json
-ERC20_SIGNATURES=utils/erc20_signatures.json
-
-# DEX Router Addresses
-UNISWAP_ADDRESS=0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D # Uniswap V2 Router
-SUSHISWAP_ADDRESS=0xd9e1cE17F2641f24aE83637ab66a2cca9C378B9F # Sushiswap Router
-
-# ABI Paths (Paths to ABI JSON files)
-UNISWAP_ABI=abi/uniswap_abi.json
-SUSHISWAP_ABI=abi/sushiswap_abi.json
-ERC20_ABI=abi/erc20_abi.json
-
-# Flashloan Configuration
-AAVE_FLASHLOAN_ADDRESS=0xYourFlashloanContractAddress # Your deployed Flashloan contract
-AAVE_POOL_ADDRESS=0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2 # Aave V3 Pool Address 
-```
-
-### Example 3: Deploying a Flashloan Contract
-
-To deploy a flashloan contract, follow these steps:
-
-1. Open Remix IDE: Go to [Remix IDE](https://remix.ethereum.org/).
-2. Create a new file `SimpleFlashloan.sol`.
-3. Copy and paste the provided Solidity code into Remix.
-4. Compile using Solidity v0.8.19 or later.
-5. Deploy to Ethereum using MetaMask or your preferred wallet.
-6. Add your deployed contract address to `.env`:
-
-```ini
-AAVE_FLASHLOAN_ADDRESS=0xYourDeployedContractAddress
-```
-
-### Example 4: Monitoring Logs
-
-To monitor logs, check the `python/0xBuilder.log` file for detailed information about the bot's activities, transactions, and strategy performance.
-
-### Example 5: Troubleshooting
-
-If you encounter issues, follow these steps:
-
-1. Increase logging level to `DEBUG` for detailed output.
-2. Ensure all dependencies in `requirements.txt` are up-to-date and correctly installed.
-3. Verify your flashloan contract is deployed and functioning correctly using a block explorer (e.g., Etherscan).
-4. Thoroughly test strategies and configurations on testnets like Sepolia or Holesky before deploying to mainnet.
-
-## Additional Documentation
-
-For more detailed information, refer to the documentation in the `docs/` directory. This includes:
-
-- Architecture diagrams
-- Strategy explanations
-- Troubleshooting guides
+**Disclaimer:**  Trading and MEV strategies involve significant financial risk. Use 0xBuilder at your own risk. The developers are not responsible for any losses incurred while using this software. Always conduct thorough testing and understand the risks involved before deploying to the mainnet with real funds.
