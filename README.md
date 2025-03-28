@@ -92,7 +92,7 @@ Before you begin, ensure your system meets these requirements:
 
 ### Ethereum Node Setup
 
-You'll need to run your own Ethereum Execution client to interact with the blockchain.  **Geth is highly recommended for its stability and speed.**
+You'll need to run your own Ethereum Execution and Consensus(Beacon) client to interact with the blockchain. **Geth and Prysm is highly recommended for its stability and speed.**
 
 **Example: Setting up Geth**
 
@@ -120,9 +120,12 @@ You'll need to run your own Ethereum Execution client to interact with the block
     ```
     Wait until `eth.syncing` returns `false` or `null` to confirm full synchronization.
 
-**Beacon Node (Optional)**
+**Beacon Node**
+ [Prysm](https://docs.prylabs.network/docs/install/install-with-script) or [Lighthouse](https://lighthouse-book.sigmaprime.io/installation.html) for setup instructions.
 
-While not strictly required for basic bot operation, a Beacon Node can be beneficial for more advanced features and future upgrades.  If needed, refer to clients like [Prysm](https://docs.prylabs.network/docs/install/install-with-script) or [Lighthouse](https://lighthouse-book.sigmaprime.io/installation.html) for setup instructions.
+```bash
+./prysm.sh beacon-chain --mainnet --checkpoint-sync-url=https://beaconcha.in/api/v1/genesis --genesis-beacon-api-url=https://beaconcha.in --http-web3provider=/path/to/geth.ipc
+```
 
 ## Installation
 
