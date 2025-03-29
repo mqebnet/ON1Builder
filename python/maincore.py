@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 MainCore Module
@@ -13,6 +14,7 @@ import tracemalloc
 import async_timeout
 import time
 import sys
+import signal
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 from web3 import AsyncWeb3
@@ -81,24 +83,13 @@ class MainCore:
             'strategynet': None,
         }
         self._component_health: Dict[str, bool] = {name: False for name in self.components}
-        self.WEB3_MAX_RETRIES = 3  
+        self.WEB3_MAX_RETRIES = self.configuration.get_config_value("WEB3_MAX_RETRIES", 3)
         logger.info("Initializing 0xBuilder...")
         time.sleep(2)  # Allow some time for the environment to stabilize
 
     async def _initialize_components(self) -> None:
         """
-        Initialize all vital components in the correct order:
-        1. Load configuration.
-        2. Initialize Web3 connection.
-        3. Initialize account and check balance.
-        4. Initialize ABI Registry and load ABIs.
-        5. Initialize APIConfig.
-        6. Initialize NonceCore.
-        7. Initialize SafetyNet.
-        8. Initialize TransactionCore.
-        9. Initialize MarketMonitor.
-        10. Initialize MempoolMonitor.
-        11. Initialize StrategyNet.
+        Initialize all vital components in the correct order.
         """
         try:
             # 1. Load configuration
@@ -223,26 +214,6 @@ class MainCore:
             logger.error(f"Error initializing components: {e}", exc_info=True)
             raise
 
-    async def initialize(self) -> None:
-        """
-        Initialize all components and log memory usage statistics.
-        """
-        try:
-            before_snapshot = tracemalloc.take_snapshot()
-            await self._initialize_components()
-            after_snapshot = tracemalloc.take_snapshot()
-
-            # Log memory allocation differences
-            top_stats = after_snapshot.compare_to(before_snapshot, 'lineno')
-            logger.debug("Memory allocation during initialization:")
-            for stat in top_stats[:3]:
-                logger.debug(str(stat))
-
-            logger.info("Main Core initialization complete ✅")
-        except Exception as e:
-            logger.critical(f"Main Core initialization failed: {e}", exc_info=True)
-            raise
-
     async def _load_configuration(self) -> None:
         """
         Load the configuration by invoking its load() method.
@@ -253,27 +224,9 @@ class MainCore:
             logger.critical(f"Failed to load configuration: {e}", exc_info=True)
             raise
 
-    async def _cleanup_provider(self, provider: Any) -> None:
-        """
-        Clean up a provider by disconnecting or closing its session.
-
-        Args:
-            provider (Any): The provider to clean up.
-        """
-        try:
-            if hasattr(provider, 'disconnect'):
-                await provider.disconnect()
-            elif hasattr(provider, 'session') and not provider.session.closed:
-                await provider.session.close()
-        except Exception as e:
-            logger.debug(f"Provider cleanup failed: {e}")
-
     async def _initialize_web3(self) -> Optional[AsyncWeb3]:
         """
         Initialize a Web3 connection using available providers with retries.
-
-        Returns:
-            Optional[AsyncWeb3]: The initialized Web3 instance or None if connection fails.
         """
         providers = await self._get_providers()
         if not providers:
@@ -294,13 +247,8 @@ class MainCore:
                             logger.info(f"Connected to network via {provider_name} (Chain ID: {chain_id})")
                             await self._add_middleware(web3)
                             return web3
-                except asyncio.TimeoutError:
+                except async_timeout.TimeoutError:
                     logger.warning(f"Connection timeout with {provider_name}")
-                    await self._cleanup_provider(provider)
-                except Web3Exception as w3e:
-                    logger.warning(f"{provider_name} connection attempt {attempt + 1} failed: {w3e}")
-                    if attempt < max_retries - 1:
-                        await asyncio.sleep(retry_delay * (attempt + 1))
                     await self._cleanup_provider(provider)
                 except Exception as e:
                     logger.warning(f"{provider_name} connection attempt {attempt + 1} failed: {e}")
@@ -314,9 +262,6 @@ class MainCore:
     async def _get_providers(self) -> List[Tuple[str, Union[AsyncIPCProvider, AsyncHTTPProvider, WebSocketProvider]]]:
         """
         Retrieve a list of available Web3 providers based on the configured endpoints.
-
-        Returns:
-            List[Tuple[str, Provider]]: A list of tuples with provider name and provider instance.
         """
         providers = []
 
@@ -356,9 +301,6 @@ class MainCore:
     async def _add_middleware(self, web3: AsyncWeb3) -> None:
         """
         Add network-specific middleware to the Web3 instance.
-
-        Args:
-            web3 (AsyncWeb3): The Web3 instance.
         """
         try:
             chain_id = await web3.eth.chain_id
@@ -417,9 +359,6 @@ class MainCore:
     async def _monitor_memory(self, initial_snapshot: tracemalloc.Snapshot) -> None:
         """
         Monitor memory usage periodically and log significant changes.
-
-        Args:
-            initial_snapshot (tracemalloc.Snapshot): Snapshot taken before initialization.
         """
         last_snapshot = initial_snapshot
         while self.running:
@@ -442,7 +381,6 @@ class MainCore:
     async def _check_component_health(self) -> None:
         """
         Periodically check the health of all components.
-        If any component is unhealthy, log a warning.
         """
         while self.running:
             try:
@@ -513,10 +451,6 @@ class MainCore:
     async def _stop_component(self, name: str, component: Any) -> None:
         """
         Stop a single component and log its shutdown status.
-
-        Args:
-            name (str): The component name.
-            component (Any): The component instance.
         """
         try:
             await component.stop()
@@ -580,3 +514,57 @@ class MainCore:
             tracemalloc.stop()
             logger.info("Emergency shutdown complete")
             sys.exit(0)
+
+async def main() -> None:
+    """Main entry point."""
+    await run_bot()
+
+async def run_bot() -> None:
+    """Run the bot with graceful shutdown handling."""
+    loop = asyncio.get_running_loop()
+
+    def shutdown_handler() -> None:
+        logger.debug("Received shutdown signal. Stopping the bot...")
+        for task in asyncio.all_tasks(loop):
+            task.cancel()
+
+    try:
+        tracemalloc.start()
+        await asyncio.sleep(3)
+       
+        configuration = Configuration()
+        core = MainCore(configuration)
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, shutdown_handler)
+
+        await core.initialize()
+        await core.run()
+
+    except Exception as e:
+        logger.critical(f"Fatal error: {e}")
+        if tracemalloc.is_tracing():
+            snapshot = tracemalloc.take_snapshot()
+            logger.debug("Top 10 memory allocations:")
+            for stat in snapshot.statistics('lineno')[:10]:
+                logger.debug(str(stat))
+    finally:
+        tracemalloc.stop()
+        if tracemalloc.is_tracing():
+            snapshot = tracemalloc.take_snapshot()
+            logger.debug("Final memory allocations at shutdown:")
+            for stat in snapshot.statistics('lineno')[:10]:
+                logger.debug(str(stat))
+        logger.debug("0xBuilder shutdown complete")
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        snapshot = tracemalloc.take_snapshot()
+        logger.critical(f"Program terminated with an error: {e}")
+        logger.debug("Top 10 memory allocations at error:")
+        top_stats = snapshot.statistics('lineno')
+        for stat in top_stats[:10]:
+            logger.debug(str(stat))
