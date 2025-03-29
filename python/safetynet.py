@@ -1,10 +1,17 @@
-#========================================================================================================================
-# https://github.com/John0n1/0xBuilder
+# -*- coding: utf-8 -*-
+"""
+SafetyNet Module
+
+Provides risk management and transaction validation utilities, including balance caching,
+profit verification, gas cost estimation, dynamic slippage adjustment, network congestion 
+assessment, and risk scoring for 0xBuilder.
+"""
 
 import asyncio
 import time
 from decimal import Decimal
 from typing import Any, Dict, Optional, Tuple, Union
+
 from cachetools import TTLCache
 from web3 import AsyncWeb3
 from eth_account import Account
@@ -22,38 +29,48 @@ logger = setup_logging("SafetyNet", level=logging.INFO)
 
 class SafetyNet:
     """
-     safety system for risk management and transaction validation.
+    SafetyNet provides risk management and transaction validation for MEV operations.
+    
+    It manages balance caching, profit verification, gas estimation, slippage adjustment,
+    network congestion monitoring, and risk assessment.
     """
 
     def __init__(
         self,
         web3: AsyncWeb3,
-        configuration: Optional["Configuration"] = None,
+        configuration: Optional[Configuration] = None,
         address: Optional[str] = None,
         account: Optional[Account] = None,
-        apiconfig: Optional["APIConfig"] = None,
+        apiconfig: Optional[APIConfig] = None,
         marketmonitor: Optional[MarketMonitor] = None,
     ) -> None:
         """
-        Initialize Safety Net components.
+        Initialize SafetyNet components.
+
+        Args:
+            web3 (AsyncWeb3): An asynchronous Web3 instance.
+            configuration (Optional[Configuration]): A configuration instance.
+            address (Optional[str]): The address used by SafetyNet.
+            account (Optional[Account]): An Ethereum account.
+            apiconfig (Optional[APIConfig]): An API configuration instance.
+            marketmonitor (Optional[MarketMonitor]): A market monitoring instance.
         """
         self.web3: AsyncWeb3 = web3
         self.address: Optional[str] = address
-        self.configuration: Optional["Configuration"] = configuration
+        self.configuration: Optional[Configuration] = configuration
         self.account: Optional[Account] = account
-        self.apiconfig: Optional["APIConfig"] = apiconfig
-        self.price_cache: TTLCache = TTLCache(maxsize=2000, ttl=self.configuration.SAFETYNET_CACHE_TTL)
-        self.gas_price_cache: TTLCache = TTLCache(maxsize=1, ttl=self.configuration.SAFETYNET_GAS_PRICE_TTL) 
+        self.apiconfig: Optional[APIConfig] = apiconfig
         self.marketmonitor: Optional[MarketMonitor] = marketmonitor
+
+        # Cache for prices and gas prices
+        self.price_cache: TTLCache = TTLCache(maxsize=2000, ttl=self.configuration.SAFETYNET_CACHE_TTL)
+        self.gas_price_cache: TTLCache = TTLCache(maxsize=1, ttl=self.configuration.SAFETYNET_GAS_PRICE_TTL)
+        self.safety_cache: TTLCache = TTLCache(maxsize=100, ttl=60)
 
         self.price_lock: asyncio.Lock = asyncio.Lock()
         logger.info("SafetyNet is reporting for duty 🛡️")
-        time.sleep(1)
+        time.sleep(1)  # Brief pause during initialization
 
-        # Safety checks cache
-        self.safety_cache: TTLCache = TTLCache(maxsize=100, ttl=60) 
-
-        # Load settings from config object
         if self.configuration:
             self.SLIPPAGE_CONFIG: Dict[str, float] = {
                 "default": self.configuration.get_config_value("SLIPPAGE_DEFAULT", 0.1),
@@ -67,44 +84,50 @@ class SafetyNet:
                 "min_profit_multiplier": self.configuration.get_config_value("MIN_PROFIT_MULTIPLIER", 2.0),
                 "base_gas_limit": self.configuration.get_config_value("BASE_GAS_LIMIT", 21000)
             }
-        else: # Defaults for testing when config class is not available.
-             self.SLIPPAGE_CONFIG: Dict[str, float] = {
-                "default":  0.1,
+        else:
+            self.SLIPPAGE_CONFIG: Dict[str, float] = {
+                "default": 0.1,
                 "min": 0.01,
                 "max": 0.5,
-                "high_congestion":  0.05,
+                "high_congestion": 0.05,
                 "low_congestion": 0.2,
             }
-             self.GAS_CONFIG: Dict[str, Union[int, float]] = {
-                "max_gas_price_gwei":  500,
+            self.GAS_CONFIG: Dict[str, Union[int, float]] = {
+                "max_gas_price_gwei": 500,
                 "min_profit_multiplier": 2.0,
-                "base_gas_limit":  21000
+                "base_gas_limit": 21000
             }
 
-
     async def initialize(self) -> None:
-        """Initialize Safety Net components."""
+        """
+        Verify web3 connectivity and initialize SafetyNet.
+        
+        Raises:
+            RuntimeError: If web3 is not initialized or the connection fails.
+        """
         try:
-
-            # Verify web3 connection
             if not self.web3:
                 raise RuntimeError("Web3 not initialized in SafetyNet")
-
-            # Test connection
             if not await self.web3.is_connected():
                 raise RuntimeError("Web3 connection failed in SafetyNet")
-
             logger.debug("SafetyNet initialized successfully ✅")
         except RuntimeError as e:
-            logger.critical(f"Safety Net initialization failed due to runtime error: {e}") 
+            logger.critical(f"SafetyNet initialization failed due to runtime error: {e}")
             raise
         except Exception as e:
-            logger.critical(f"Safety Net initialization failed: {e}", exc_info=True) 
+            logger.critical(f"SafetyNet initialization failed: {e}", exc_info=True)
             raise
 
-
     async def get_balance(self, account: Account) -> Decimal:
-        """Get account balance with retries and caching."""
+        """
+        Retrieve the account balance in ETH with caching and retries.
+
+        Args:
+            account (Account): The Ethereum account.
+
+        Returns:
+            Decimal: The account balance in ETH.
+        """
         cache_key = f"balance_{account.address}"
         if cache_key in self.price_cache:
             logger.debug("Balance fetched from cache.")
@@ -116,11 +139,11 @@ class SafetyNet:
                 self.price_cache[cache_key] = balance
                 logger.debug(f"Fetched balance: {balance} ETH")
                 return balance
-            except Web3Exception as e: 
+            except Web3Exception as e:
                 logger.warning(f"Attempt {attempt+1} failed to fetch balance (Web3Error): {e}")
                 await asyncio.sleep(2 ** attempt)
-            except Exception as e: 
-                logger.error(f"Attempt {attempt+1} failed to fetch balance (Unexpected Error): {e}", exc_info=True) 
+            except Exception as e:
+                logger.error(f"Attempt {attempt+1} failed to fetch balance (Unexpected Error): {e}", exc_info=True)
                 await asyncio.sleep(2 ** attempt)
 
         logger.error("Failed to fetch account balance after multiple retries.")
@@ -131,35 +154,52 @@ class SafetyNet:
         transaction_data: Dict[str, Any],
         minimum_profit_eth: Optional[float] = None,
     ) -> bool:
-        """ profit verification with dynamic thresholds and risk assessment."""
+        """
+        Verify that a transaction yields sufficient profit after accounting for slippage and gas costs.
+
+        Args:
+            transaction_data (Dict[str, Any]): Data related to the transaction.
+            minimum_profit_eth (Optional[float]): The minimum profit threshold in ETH (default: 0.001 ETH).
+
+        Returns:
+            bool: True if the profit exceeds the minimum threshold, else False.
+        """
         try:
             real_time_price = await self.apiconfig.get_real_time_price(transaction_data['output_token'])
             if real_time_price is None:
-                logger.warning("Real-time price unavailable, cannot ensure profit.") 
+                logger.warning("Real-time price unavailable, cannot ensure profit.")
                 return False
 
             gas_cost_eth = self._calculate_gas_cost(
                 Decimal(transaction_data["gas_price"]),
                 transaction_data["gas_used"]
             )
-
             slippage = await self.adjust_slippage_tolerance()
             profit = await self._calculate_profit(
                 transaction_data, real_time_price, slippage, gas_cost_eth
             )
-
-            self._log_profit_calculation(transaction_data, real_time_price, gas_cost_eth, profit, minimum_profit_eth or 0.001)
-
+            self._log_profit_calculation(
+                transaction_data, real_time_price, gas_cost_eth, profit, minimum_profit_eth or 0.001
+            )
             return profit > Decimal(minimum_profit_eth or 0.001)
         except KeyError as e:
-            logger.error(f"Missing key in transaction data for profit check: {e}") 
+            logger.error(f"Missing key in transaction data for profit check: {e}")
             return False
         except Exception as e:
             logger.error(f"Error in ensure_profit: {e}", exc_info=True)
             return False
 
     def _validate_gas_parameters(self, gas_price_gwei: Decimal, gas_used: int) -> bool:
-        """Validate gas parameters against safety thresholds."""
+        """
+        Validate that gas parameters fall within safe thresholds.
+
+        Args:
+            gas_price_gwei (Decimal): Gas price in Gwei.
+            gas_used (int): Gas used for the transaction.
+
+        Returns:
+            bool: True if parameters are valid, else False.
+        """
         if gas_used == 0:
             logger.error("Gas used cannot be zero for transaction validation.")
             return False
@@ -169,7 +209,16 @@ class SafetyNet:
         return True
 
     def _calculate_gas_cost(self, gas_price_gwei: Decimal, gas_used: int) -> Decimal:
-        """Calculate total gas cost in ETH."""
+        """
+        Calculate the total gas cost in ETH.
+
+        Args:
+            gas_price_gwei (Decimal): Gas price in Gwei.
+            gas_used (int): The amount of gas used.
+
+        Returns:
+            Decimal: The total gas cost in ETH.
+        """
         return gas_price_gwei * Decimal(gas_used) * Decimal("1e-9")
 
     async def _calculate_profit(
@@ -179,7 +228,18 @@ class SafetyNet:
         slippage: float,
         gas_cost_eth: Decimal,
     ) -> Decimal:
-        """Calculate expected profit considering slippage and gas costs."""
+        """
+        Calculate the expected profit of a transaction after adjusting for slippage and gas costs.
+
+        Args:
+            transaction_data (Dict[str, Any]): Data containing transaction details.
+            real_time_price (Decimal): Current real-time token price in ETH.
+            slippage (float): The slippage tolerance (as a decimal fraction).
+            gas_cost_eth (Decimal): The gas cost in ETH.
+
+        Returns:
+            Decimal: The expected profit in ETH.
+        """
         expected_output = real_time_price * Decimal(transaction_data["amountOut"])
         input_amount = Decimal(transaction_data["amountIn"])
         slippage_adjusted_output = expected_output * (1 - Decimal(slippage))
@@ -193,7 +253,16 @@ class SafetyNet:
         profit: Decimal,
         minimum_profit_eth: float,
     ) -> None:
-        """Log detailed profit calculation metrics."""
+        """
+        Log detailed information about the profit calculation for debugging purposes.
+
+        Args:
+            transaction_data (Dict[str, Any]): Transaction details.
+            real_time_price (Decimal): Real-time token price in ETH.
+            gas_cost_eth (Decimal): Gas cost in ETH.
+            profit (Decimal): Calculated profit in ETH.
+            minimum_profit_eth (float): Minimum required profit in ETH.
+        """
         profitable = "Yes" if profit > Decimal(minimum_profit_eth) else "No"
         logger.debug(
             f"Profit Calculation Summary:\n"
@@ -208,7 +277,15 @@ class SafetyNet:
         )
 
     async def estimate_gas(self, transaction_data: Dict[str, Any]) -> int:
-        """Estimate the gas required for a transaction."""
+        """
+        Estimate the gas required for a transaction.
+
+        Args:
+            transaction_data (Dict[str, Any]): Data representing the transaction.
+
+        Returns:
+            int: The estimated gas amount; 0 if estimation fails.
+        """
         try:
             gas_estimate = await self.web3.eth.estimate_gas(transaction_data)
             return gas_estimate
@@ -217,7 +294,12 @@ class SafetyNet:
             return 0
 
     async def adjust_slippage_tolerance(self) -> float:
-        """Adjust slippage tolerance based on network conditions."""
+        """
+        Adjust the slippage tolerance based on current network congestion.
+
+        Returns:
+            float: The adjusted slippage tolerance as a decimal fraction.
+        """
         try:
             congestion_level = await self.get_network_congestion()
             if congestion_level > 0.8:
@@ -226,17 +308,20 @@ class SafetyNet:
                 slippage = self.SLIPPAGE_CONFIG["low_congestion"]
             else:
                 slippage = self.SLIPPAGE_CONFIG["default"]
-            slippage = min(
-                max(slippage, self.SLIPPAGE_CONFIG["min"]), self.SLIPPAGE_CONFIG["max"]
-            )
-            logger.debug(f"Adjusted slippage tolerance to {slippage * 100:.2f}%") 
+            slippage = min(max(slippage, self.SLIPPAGE_CONFIG["min"]), self.SLIPPAGE_CONFIG["max"])
+            logger.debug(f"Adjusted slippage tolerance to {slippage * 100:.2f}%")
             return slippage
         except Exception as e:
             logger.error(f"Error adjusting slippage tolerance: {e}", exc_info=True)
             return self.SLIPPAGE_CONFIG["default"]
 
     async def get_network_congestion(self) -> float:
-        """Estimate the current network congestion level."""
+        """
+        Estimate the current network congestion level.
+
+        Returns:
+            float: The congestion level as a fraction (0 to 1).
+        """
         try:
             latest_block = await self.web3.eth.get_block("latest")
             gas_used = latest_block["gasUsed"]
@@ -253,61 +338,77 @@ class SafetyNet:
         tx_data: Dict[str, Any],
         check_type: str = 'all'
     ) -> Tuple[bool, Dict[str, Any]]:
-        """Unified safety check method for transactions."""
-        try:
-             is_safe = True
-             messages = []
+        """
+        Perform a unified safety check for a transaction.
 
-             if check_type in ['all', 'gas']:
+        This method evaluates gas price, profit potential, and network congestion.
+
+        Args:
+            tx_data (Dict[str, Any]): The transaction data.
+            check_type (str): Type of checks to perform ('all', 'gas', 'profit', 'network').
+
+        Returns:
+            Tuple[bool, Dict[str, Any]]:
+                - bool: True if the transaction is deemed safe.
+                - Dict[str, Any]: Details of each safety check.
+        """
+        try:
+            gas_ok = True
+            profit_ok = True
+            congestion_ok = True
+            messages = []
+
+            if check_type in ['all', 'gas']:
                 gas_price = await self.get_dynamic_gas_price()
                 if gas_price > self.configuration.MAX_GAS_PRICE_GWEI:
-                     is_safe = False
-                     messages.append(f"Gas price too high: {gas_price} Gwei, exceeds limit of {self.configuration.MAX_GAS_PRICE_GWEI} Gwei")
-
-             # Check profit potential
-             if check_type in ['all', 'profit']:
-                profit = await self._calculate_profit(
-                    tx_data,
-                    await self.apiconfig.get_real_time_price(tx_data['output_token']),
-                    await self.adjust_slippage_tolerance(),
-                    self._calculate_gas_cost(
-                        Decimal(tx_data['gas_price']),
-                        tx_data['gas_used']
+                    gas_ok = False
+                    messages.append(
+                        f"Gas price too high: {gas_price} Gwei exceeds limit of {self.configuration.MAX_GAS_PRICE_GWEI} Gwei"
                     )
-                )
-                if profit < self.configuration.MIN_PROFIT:
-                     is_safe = False
-                     messages.append(f"Insufficient profit: {profit:.6f} ETH, below minimum of {self.configuration.MIN_PROFIT} ETH") 
 
-             # Check network congestion
-             if check_type in ['all', 'network']:
+            if check_type in ['all', 'profit']:
+                current_price = await self.apiconfig.get_real_time_price(tx_data['output_token'])
+                slippage = await self.adjust_slippage_tolerance()
+                gas_cost = self._calculate_gas_cost(Decimal(tx_data["gas_price"]), tx_data["gas_used"])
+                profit = await self._calculate_profit(tx_data, current_price, slippage, gas_cost)
+                if profit < self.configuration.MIN_PROFIT:
+                    profit_ok = False
+                    messages.append(
+                        f"Insufficient profit: {profit:.6f} ETH is below minimum of {self.configuration.MIN_PROFIT} ETH"
+                    )
+
+            if check_type in ['all', 'network']:
                 congestion = await self.get_network_congestion()
                 if congestion > 0.8:
-                     is_safe = False
-                     messages.append(f"High network congestion: {congestion:.1%}, above threshold of 80%")
+                    congestion_ok = False
+                    messages.append(
+                        f"High network congestion: {congestion:.1%} exceeds threshold of 80%"
+                    )
 
-             return is_safe, {
+            is_safe = gas_ok and profit_ok and congestion_ok
+            return is_safe, {
                 'is_safe': is_safe,
-                'gas_ok': is_safe if check_type not in ['all', 'gas'] else gas_price <= self.configuration.MAX_GAS_PRICE_GWEI,
-                'profit_ok': is_safe if check_type not in ['all', 'profit'] else profit >= self.configuration.MIN_PROFIT,
+                'gas_ok': gas_ok,
+                'profit_ok': profit_ok,
                 'slippage_ok': True,
-                'congestion_ok': is_safe if check_type not in ['all', 'network'] else congestion <= 0.8,
+                'congestion_ok': congestion_ok,
                 'messages': messages
             }
-
         except Exception as e:
-            logger.error(f"Safety check error: {e}", exc_info=True) 
+            logger.error(f"Safety check error: {e}", exc_info=True)
             return False, {'is_safe': False, 'messages': [str(e)]}
 
     async def stop(self) -> None:
-         """Stops the 0xBuilder gracefully."""
-         try:
+        """
+        Gracefully stop SafetyNet operations and close any open API connections.
+        """
+        try:
             if self.apiconfig:
                 await self.apiconfig.close()
-            logger.info("Safety Net stopped successfully.")
-         except Exception as e:
-             logger.error(f"Error stopping safety net: {e}", exc_info=True)
-             raise
+            logger.info("SafetyNet stopped successfully.")
+        except Exception as e:
+            logger.error(f"Error stopping SafetyNet: {e}", exc_info=True)
+            raise
 
     async def assess_transaction_risk(
         self,
@@ -316,22 +417,30 @@ class SafetyNet:
         price_change: float = 0,
         volume: float = 0
     ) -> Tuple[float, Dict[str, Any]]:
-        """Centralized risk assessment with proper error handling."""
+        """
+        Assess the risk of a transaction based on gas price, market conditions, price change, and volume.
+
+        Args:
+            tx (Dict[str, Any]): The transaction data.
+            market_conditions (Optional[Dict[str, bool]]): Pre-fetched market conditions (optional).
+            price_change (float): The percentage price change.
+            volume (float): Trading volume.
+
+        Returns:
+            Tuple[float, Dict[str, Any]]: The risk score (0 to 1) and market conditions.
+        """
         try:
             risk_score = 1.0
-
             if not market_conditions and self.marketmonitor:
                 market_conditions = await self.marketmonitor.check_market_conditions(tx.get("to", ""))
             elif not market_conditions:
-                market_conditions = {}  
+                market_conditions = {}
 
-            # Gas price impact
             gas_price = int(tx.get("gasPrice", 0))
             gas_price_gwei = float(self.web3.from_wei(gas_price, "gwei"))
             if gas_price_gwei > self.configuration.MAX_GAS_PRICE_GWEI:
                 risk_score *= 0.7
 
-            # Market conditions impact
             if market_conditions.get("high_volatility", False):
                 risk_score *= 0.7
             if market_conditions.get("low_liquidity", False):
@@ -339,62 +448,61 @@ class SafetyNet:
             if market_conditions.get("bullish_trend", False):
                 risk_score *= 1.2
 
-            # Price change impact
             if price_change > 0:
                 risk_score *= min(1.3, 1 + (price_change / 100))
 
-            # Volume impact
             if volume >= 1_000_000:
                 risk_score *= 1.2
             elif volume <= 100_000:
                 risk_score *= 0.8
 
             return risk_score, market_conditions
-
         except Exception as e:
-            logger.error(f"Error in risk assessment: {e}", exc_debug=True)
+            logger.error(f"Error in risk assessment: {e}", exc_info=True)
             return 0.0, {}
 
     async def get_dynamic_gas_price(self) -> Decimal:
         """
-        Fetch dynamic gas price with caching.
-        
+        Fetch the current dynamic gas price in Gwei with caching.
+
+        Returns:
+            Decimal: The dynamic gas price in Gwei.
         """
-        if self.gas_price_cache and self.gas_price_cache.get("gas_price"):
+        if self.gas_price_cache.get("gas_price"):
             return self.gas_price_cache["gas_price"]
 
         try:
-            #Fetch gas price from the latest block
-             latest_block = await self.web3.eth.get_block('latest')
-             base_fee = latest_block.get("baseFeePerGas")
-
-             if base_fee:
-                  gas_price_wei =  base_fee * 2
-                  gas_price_gwei = Decimal(self.web3.from_wei(gas_price_wei, 'gwei'))
-             else:
-                  gas_price_gwei =  Decimal(self.web3.from_wei(await self.web3.eth.gas_price, 'gwei'))
-
-
-             #Cache
-             self.gas_price_cache["gas_price"] = gas_price_gwei
-             logger.debug(f"Fetched dynamic gas price: {gas_price_gwei} Gwei")
-             return gas_price_gwei
-
+            latest_block = await self.web3.eth.get_block('latest')
+            base_fee = latest_block.get("baseFeePerGas")
+            if base_fee:
+                gas_price_wei = base_fee * 2
+                gas_price_gwei = Decimal(self.web3.from_wei(gas_price_wei, 'gwei'))
+            else:
+                gas_price_gwei = Decimal(self.web3.from_wei(await self.web3.eth.gas_price, 'gwei'))
+            self.gas_price_cache["gas_price"] = gas_price_gwei
+            logger.debug(f"Fetched dynamic gas price: {gas_price_gwei} Gwei")
+            return gas_price_gwei
         except Exception as e:
-            logger.error(f"Error fetching dynamic gas price: {e}", exc_debug=True)
-            return Decimal(str(self.configuration.get_config_value("MAX_GAS_PRICE_GWEI", 50))) 
+            logger.error(f"Error fetching dynamic gas price: {e}", exc_info=True)
+            return Decimal(str(self.configuration.get_config_value("MAX_GAS_PRICE_GWEI", 50)))
 
     async def validate_transaction(self, transaction_data: Dict[str, Any]) -> bool:
-        """Validate transaction data before execution."""
+        """
+        Validate the provided transaction data to ensure all required fields and safe gas parameters are present.
+
+        Args:
+            transaction_data (Dict[str, Any]): The transaction data.
+
+        Returns:
+            bool: True if the transaction data is valid, else False.
+        """
         try:
-            # Check for required fields
             required_fields = ["output_token", "amountOut", "amountIn", "gas_price", "gas_used"]
             for field in required_fields:
                 if field not in transaction_data:
-                    logger.error(f"Missing required field in transaction data for validation: {field}") 
+                    logger.error(f"Missing required field in transaction data for validation: {field}")
                     return False
 
-            # Validate gas parameters
             gas_price_gwei = Decimal(transaction_data["gas_price"])
             gas_used = transaction_data["gas_used"]
             if not self._validate_gas_parameters(gas_price_gwei, gas_used):
@@ -402,5 +510,5 @@ class SafetyNet:
 
             return True
         except Exception as e:
-            logger.error(f"Error validating transaction data: {e}", exc_info=True) 
+            logger.error(f"Error validating transaction data: {e}", exc_info=True)
             return False
