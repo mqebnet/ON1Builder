@@ -1,17 +1,21 @@
-#========================================================================================================================
-# https://github.com/John0n1/0xBuilder
+# -*- coding: utf-8 -*-
+"""
+MempoolMonitor Module
+
+This module monitors pending transactions from the mempool, queues them for processing based on priority,
+and analyzes transactions for profitability. It supports both filter-based and polling-based monitoring
+mechanisms and integrates with the SafetyNet, NonceCore, APIConfig, and MarketMonitor components.
+"""
 
 import asyncio
 import time
 import async_timeout
-import hexbytes as hexbytes
 import heapq
-
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
+
 from web3 import AsyncWeb3
-from web3.exceptions import TransactionNotFound
-from web3.exceptions import Web3ValueError
+from web3.exceptions import TransactionNotFound, Web3ValueError
 
 from abiregistry import ABIRegistry
 from apiconfig import APIConfig
@@ -20,7 +24,6 @@ from marketmonitor import MarketMonitor
 from noncecore import NonceCore
 from safetynet import SafetyNet
 
-
 from loggingconfig import setup_logging
 import logging
 
@@ -28,11 +31,35 @@ logger = setup_logging("MempoolMonitor", level=logging.INFO)
 
 
 class MempoolMonitor:
-    def __init__(self, web3: AsyncWeb3, safetynet: "SafetyNet", noncecore: "NonceCore",
-                 apiconfig: "APIConfig", monitored_tokens: Optional[List[str]] = None,
-                 configuration: Optional["Configuration"] = None,
-                 erc20_abi: Optional[List[Dict[str, Any]]] = None,
-                 marketmonitor: Optional["MarketMonitor"] = None):
+    """
+    Monitors the mempool for pending transactions, prioritizes them,
+    and processes each transaction to identify profitable opportunities.
+    """
+
+    def __init__(
+        self,
+        web3: AsyncWeb3,
+        safetynet: SafetyNet,
+        noncecore: NonceCore,
+        apiconfig: APIConfig,
+        monitored_tokens: Optional[List[str]] = None,
+        configuration: Optional[Configuration] = None,
+        erc20_abi: Optional[List[Dict[str, Any]]] = None,
+        marketmonitor: Optional[MarketMonitor] = None,
+    ):
+        """
+        Initialize the MempoolMonitor.
+
+        Args:
+            web3 (AsyncWeb3): An asynchronous Web3 instance.
+            safetynet (SafetyNet): The SafetyNet instance.
+            noncecore (NonceCore): The NonceCore instance.
+            apiconfig (APIConfig): The API configuration instance.
+            monitored_tokens (Optional[List[str]]): List of tokens to monitor.
+            configuration (Optional[Configuration]): The configuration instance.
+            erc20_abi (Optional[List[Dict[str, Any]]]): ERC20 ABI definitions.
+            marketmonitor (Optional[MarketMonitor]): The MarketMonitor instance.
+        """
         self.web3 = web3
         self.configuration = configuration
         self.safetynet = safetynet
@@ -52,20 +79,33 @@ class MempoolMonitor:
             self.erc20_abi = []
         else:
             self.erc20_abi = erc20_abi
-            logger.debug(f"Loaded ERC20 ABI, {len(self.erc20_abi)} entries")
+            logger.debug(f"Loaded ERC20 ABI with {len(self.erc20_abi)} entries")
+
         self.minimum_profit_threshold = Decimal("0.001")
         self.backoff_factor = 1.5
-        self.semaphore = asyncio.Semaphore(configuration.MEMPOOL_MAX_PARALLEL_TASKS) 
+        self.semaphore = asyncio.Semaphore(configuration.MEMPOOL_MAX_PARALLEL_TASKS)
         self.task_queue = asyncio.Queue()
-        self.function_signatures = {'0xa9059cbb': 'transfer','0x095ea7b3': 'approve','0x23b872dd': 'transferFrom'}
+        # Predefined function selectors (can be updated from config)
+        self.function_signatures = {
+            '0xa9059cbb': 'transfer',
+            '0x095ea7b3': 'approve',
+            '0x23b872dd': 'transferFrom'
+        }
 
-        logger.debug("Go for main engine start! ✅...")
-        time.sleep(1) 
+        logger.debug("Starting main engine...")
+        time.sleep(1)
 
         self.abiregistry = ABIRegistry()
         self.cache = {}
 
     async def initialize(self) -> None:
+        """
+        Initialize the MempoolMonitor by updating function signatures,
+        validating the ERC20 ABI, and resetting queues and caches.
+        
+        Raises:
+            ValueError: If the ERC20 ABI is missing or invalid.
+        """
         try:
             logger.debug("Initializing MempoolMonitor...")
             if self.configuration and hasattr(self.configuration, 'get_erc20_signatures'):
@@ -73,7 +113,7 @@ class MempoolMonitor:
             if not self.erc20_abi:
                 raise ValueError("Failed to load ERC20 ABI")
             if not self.abiregistry._validate_abi(self.erc20_abi, 'erc20'):
-                 raise ValueError("Invalid ERC20 ABI")
+                raise ValueError("Invalid ERC20 ABI")
             self.running = False
             self.pending_transactions = asyncio.Queue()
             self.profitable_transactions = asyncio.Queue()
@@ -85,20 +125,28 @@ class MempoolMonitor:
             raise
 
     async def start_monitoring(self) -> None:
-         if self.running:
+        """
+        Start monitoring the mempool for pending transactions.
+        Creates background tasks for monitoring and processing the task queue.
+        """
+        if self.running:
             logger.debug("Monitoring already active.")
             return
-         try:
+        try:
             self.running = True
             monitoring_task = asyncio.create_task(self._run_monitoring())
             processor_task = asyncio.create_task(self._process_task_queue())
             logger.info("Mempool monitoring started")
             await asyncio.gather(monitoring_task, processor_task)
-         except Exception as e:
+        except Exception as e:
             self.running = False
             logger.error(f"Error starting monitoring: {e}")
 
     async def _run_monitoring(self) -> None:
+        """
+        Run the monitoring loop using either filter-based or polling-based mechanisms.
+        Implements a circuit breaker for repeated errors.
+        """
         retry_count = 0
         error_count = 0
         while self.running:
@@ -127,6 +175,9 @@ class MempoolMonitor:
                 await asyncio.sleep(self.configuration.MEMPOOL_RETRY_DELAY * retry_count)
 
     async def _poll_pending_transactions(self) -> None:
+        """
+        Poll new blocks for transactions when filter-based monitoring is unavailable.
+        """
         last_block = await self.web3.eth.block_number
         while self.running:
             try:
@@ -138,8 +189,10 @@ class MempoolMonitor:
                     try:
                         block = await self.web3.eth.get_block(block_num, full_transactions=True)
                         if block and block.transactions:
-                            tx_hashes = [tx.hash.hex() if hasattr(tx, 'hash') else tx['hash'].hex()
-                                       for tx in block.transactions]
+                            tx_hashes = [
+                                tx.hash.hex() if hasattr(tx, 'hash') else tx['hash'].hex()
+                                for tx in block.transactions
+                            ]
                             await self._handle_new_transactions(tx_hashes)
                     except Exception as e:
                         logger.error(f"Error processing block {block_num}: {e}")
@@ -151,6 +204,12 @@ class MempoolMonitor:
                 await asyncio.sleep(2)
 
     async def _setup_pending_filter(self) -> Optional[Any]:
+        """
+        Attempt to set up a pending transaction filter.
+
+        Returns:
+            Optional[Any]: The filter object if successfully set up, otherwise None.
+        """
         try:
             pending_filter = await self.web3.eth.filter("pending")
             try:
@@ -170,18 +229,29 @@ class MempoolMonitor:
             return None
 
     async def _handle_new_transactions(self, tx_hashes: List[str]) -> None:
-        async def process_batch(batch):
-             await asyncio.gather(
-                *(self._queue_transaction(tx_hash) for tx_hash in batch)
-             )
+        """
+        Process a list of new transaction hashes in batches.
+
+        Args:
+            tx_hashes (List[str]): A list of transaction hashes.
+        """
+        async def process_batch(batch: List[str]) -> None:
+            await asyncio.gather(*(self._queue_transaction(tx_hash) for tx_hash in batch))
         try:
             for i in range(0, len(tx_hashes), self.configuration.MEMPOOL_BATCH_SIZE):
-                batch = tx_hashes[i: i + self.configuration.MEMPOOL_BATCH_SIZE]
+                batch = tx_hashes[i : i + self.configuration.MEMPOOL_BATCH_SIZE]
                 await process_batch(batch)
         except Exception as e:
             logger.error(f"Error handling new transactions: {e}")
 
     async def _queue_transaction(self, tx_hash: str) -> None:
+        """
+        Queue a transaction for processing if it has not been processed already.
+        Priority is determined by the transaction's gas price.
+
+        Args:
+            tx_hash (str): The transaction hash.
+        """
         if not tx_hash:
             logger.warning("Invalid transaction hash received")
             return
@@ -193,6 +263,16 @@ class MempoolMonitor:
                 heapq.heappush(self.task_queue, (priority, tx_hash_hex))
 
     async def _calculate_priority(self, tx_hash: str) -> int:
+        """
+        Calculate the priority for a transaction based on its gas price.
+        Higher gas price yields higher priority (lower numerical value).
+
+        Args:
+            tx_hash (str): The transaction hash.
+
+        Returns:
+            int: The calculated priority (negative gas price), or infinity if unavailable.
+        """
         try:
             tx = await self._get_transaction_with_retry(tx_hash)
             if not tx:
@@ -204,10 +284,13 @@ class MempoolMonitor:
             return float('inf')
 
     async def _process_task_queue(self) -> None:
+        """
+        Continuously process transactions from the task queue using a semaphore to limit parallelism.
+        """
         while self.running:
             try:
                 priority, tx_hash = heapq.heappop(self.task_queue)
-                async with self.semaphore: 
+                async with self.semaphore:
                     await self.process_transaction(tx_hash)
             except IndexError:
                 await asyncio.sleep(1)
@@ -217,6 +300,13 @@ class MempoolMonitor:
                 logger.error(f"Error processing task queue: {e}")
 
     async def process_transaction(self, tx_hash: str) -> None:
+        """
+        Process an individual transaction: fetch its details, analyze its profitability,
+        and if profitable, handle it accordingly.
+
+        Args:
+            tx_hash (str): The transaction hash.
+        """
         try:
             tx = await self._get_transaction_with_retry(tx_hash)
             if not tx:
@@ -225,9 +315,18 @@ class MempoolMonitor:
             if analysis.get("is_profitable"):
                 await self._handle_profitable_transaction(analysis)
         except Exception as e:
-             logger.debug(f"Error processing transaction {tx_hash}: {e}")
+            logger.debug(f"Error processing transaction {tx_hash}: {e}")
 
     async def _get_transaction_with_retry(self, tx_hash: str) -> Optional[Any]:
+        """
+        Retrieve a transaction with retries and exponential backoff.
+
+        Args:
+            tx_hash (str): The transaction hash.
+
+        Returns:
+            Optional[Any]: The transaction object if found, else None.
+        """
         backoff = self.configuration.MEMPOOL_RETRY_DELAY
         for attempt in range(self.configuration.MEMPOOL_MAX_RETRIES):
             try:
@@ -252,6 +351,13 @@ class MempoolMonitor:
                 return None
 
     async def _handle_profitable_transaction(self, analysis: Dict[str, Any]) -> None:
+        """
+        Handle a profitable transaction by logging details, tagging it with a strategy type,
+        and queuing it for further processing.
+
+        Args:
+            analysis (Dict[str, Any]): Analysis result of the transaction.
+        """
         try:
             profit = analysis.get('profit', Decimal(0))
             if isinstance(profit, (int, float)):
@@ -262,10 +368,7 @@ class MempoolMonitor:
             profit_str = f"{float(profit):.6f}" if profit > 0 else 'Unknown'
             analysis['profit'] = profit
             analysis['timestamp'] = time.time()
-            analysis['gas_price'] = self.web3.from_wei(
-                analysis.get('gasPrice', 0),
-                'gwei'
-            )
+            analysis['gas_price'] = self.web3.from_wei(analysis.get('gasPrice', 0), 'gwei')
             analysis['strategy_type'] = self._determine_strategy_type(analysis)
             await self.profitable_transactions.put(analysis)
             logger.debug(
@@ -276,33 +379,56 @@ class MempoolMonitor:
             logger.error(f"Error handling profitable transaction: {e}")
 
     def _determine_strategy_type(self, analysis: Dict[str, Any]) -> str:
+        """
+        Determine the strategy type for a transaction based on its analysis.
+
+        Args:
+            analysis (Dict[str, Any]): The analysis data.
+
+        Returns:
+            str: The determined strategy type.
+        """
         if analysis.get('value', 0) > 0 and 'input' not in analysis:
-              return "eth_transaction"
-        if  analysis.get('function_name') in ("swap", "swapExactTokensForTokens", "swapTokensForExactTokens"):
-                if "amountOutMin" in analysis.get('params', {}):
-                  if 'path' in analysis.get('params', {}):
-                       return "sandwich_attack"
-                  return "back_run"
-                return "front_run"
+            return "eth_transaction"
+        if analysis.get('function_name') in ("swap", "swapExactTokensForTokens", "swapTokensForExactTokens"):
+            if "amountOutMin" in analysis.get('params', {}):
+                if 'path' in analysis.get('params', {}):
+                    return "sandwich_attack"
+                return "back_run"
+            return "front_run"
         return "unknown"
 
     async def analyze_transaction(self, tx) -> Dict[str, Any]:
+        """
+        Analyze a transaction to determine its profitability.
+
+        Args:
+            tx: The transaction object.
+
+        Returns:
+            Dict[str, Any]: A dictionary with analysis results including a profitability flag.
+        """
         if not tx.hash or not tx.input:
-            logger.debug(
-                f"Transaction {tx.hash.hex()} is missing essential fields. Skipping."
-            )
+            logger.debug(f"Transaction {tx.hash.hex()} is missing essential fields. Skipping.")
             return {"is_profitable": False}
         try:
             if tx.value > 0:
                 return await self._analyze_eth_transaction(tx)
             return await self._analyze_token_transaction(tx)
         except Exception as e:
-            logger.error(
-                f"Error analyzing transaction {tx.hash.hex()}: {e}"
-            )
+            logger.error(f"Error analyzing transaction {tx.hash.hex()}: {e}")
             return {"is_profitable": False}
 
     async def _analyze_eth_transaction(self, tx) -> Dict[str, Any]:
+        """
+        Analyze an ETH transaction for profitability.
+
+        Args:
+            tx: The transaction object.
+
+        Returns:
+            Dict[str, Any]: Analysis results with profitability flag and relevant details.
+        """
         try:
             if await self._is_profitable_eth_transaction(tx):
                 await self._log_transaction_details(tx, is_eth=True)
@@ -317,12 +443,19 @@ class MempoolMonitor:
                 }
             return {"is_profitable": False}
         except Exception as e:
-            logger.error(
-                f"Error analyzing ETH transaction {tx.hash.hex()}: {e}"
-            )
+            logger.error(f"Error analyzing ETH transaction {tx.hash.hex()}: {e}")
             return {"is_profitable": False}
 
     async def _analyze_token_transaction(self, tx) -> Dict[str, Any]:
+        """
+        Analyze a token transaction (e.g., transfers, swaps) for profitability.
+
+        Args:
+            tx: The transaction object.
+
+        Returns:
+            Dict[str, Any]: Analysis results with profitability flag and transaction parameters.
+        """
         try:
             if not self.erc20_abi or not tx.input or len(tx.input) < 10:
                 logger.debug("Missing ERC20 ABI or invalid transaction input")
@@ -332,6 +465,8 @@ class MempoolMonitor:
             function_name = None
             function_params = {}
             decoded = False
+
+            # Attempt direct signature lookup
             if selector_no_prefix in self.function_signatures:
                 try:
                     function_name = self.function_signatures[selector_no_prefix]
@@ -344,6 +479,8 @@ class MempoolMonitor:
                             decoded = True
                 except Exception as e:
                     logger.debug(f"Error in direct signature lookup: {e}")
+
+            # Fallback to ABI-based decoding if direct lookup failed
             if not decoded:
                 try:
                     if not tx.to or not self.erc20_abi:
@@ -355,10 +492,7 @@ class MempoolMonitor:
                     )
                     try:
                         func_obj, decoded_params = contract.decode_function_input(tx.input)
-                        function_name = (
-                            getattr(func_obj, 'fn_name', None) or
-                            getattr(func_obj, 'function_identifier', None)
-                        )
+                        function_name = getattr(func_obj, 'fn_name', None) or getattr(func_obj, 'function_identifier', None)
                         if function_name:
                             function_params = decoded_params
                             decoded = True
@@ -366,7 +500,10 @@ class MempoolMonitor:
                         logger.debug(f"Could not decode function input: {e}")
                 except Exception as e:
                     logger.debug(f"Contract decode error: {e}")
-            if decoded and function_name in ('transfer', 'transferFrom', 'swap', 'swapExactTokensForTokens', 'swapTokensForExactTokens'):
+
+            if decoded and function_name in (
+                'transfer', 'transferFrom', 'swap', 'swapExactTokensForTokens', 'swapTokensForExactTokens'
+            ):
                 params = await self._extract_transaction_params(tx, function_name, function_params)
                 if not params:
                     logger.debug(f"Could not extract valid parameters for {function_name}")
@@ -398,16 +535,32 @@ class MempoolMonitor:
             return {"is_profitable": False}
 
     async def _is_profitable_eth_transaction(self, tx) -> bool:
+        """
+        Determine whether an ETH transaction is profitable.
+
+        Args:
+            tx: The transaction object.
+
+        Returns:
+            bool: True if the estimated profit exceeds the minimum threshold, else False.
+        """
         try:
             potential_profit = await self._estimate_eth_transaction_profit(tx)
             return potential_profit > self.minimum_profit_threshold
         except Exception as e:
-            logger.debug(
-                f"Error estimating ETH transaction profit for transaction {tx.hash.hex()}: {e}"
-            )
+            logger.debug(f"Error estimating ETH transaction profit for {tx.hash.hex()}: {e}")
             return False
 
     async def _estimate_eth_transaction_profit(self, tx: Any) -> Decimal:
+        """
+        Estimate the profit of an ETH transaction by subtracting gas cost from the transferred value.
+
+        Args:
+            tx: The transaction object.
+
+        Returns:
+            Decimal: The estimated profit in ETH.
+        """
         try:
             gas_price_gwei = await self.safetynet.get_dynamic_gas_price()
             gas_used = tx.gas if tx.gas else await self.web3.eth.estimate_gas(tx)
@@ -421,6 +574,16 @@ class MempoolMonitor:
             return Decimal(0)
 
     async def _estimate_profit(self, tx, function_params: Dict[str, Any]) -> Decimal:
+        """
+        Estimate the profit for a token transaction using gas costs, token amounts, and market data.
+
+        Args:
+            tx: The transaction object.
+            function_params (Dict[str, Any]): Decoded function parameters.
+
+        Returns:
+            Decimal: The estimated profit in ETH.
+        """
         try:
             gas_data = await self._calculate_gas_costs(tx)
             if not gas_data['valid']:
@@ -450,6 +613,15 @@ class MempoolMonitor:
             return Decimal(0)
 
     async def _calculate_gas_costs(self, tx: Any) -> Dict[str, Any]:
+        """
+        Calculate gas costs with a 10% margin.
+
+        Args:
+            tx: The transaction object.
+
+        Returns:
+            Dict[str, Any]: A dictionary with validity flag, reason (if invalid), and gas cost data.
+        """
         try:
             gas_price_wei = Decimal(tx.gasPrice)
             gas_price_gwei = Decimal(self.web3.from_wei(gas_price_wei, "gwei"))
@@ -470,6 +642,15 @@ class MempoolMonitor:
             return {'valid': False, 'reason': str(e)}
 
     async def _validate_token_amounts(self, function_params: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validate and convert token amounts from function parameters.
+
+        Args:
+            function_params (Dict[str, Any]): The decoded function parameters.
+
+        Returns:
+            Dict[str, Any]: A dictionary with validity flag, reason (if invalid), and parsed token amounts.
+        """
         try:
             input_amount = function_params.get("amountIn",
                 function_params.get("value",
@@ -495,7 +676,8 @@ class MempoolMonitor:
                 output_amount_wei = Decimal(str(parse_amount(output_amount)))
             except (ValueError, TypeError) as e:
                 return {
-                    'valid': False, 'reason': f'Amount parsing error: {str(e)}',
+                    'valid': False, 
+                    'reason': f'Amount parsing error: {str(e)}',
                     'details': {
                         'input_raw': input_amount,
                         'output_raw': output_amount
@@ -533,6 +715,15 @@ class MempoolMonitor:
             }
 
     async def _get_market_data(self, token_address: str) -> Dict[str, Any]:
+        """
+        Retrieve market data for a token given its address.
+
+        Args:
+            token_address (str): The token contract address.
+
+        Returns:
+            Dict[str, Any]: A dictionary with validity flag and market data (price, slippage, symbol).
+        """
         try:
             token_symbol = await self.apiconfig.get_token_symbol(self.web3, token_address)
             if not token_symbol:
@@ -553,9 +744,18 @@ class MempoolMonitor:
             return {'valid': False, 'reason': str(e)}
 
     async def _calculate_dynamic_slippage(self, token_symbol: str) -> Decimal:
+        """
+        Calculate a dynamic slippage factor based on the token's trading volume.
+
+        Args:
+            token_symbol (str): The token symbol.
+
+        Returns:
+            Decimal: The dynamic slippage multiplier.
+        """
         try:
             volume = await self.apiconfig.get_token_volume(token_symbol)
-            if (volume > 1_000_000):
+            if volume > 1_000_000:
                 return Decimal("0.995")
             elif volume > 500_000:
                 return Decimal("0.99")
@@ -570,6 +770,17 @@ class MempoolMonitor:
         gas_costs: Dict[str, Decimal],
         market_data: Dict[str, Any]
     ) -> Decimal:
+        """
+        Calculate the final profit for a token transaction.
+
+        Args:
+            amounts (Dict[str, Decimal]): Parsed token amounts.
+            gas_costs (Dict[str, Decimal]): Calculated gas cost data.
+            market_data (Dict[str, Any]): Retrieved market data.
+
+        Returns:
+            Decimal: The final estimated profit in ETH.
+        """
         try:
             expected_output_value = (
                 amounts['output_eth'] *
@@ -585,8 +796,11 @@ class MempoolMonitor:
         except Exception as e:
             logger.error(f"Error in final profit calculation: {e}")
             return Decimal(0)
-        
+
     async def monitor_high_value_transactions(self) -> None:
+        """
+        Continuously monitor pending transactions and trigger back-run strategies for high-value transactions.
+        """
         while self.running:
             try:
                 tx_hash = await self.pending_transactions.get()
@@ -609,6 +823,15 @@ class MempoolMonitor:
         gas_costs: Dict[str, Decimal],
         market_data: Dict[str, Any]
     ) -> None:
+        """
+        Log detailed profit calculation information.
+
+        Args:
+            profit (Decimal): The calculated profit in ETH.
+            amounts (Dict[str, Decimal]): Token amount data.
+            gas_costs (Dict[str, Decimal]): Gas cost data.
+            market_data (Dict[str, Any]): Market data.
+        """
         logger.debug(
             f"Profit Calculation Details:\n"
             f"  Token: {market_data['symbol']}\n"
@@ -622,6 +845,13 @@ class MempoolMonitor:
         )
 
     async def _log_transaction_details(self, tx, is_eth=False) -> None:
+        """
+        Log basic details of a transaction.
+
+        Args:
+            tx: The transaction object.
+            is_eth (bool): True if the transaction is an ETH transfer.
+        """
         try:
             transaction_info = {
                 "transaction hash": tx.hash.hex(),
@@ -636,9 +866,7 @@ class MempoolMonitor:
             else:
                 logger.debug(f"Pending Token Transaction Details: {transaction_info}")
         except Exception as e:
-            logger.debug(
-                f"Error logging transaction details for {tx.hash.hex()}: {e}", exc_debug=True
-            )
+            logger.debug(f"Error logging transaction details for {tx.hash.hex()}: {e}", exc_info=True)
 
     async def _extract_transaction_params(
         self,
@@ -646,6 +874,17 @@ class MempoolMonitor:
         function_name: str,
         decoded_params: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
+        """
+        Extract and standardize parameters from a decoded transaction.
+
+        Args:
+            tx: The transaction object.
+            function_name (str): The name of the function (e.g., 'transfer', 'swap').
+            decoded_params (Dict[str, Any]): The decoded parameters.
+
+        Returns:
+            Optional[Dict[str, Any]]: Standardized parameters, or None if extraction fails.
+        """
         try:
             params = {}
             if function_name in ['transfer', 'transferFrom']:
@@ -659,14 +898,11 @@ class MempoolMonitor:
                                     decoded_params.get('recipient'))))
                 if function_name == 'transferFrom':
                     from_addr = decoded_params.get('from',
-                                decoded_params.get('_from',
-                                    decoded_params.get('src',
-                                        decoded_params.get('sender'))))
+                            decoded_params.get('_from',
+                                decoded_params.get('src',
+                                    decoded_params.get('sender'))))
                     params['from'] = from_addr
-                params.update({
-                    'amount': amount,
-                    'to': to_addr
-                })
+                params.update({'amount': amount, 'to': to_addr})
             elif function_name in ['swap', 'swapExactTokensForTokens', 'swapTokensForExactTokens']:
                 params = {
                     'amountIn': decoded_params.get('amountIn',
@@ -686,6 +922,16 @@ class MempoolMonitor:
             return None
 
     def _validate_params_format(self, params: Dict[str, Any], function_name: str) -> bool:
+        """
+        Validate the format of extracted transaction parameters.
+
+        Args:
+            params (Dict[str, Any]): The parameters to validate.
+            function_name (str): The function name associated with the parameters.
+
+        Returns:
+            bool: True if parameters are valid, else False.
+        """
         try:
             if function_name in ['transfer', 'transferFrom']:
                 required = ['amount', 'to']
@@ -704,65 +950,3 @@ class MempoolMonitor:
         except Exception as e:
             logger.error(f"Parameter validation error: {e}")
             return False
-
-    async def stop(self) -> None:
-        try:
-            self.running = False
-            self.stopping = True
-            await self.task_queue.join()
-            logger.debug("Mempool Monitor stopped gracefully.")
-        except Exception as e:
-            logger.error(f"Error stopping Mempool Monitor: {e}")
-            raise
-
-    async def monitor_high_value_transactions(self) -> None:
-        while self.running:
-            try:
-                tx_hash = await self.pending_transactions.get()
-                tx = await self._get_transaction_with_retry(tx_hash)
-                if not tx:
-                    continue
-                if tx.value > self.configuration.HIGH_VALUE_THRESHOLD:
-                    logger.info(f"High-value transaction detected: {tx.hash.hex()}")
-                    await self.execute_back_run_strategies(tx)
-            except Exception as e:
-                logger.error(f"Error monitoring high-value transactions: {e}")
-
-    async def execute_back_run_strategies(self, tx: Any) -> None:
-        try:
-            logger.info(f"Executing back-run strategies for transaction: {tx.hash.hex()}")
-            await self.flashloan_back_run(tx)
-        except Exception as e:
-            logger.error(f"Error executing back-run strategies: {e}")
-
-    async def flashloan_back_run(self, tx: Any) -> None:
-        try:
-            logger.info(f"Executing flashloan back-run for transaction: {tx.hash.hex()}")
-        except Exception as e:
-            logger.error(f"Error executing flashloan back-run: {e}")
-
-    async def execute_back_run_strategies(self, tx: Any) -> None:
-        try:
-            logger.info(f"Executing back-run strategies for transaction: {tx.hash.hex()}")
-            await self.flashloan_back_run(tx)
-        except Exception as e:
-            logger.error(f"Error executing back-run strategies: {e}")
-
-    async def flashloan_back_run(self, tx: Any) -> None:
-        try:
-            logger.info(f"Executing flashloan back-run for transaction: {tx.hash.hex()}")
-        except Exception as e:
-            logger.error(f"Error executing flashloan back-run: {e}")
-
-    async def price_dip_back_run(self, tx: Any) -> None:
-        try:
-            logger.info(f"Executing price dip back-run for transaction: {tx.hash.hex()}")
-        except Exception as e:
-            logger.error(f"Error executing price dip back-run: {e}")
-
-    async def high_volume_back_run(self, tx: Any) -> None:
-        try:
-            logger.info(f"Executing high volume back-run for transaction: {tx.hash.hex()}")
-        except Exception as e:
-            logger.error(f"Error executing high volume back-run: {e}")
-
