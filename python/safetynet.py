@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 SafetyNet Module
@@ -46,14 +47,6 @@ class SafetyNet:
     ) -> None:
         """
         Initialize SafetyNet components.
-
-        Args:
-            web3 (AsyncWeb3): An asynchronous Web3 instance.
-            configuration (Optional[Configuration]): A configuration instance.
-            address (Optional[str]): The address used by SafetyNet.
-            account (Optional[Account]): An Ethereum account.
-            apiconfig (Optional[APIConfig]): An API configuration instance.
-            marketmonitor (Optional[MarketMonitor]): A market monitoring instance.
         """
         self.web3: AsyncWeb3 = web3
         self.address: Optional[str] = address
@@ -72,10 +65,11 @@ class SafetyNet:
         time.sleep(1)  # Brief pause during initialization
 
         if self.configuration:
+            # Fixed typo: Using MAX_SLIPPAGE instead of MAX_SLIPPGAGE.
             self.SLIPPAGE_CONFIG: Dict[str, float] = {
                 "default": self.configuration.get_config_value("SLIPPAGE_DEFAULT", 0.1),
                 "min": self.configuration.get_config_value("MIN_SLIPPAGE", 0.01),
-                "max": self.configuration.get_config_value("MAX_SLIPPGAGE", 0.5),
+                "max": self.configuration.get_config_value("MAX_SLIPPAGE", 0.5),
                 "high_congestion": self.configuration.get_config_value("SLIPPAGE_HIGH_CONGESTION", 0.05),
                 "low_congestion": self.configuration.get_config_value("SLIPPAGE_LOW_CONGESTION", 0.2),
             }
@@ -121,12 +115,6 @@ class SafetyNet:
     async def get_balance(self, account: Account) -> Decimal:
         """
         Retrieve the account balance in ETH with caching and retries.
-
-        Args:
-            account (Account): The Ethereum account.
-
-        Returns:
-            Decimal: The account balance in ETH.
         """
         cache_key = f"balance_{account.address}"
         if cache_key in self.price_cache:
@@ -156,13 +144,6 @@ class SafetyNet:
     ) -> bool:
         """
         Verify that a transaction yields sufficient profit after accounting for slippage and gas costs.
-
-        Args:
-            transaction_data (Dict[str, Any]): Data related to the transaction.
-            minimum_profit_eth (Optional[float]): The minimum profit threshold in ETH (default: 0.001 ETH).
-
-        Returns:
-            bool: True if the profit exceeds the minimum threshold, else False.
         """
         try:
             real_time_price = await self.apiconfig.get_real_time_price(transaction_data['output_token'])
@@ -192,13 +173,6 @@ class SafetyNet:
     def _validate_gas_parameters(self, gas_price_gwei: Decimal, gas_used: int) -> bool:
         """
         Validate that gas parameters fall within safe thresholds.
-
-        Args:
-            gas_price_gwei (Decimal): Gas price in Gwei.
-            gas_used (int): Gas used for the transaction.
-
-        Returns:
-            bool: True if parameters are valid, else False.
         """
         if gas_used == 0:
             logger.error("Gas used cannot be zero for transaction validation.")
@@ -211,13 +185,6 @@ class SafetyNet:
     def _calculate_gas_cost(self, gas_price_gwei: Decimal, gas_used: int) -> Decimal:
         """
         Calculate the total gas cost in ETH.
-
-        Args:
-            gas_price_gwei (Decimal): Gas price in Gwei.
-            gas_used (int): The amount of gas used.
-
-        Returns:
-            Decimal: The total gas cost in ETH.
         """
         return gas_price_gwei * Decimal(gas_used) * Decimal("1e-9")
 
@@ -230,15 +197,6 @@ class SafetyNet:
     ) -> Decimal:
         """
         Calculate the expected profit of a transaction after adjusting for slippage and gas costs.
-
-        Args:
-            transaction_data (Dict[str, Any]): Data containing transaction details.
-            real_time_price (Decimal): Current real-time token price in ETH.
-            slippage (float): The slippage tolerance (as a decimal fraction).
-            gas_cost_eth (Decimal): The gas cost in ETH.
-
-        Returns:
-            Decimal: The expected profit in ETH.
         """
         expected_output = real_time_price * Decimal(transaction_data["amountOut"])
         input_amount = Decimal(transaction_data["amountIn"])
@@ -255,13 +213,6 @@ class SafetyNet:
     ) -> None:
         """
         Log detailed information about the profit calculation for debugging purposes.
-
-        Args:
-            transaction_data (Dict[str, Any]): Transaction details.
-            real_time_price (Decimal): Real-time token price in ETH.
-            gas_cost_eth (Decimal): Gas cost in ETH.
-            profit (Decimal): Calculated profit in ETH.
-            minimum_profit_eth (float): Minimum required profit in ETH.
         """
         profitable = "Yes" if profit > Decimal(minimum_profit_eth) else "No"
         logger.debug(
@@ -279,12 +230,6 @@ class SafetyNet:
     async def estimate_gas(self, transaction_data: Dict[str, Any]) -> int:
         """
         Estimate the gas required for a transaction.
-
-        Args:
-            transaction_data (Dict[str, Any]): Data representing the transaction.
-
-        Returns:
-            int: The estimated gas amount; 0 if estimation fails.
         """
         try:
             gas_estimate = await self.web3.eth.estimate_gas(transaction_data)
@@ -296,9 +241,6 @@ class SafetyNet:
     async def adjust_slippage_tolerance(self) -> float:
         """
         Adjust the slippage tolerance based on current network congestion.
-
-        Returns:
-            float: The adjusted slippage tolerance as a decimal fraction.
         """
         try:
             congestion_level = await self.get_network_congestion()
@@ -318,9 +260,6 @@ class SafetyNet:
     async def get_network_congestion(self) -> float:
         """
         Estimate the current network congestion level.
-
-        Returns:
-            float: The congestion level as a fraction (0 to 1).
         """
         try:
             latest_block = await self.web3.eth.get_block("latest")
@@ -340,17 +279,6 @@ class SafetyNet:
     ) -> Tuple[bool, Dict[str, Any]]:
         """
         Perform a unified safety check for a transaction.
-
-        This method evaluates gas price, profit potential, and network congestion.
-
-        Args:
-            tx_data (Dict[str, Any]): The transaction data.
-            check_type (str): Type of checks to perform ('all', 'gas', 'profit', 'network').
-
-        Returns:
-            Tuple[bool, Dict[str, Any]]:
-                - bool: True if the transaction is deemed safe.
-                - Dict[str, Any]: Details of each safety check.
         """
         try:
             gas_ok = True
@@ -419,15 +347,6 @@ class SafetyNet:
     ) -> Tuple[float, Dict[str, Any]]:
         """
         Assess the risk of a transaction based on gas price, market conditions, price change, and volume.
-
-        Args:
-            tx (Dict[str, Any]): The transaction data.
-            market_conditions (Optional[Dict[str, bool]]): Pre-fetched market conditions (optional).
-            price_change (float): The percentage price change.
-            volume (float): Trading volume.
-
-        Returns:
-            Tuple[float, Dict[str, Any]]: The risk score (0 to 1) and market conditions.
         """
         try:
             risk_score = 1.0
@@ -464,9 +383,6 @@ class SafetyNet:
     async def get_dynamic_gas_price(self) -> Decimal:
         """
         Fetch the current dynamic gas price in Gwei with caching.
-
-        Returns:
-            Decimal: The dynamic gas price in Gwei.
         """
         if self.gas_price_cache.get("gas_price"):
             return self.gas_price_cache["gas_price"]
@@ -489,12 +405,6 @@ class SafetyNet:
     async def validate_transaction(self, transaction_data: Dict[str, Any]) -> bool:
         """
         Validate the provided transaction data to ensure all required fields and safe gas parameters are present.
-
-        Args:
-            transaction_data (Dict[str, Any]): The transaction data.
-
-        Returns:
-            bool: True if the transaction data is valid, else False.
         """
         try:
             required_fields = ["output_token", "amountOut", "amountIn", "gas_price", "gas_used"]
