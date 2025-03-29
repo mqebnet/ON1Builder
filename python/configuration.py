@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os
@@ -24,11 +25,9 @@ class Configuration:
     def __init__(self, env_path: Optional[str] = None) -> None:
         """
         Initialize Configuration by loading environment variables and setting default values.
-
-        Args:
-            env_path (Optional[str]): Optional path to the .env file (defaults to ".env").
         """
         self.env_path = env_path if env_path else ".env"
+        # BASE_PATH is set to the parent of the parent directory of this file.
         self.BASE_PATH = Path(__file__).parent.parent
         self._load_env()
         self._initialize_defaults()
@@ -89,7 +88,7 @@ class Configuration:
         # --------------------- Slippage and Gas Configuration ---------------------
         self.SLIPPAGE_DEFAULT = self._get_env_float("SLIPPAGE_DEFAULT", 0.1, "Default Slippage Tolerance (%)")
         self.MIN_SLIPPAGE = self._get_env_float("MIN_SLIPPAGE", 0.01, "Minimum Slippage Tolerance (%)")
-        self.MAX_SLIPPGAGE = self._get_env_float("MAX_SLIPPGAGE", 0.5, "Maximum Slippage Tolerance (%)")
+        self.MAX_SLIPPAGE = self._get_env_float("MAX_SLIPPAGE", 0.5, "Maximum Slippage Tolerance (%)")
         self.SLIPPAGE_HIGH_CONGESTION = self._get_env_float("SLIPPAGE_HIGH_CONGESTION", 0.05, "Slippage for High Network Congestion (%)")
         self.SLIPPAGE_LOW_CONGESTION = self._get_env_float("SLIPPAGE_LOW_CONGESTION", 0.2, "Slippage for Low Network Congestion (%)")
         self.MAX_GAS_PRICE_GWEI = self._get_env_int("MAX_GAS_PRICE_GWEI", 500, "Maximum Gas Price (Gwei)")
@@ -146,16 +145,6 @@ class Configuration:
     def _validate_ethereum_address(self, address: str, var_name: str) -> str:
         """
         Validate Ethereum address format and convert it to checksum format.
-
-        Args:
-            address (str): The Ethereum address.
-            var_name (str): Variable name for error reporting.
-
-        Returns:
-            str: The checksummed Ethereum address.
-
-        Raises:
-            ValueError: If the address is invalid.
         """
         if not isinstance(address, str):
             raise ValueError(f"{var_name} must be a string, got {type(address)}")
@@ -173,17 +162,6 @@ class Configuration:
     def _get_env_str(self, var_name: str, default: Optional[str], description: str) -> str:
         """
         Get an environment variable as a string.
-
-        Args:
-            var_name (str): Name of the environment variable.
-            default (Optional[str]): Default value if not set.
-            description (str): Description for logging.
-
-        Returns:
-            str: The environment variable value.
-
-        Raises:
-            ValueError: If missing and no default is provided.
         """
         value = os.getenv(var_name, default)
         if value is None:
@@ -206,17 +184,6 @@ class Configuration:
     def _get_env_int(self, var_name: str, default: Optional[int], description: str) -> int:
         """
         Get an environment variable as an integer.
-
-        Args:
-            var_name (str): Variable name.
-            default (Optional[int]): Default value if not set.
-            description (str): Description for logging.
-
-        Returns:
-            int: The integer value.
-
-        Raises:
-            ValueError: If missing or invalid.
         """
         try:
             value = os.getenv(var_name)
@@ -237,17 +204,6 @@ class Configuration:
     def _get_env_float(self, var_name: str, default: Optional[float], description: str) -> float:
         """
         Get an environment variable as a float.
-
-        Args:
-            var_name (str): Variable name.
-            default (Optional[float]): Default value if not set.
-            description (str): Description for logging.
-
-        Returns:
-            float: The float value.
-
-        Raises:
-            ValueError: If missing or invalid.
         """
         try:
             value = os.getenv(var_name)
@@ -268,16 +224,6 @@ class Configuration:
     def _resolve_path(self, path_env_var: str, description: str) -> Path:
         """
         Resolve a file path from an environment variable and ensure the file exists.
-
-        Args:
-            path_env_var (str): Environment variable containing the path.
-            description (str): Description for logging.
-
-        Returns:
-            Path: The resolved file path.
-
-        Raises:
-            FileNotFoundError: If the file does not exist.
         """
         path_str = self._get_env_str(path_env_var, None, description)
         full_path = self.BASE_PATH / path_str
@@ -290,13 +236,6 @@ class Configuration:
     async def _load_json_safe(self, file_path: Path, description: str) -> Any:
         """
         Load JSON data from a file with proper error handling.
-
-        Args:
-            file_path (Path): Path to the JSON file.
-            description (str): Description for logging.
-
-        Returns:
-            Any: Parsed JSON data.
         """
         try:
             async with aiofiles.open(file_path, 'r') as f:
@@ -315,9 +254,6 @@ class Configuration:
     async def get_token_addresses(self) -> List[str]:
         """
         Get the list of monitored token addresses from the token addresses JSON file.
-
-        Returns:
-            List[str]: List of token addresses.
         """
         data = await self._load_json_safe(self.TOKEN_ADDRESSES, "monitored tokens")
         if not isinstance(data, dict):
@@ -330,9 +266,6 @@ class Configuration:
     async def get_token_symbols(self) -> Dict[str, str]:
         """
         Get the mapping of token addresses to symbols from the token symbols JSON file.
-
-        Returns:
-            Dict[str, str]: Mapping of token addresses to token symbols.
         """
         data = await self._load_json_safe(self.TOKEN_SYMBOLS, "token symbols")
         if not isinstance(data, dict):
@@ -343,9 +276,6 @@ class Configuration:
     async def get_erc20_signatures(self) -> Dict[str, str]:
         """
         Load ERC20 function signatures from a JSON file.
-
-        Returns:
-            Dict[str, str]: Mapping of function selectors to function names.
         """
         data = await self._load_json_safe(self.ERC20_SIGNATURES, "ERC20 function signatures")
         if not isinstance(data, dict):
@@ -356,13 +286,6 @@ class Configuration:
     def get_config_value(self, key: str, default: Any = None) -> Any:
         """
         Retrieve a configuration value safely.
-
-        Args:
-            key (str): The configuration key.
-            default (Any): Default value if key is not found.
-
-        Returns:
-            Any: The configuration value.
         """
         try:
             return getattr(self, key, default)
@@ -373,32 +296,8 @@ class Configuration:
     def get_all_config_values(self) -> Dict[str, Any]:
         """
         Return all configuration values as a dictionary.
-
-        Returns:
-            Dict[str, Any]: All configuration attributes.
         """
         return vars(self)
-
-    async def load_abi_from_path(self, path: Path) -> List[Dict[str, Any]]:
-        """
-        Load and return ABI content from a file.
-
-        Args:
-            path (Path): The path to the ABI file.
-
-        Returns:
-            List[Dict[str, Any]]: The ABI content.
-        """
-        try:
-            async with aiofiles.open(path, 'r') as f:
-                content = await f.read()
-                abi = json.loads(content)
-                if not isinstance(abi, list):
-                    raise ValueError(f"Invalid ABI format in {path}: not a list")
-                return abi
-        except Exception as e:
-            logger.error(f"Failed to load ABI from {path}: {e}")
-            raise
 
     async def load(self, web3=None) -> None:
         """
@@ -441,7 +340,6 @@ class Configuration:
     async def _validate_api_keys(self) -> None:
         """
         Validate that required API keys are set and functioning by making test requests.
-        Raises a ValueError if any required keys are invalid.
         """
         required_keys = [
             ('ETHERSCAN_API_KEY', "https://api.etherscan.io/api?module=stats&action=ethprice&apikey={key}"),
@@ -515,7 +413,9 @@ class Configuration:
             raise ValueError(f"Invalid API keys detected: {', '.join(invalid_keys)}")
 
     def _validate_addresses(self) -> None:
-        """Validate all Ethereum addresses in configuration."""
+        """
+        Validate all Ethereum addresses in configuration.
+        """
         address_fields = [
             'WALLET_ADDRESS',
             'UNISWAP_ADDRESS',
@@ -532,3 +432,91 @@ class Configuration:
                 except ValueError as e:
                     logger.error(f"Invalid address for {field}: {e}")
                     raise
+
+    async def load(self, web3=None) -> None:
+        """
+        Load and validate all configuration data including directories, critical ABI paths,
+        API key validation, and Ethereum address checks.
+        """
+        try:
+            self._create_required_directories()
+            await self._load_critical_abis()
+            await self._validate_api_keys()
+            self._validate_addresses()
+            logger.debug("Configuration loaded successfully")
+        except Exception as e:
+            logger.error(f"Configuration load failed: {str(e)}")
+            raise
+
+    def _create_required_directories(self) -> None:
+        """Create necessary directories if they do not exist."""
+        required_dirs = [
+            self.LINEAR_REGRESSION_PATH,
+            self.BASE_PATH / "abi",
+            self.BASE_PATH / "utils"
+        ]
+        for directory in required_dirs:
+            os.makedirs(directory, exist_ok=True)
+            logger.debug(f"Ensured directory exists: {directory}")
+
+    async def _load_critical_abis(self) -> None:
+        """Load and validate critical ABI file paths."""
+        try:
+            self.AAVE_FLASHLOAN_ABI_PATH = self._resolve_path("AAVE_FLASHLOAN_ABI", "Path to AAVE Flashloan ABI file")
+            self.AAVE_POOL_ABI_PATH = self._resolve_path("AAVE_POOL_ABI", "Path to AAVE Pool ABI file")
+            self.ERC20_ABI_PATH = self._resolve_path("ERC20_ABI", "Path to ERC20 ABI file")
+            self.UNISWAP_ABI_PATH = self._resolve_path("UNISWAP_ABI", "Path to Uniswap ABI file")
+            self.SUSHISWAP_ABI_PATH = self._resolve_path("SUSHISWAP_ABI", "Path to Sushiswap ABI file")
+            self.GAS_PRICE_ORACLE_ABI_PATH = self._resolve_path("GAS_PRICE_ORACLE_ABI", "Path to Gas Price Oracle ABI file")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load critical ABI paths: {e}")
+
+    async def get_token_addresses(self) -> List[str]:
+        """
+        Get the list of monitored token addresses from the token addresses JSON file.
+        """
+        data = await self._load_json_safe(self.TOKEN_ADDRESSES, "monitored tokens")
+        if not isinstance(data, dict):
+            logger.error("Invalid format for token addresses: must be a dictionary")
+            raise ValueError("Invalid format for token addresses: must be a dictionary")
+        addresses = list(data.keys())
+        logger.info(f"Loaded {len(addresses)} token addresses")
+        return addresses
+
+    async def get_token_symbols(self) -> Dict[str, str]:
+        """
+        Get the mapping of token addresses to symbols from the token symbols JSON file.
+        """
+        data = await self._load_json_safe(self.TOKEN_SYMBOLS, "token symbols")
+        if not isinstance(data, dict):
+            logger.error("Invalid format for token symbols: must be a dictionary")
+            raise ValueError("Invalid format for token symbols: must be a dictionary")
+        return data
+
+    async def get_erc20_signatures(self) -> Dict[str, str]:
+        """
+        Load ERC20 function signatures from a JSON file.
+        """
+        data = await self._load_json_safe(self.ERC20_SIGNATURES, "ERC20 function signatures")
+        if not isinstance(data, dict):
+            logger.error("Invalid format for ERC20 signatures: must be a dictionary")
+            raise ValueError("Invalid format for ERC20 signatures: must be a dictionary")
+        return data
+
+    def get_config_value(self, key: str, default: Any = None) -> Any:
+        """
+        Retrieve a configuration value safely.
+        """
+        try:
+            return getattr(self, key, default)
+        except AttributeError:
+            logger.warning(f"Configuration key '{key}' not found, using default: {default}")
+            return default
+
+    def get_all_config_values(self) -> Dict[str, Any]:
+        """
+        Return all configuration values as a dictionary.
+        """
+        return vars(self)
+
+# --- End file: configuration.py ---
