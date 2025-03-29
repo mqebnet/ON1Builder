@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 APIConfig Module
@@ -32,10 +33,9 @@ class APIConfig:
     Cryptocurrency API Integration and Data Management System.
 
     Attributes:
-        MAX_REQUEST_ATTEMPTS: Maximum number of retry attempts for HTTP requests.
-        REQUEST_BACKOFF_FACTOR: Multiplier for exponential backoff between retries.
+        MAX_REQUEST_ATTEMPTS (int): Maximum number of retry attempts for HTTP requests.
+        REQUEST_BACKOFF_FACTOR (float): Multiplier for exponential backoff between retries.
     """
-
     MAX_REQUEST_ATTEMPTS: int = 5
     REQUEST_BACKOFF_FACTOR: float = 1.5
 
@@ -48,11 +48,14 @@ class APIConfig:
         """
         self.configuration: Configuration = configuration
         self.session: Optional[aiohttp.ClientSession] = None
+
+        # Caches for price, volume, and market data.
         self.price_cache: TTLCache = TTLCache(maxsize=2000, ttl=300)
         self.volume_cache: TTLCache = TTLCache(maxsize=1000, ttl=900)
         self.market_data_cache: TTLCache = TTLCache(maxsize=1000, ttl=1800)
         self.token_metadata_cache: TTLCache = TTLCache(maxsize=500, ttl=86400)
 
+        # Rate limit counters (for tracking usage; these can be extended as needed)
         self.rate_limit_counters: Dict[str, Dict[str, Any]] = {
             "coingecko": {"count": 0, "reset_time": time.time(), "limit": 50},
             "coinmarketcap": {"count": 0, "reset_time": time.time(), "limit": 330},
@@ -60,6 +63,7 @@ class APIConfig:
             "binance": {"count": 0, "reset_time": time.time(), "limit": 1200},
         }
 
+        # High priority tokens and update intervals
         self.high_priority_tokens: set[str] = set()
         self.update_intervals: Dict[str, int] = {
             'price': 30,
@@ -68,9 +72,18 @@ class APIConfig:
             'metadata': 86400
         }
 
-        self.session = None
+        # Initialize rate limit semaphores based on each provider's limit.
+        self.rate_limiters: Dict[str, asyncio.Semaphore] = {
+            provider: asyncio.Semaphore(config.get("rate_limit", 10))
+            for provider, config in self.apiconfigs.items()
+        }
 
-        # API configuration for various providers
+        # Mappings for token addresses and symbols.
+        self.token_address_to_symbol: Dict[str, str] = {}
+        self.token_symbol_to_address: Dict[str, str] = {}
+        self.symbol_to_api_id: Dict[str, str] = {}
+
+        # API configurations for each provider.
         self.apiconfigs: Dict[str, Dict[str, Any]] = {
             "binance": {
                 "base_url": "https://api.binance.com/api/v3",
@@ -81,7 +94,6 @@ class APIConfig:
             },
             "coingecko": {
                 "base_url": "https://api.coingecko.com/api/v3",
-                # For historical data, endpoint is different from current price
                 "market_url": "/coins/{id}/market_chart",
                 "volume_url": "/coins/{id}",
                 "api_key": configuration.COINGECKO_API_KEY,
@@ -107,14 +119,7 @@ class APIConfig:
             },
         }
 
-        self.rate_limiters: Dict[str, asyncio.Semaphore] = {
-            provider: asyncio.Semaphore(config.get("rate_limit", 10))
-            for provider, config in self.apiconfigs.items()
-        }
-
-        self.token_address_to_symbol: Dict[str, str] = {}
-        self.token_symbol_to_address: Dict[str, str] = {}
-        self.symbol_to_api_id: Dict[str, str] = {}
+        self.prediction_cache = TTLCache(maxsize=1000, ttl=300)
 
     async def __aenter__(self) -> "APIConfig":
         self.session = aiohttp.ClientSession()
@@ -131,7 +136,6 @@ class APIConfig:
         """
         try:
             self.session = aiohttp.ClientSession()
-
             token_addresses = await self.configuration._load_json_safe(
                 self.configuration.TOKEN_ADDRESSES,
                 "token addresses"
@@ -156,7 +160,6 @@ class APIConfig:
                     self.symbol_to_api_id[normalized_symbol] = token_symbols[normalized_symbol]
 
             logger.debug(f"APIConfig initialized with {len(self.token_address_to_symbol)} tokens ✅")
-
         except Exception as e:
             logger.critical(f"APIConfig initialization failed: {e}")
             raise
@@ -169,36 +172,18 @@ class APIConfig:
     def get_token_symbol(self, address: str) -> Optional[str]:
         """
         Get the token symbol for a given address.
-
-        Args:
-            address (str): The token contract address.
-
-        Returns:
-            Optional[str]: The token symbol, or None if not found.
         """
         return self.token_address_to_symbol.get(address.lower())
 
     def get_token_address(self, symbol: str) -> Optional[str]:
         """
         Get the token address for a given symbol.
-
-        Args:
-            symbol (str): The token symbol.
-
-        Returns:
-            Optional[str]: The token address, or None if not found.
         """
         return self.token_symbol_to_address.get(symbol.upper())
 
     def _normalize_symbol(self, symbol: str) -> str:
         """
         Normalize a token symbol and return its API-specific identifier if available.
-
-        Args:
-            symbol (str): The token symbol.
-
-        Returns:
-            str: The normalized token symbol.
         """
         symbol = symbol.upper().strip()
         return self.symbol_to_api_id.get(symbol, symbol.lower())
@@ -206,32 +191,18 @@ class APIConfig:
     def _get_api_symbol(self, symbol: str, api: str) -> str:
         """
         Get the API-specific symbol format.
-
-        Args:
-            symbol (str): The token symbol.
-            api (str): The API provider name.
-
-        Returns:
-            str: The formatted symbol.
         """
         normalized = symbol.upper()
         api_id = self.symbol_to_api_id.get(normalized)
         if api_id:
             if api == "coingecko":
                 return api_id
-            # For Binance, CoinMarketCap, and CryptoCompare, use the normalized symbol.
             return normalized
         return normalized
 
     async def get_token_metadata(self, token: str) -> Optional[Dict[str, Any]]:
         """
         Retrieve token metadata using the token symbol (or address).
-
-        Args:
-            token (str): The token symbol or address.
-
-        Returns:
-            Optional[Dict[str, Any]]: The metadata dictionary, or None if not found.
         """
         if token.startswith('0x'):
             token = self.token_address_to_symbol.get(token.lower())
@@ -256,13 +227,6 @@ class APIConfig:
     async def _fetch_token_metadata(self, source: str, token: str) -> Optional[Dict[str, Any]]:
         """
         Fetch token metadata from a specific API source.
-
-        Args:
-            source (str): The API provider.
-            token (str): The token symbol.
-
-        Returns:
-            Optional[Dict[str, Any]]: The metadata, or None if fetching fails.
         """
         config = self.apiconfigs.get(source)
         if not config:
@@ -283,7 +247,6 @@ class APIConfig:
                         'trading_pairs': len(response.get('tickers', [])),
                         'exchanges': list(set(t.get('market', {}).get('name') for t in response.get('tickers', [])))
                     }
-
             elif source == "coinmarketcap":
                 url = f"{config['base_url']}{config['ticker_url']}"
                 headers = {
@@ -314,13 +277,6 @@ class APIConfig:
     async def get_real_time_price(self, token: str, vs_currency: str = "eth") -> Optional[Decimal]:
         """
         Fetch the real-time price of a token using multi-source aggregation.
-
-        Args:
-            token (str): The token symbol or address.
-            vs_currency (str): The currency to compare against (default "eth").
-
-        Returns:
-            Optional[Decimal]: The token price in the specified currency, or None if unavailable.
         """
         if token.startswith('0x'):
             token = self.token_address_to_symbol.get(token.lower())
@@ -356,14 +312,6 @@ class APIConfig:
     async def _fetch_price(self, source: str, token: str, vs_currency: str) -> Optional[Decimal]:
         """
         Fetch the price of a token from a specified API source.
-
-        Args:
-            source (str): The API provider.
-            token (str): The token symbol.
-            vs_currency (str): The target currency.
-
-        Returns:
-            Optional[Decimal]: The fetched token price, or None on failure.
         """
         config = self.apiconfigs.get(source)
         if not config:
@@ -372,7 +320,7 @@ class APIConfig:
 
         try:
             if source == "binance":
-                # Binance uses the /ticker/24hr endpoint. Assume USDT pair.
+                # Binance uses the /ticker/24hr endpoint; assume USDT pair.
                 symbol = self._get_api_symbol(token, source) + "USDT"
                 url = f"{config['base_url']}{config['market_url']}"
                 params = {"symbol": symbol}
@@ -432,15 +380,6 @@ class APIConfig:
     ) -> Any:
         """
         Make an HTTP GET request with retries and error handling.
-
-        Args:
-            provider_name (str): The API provider name.
-            url (str): The target URL.
-            params (Optional[Dict[str, Any]]): Query parameters.
-            headers (Optional[Dict[str, str]]): HTTP headers.
-
-        Returns:
-            Any: The JSON-decoded response, or None if the request fails.
         """
         if self.session is None or self.session.closed:
             self.session = aiohttp.ClientSession()
@@ -467,17 +406,17 @@ class APIConfig:
                 except aiohttp.ClientResponseError as e:
                     logger.warning(f"ClientResponseError {e} from {provider_name}, attempt {attempt + 1}/{self.MAX_REQUEST_ATTEMPTS}")
                     if attempt == self.MAX_REQUEST_ATTEMPTS - 1:
-                        logger.error(f"Max retries reached for {provider_name} after ClientResponseError. Returning None.")
+                        logger.error(f"Max retries reached for {provider_name} after ClientResponseError.")
                         return None
                 except aiohttp.ClientConnectionError as e:
                     logger.warning(f"ClientConnectionError {e} for {provider_name}, attempt {attempt + 1}/{self.MAX_REQUEST_ATTEMPTS}")
                     if attempt == self.MAX_REQUEST_ATTEMPTS - 1:
-                        logger.error(f"Max retries reached for {provider_name} after ClientConnectionError. Returning None.")
+                        logger.error(f"Max retries reached for {provider_name} after ClientConnectionError.")
                         return None
                 except asyncio.TimeoutError:
                     logger.warning(f"Timeout for {provider_name} (attempt {attempt + 1})")
                     if attempt == self.MAX_REQUEST_ATTEMPTS - 1:
-                        logger.error(f"Max retries reached for {provider_name} after Timeout. Returning None.")
+                        logger.error(f"Max retries reached for {provider_name} after Timeout.")
                         return None
                 except json.JSONDecodeError as e:
                     logger.error(f"JSONDecodeError from {provider_name}: {e}")
@@ -485,24 +424,17 @@ class APIConfig:
                 except Exception as e:
                     logger.error(f"Unexpected error fetching from {provider_name}: {e}", exc_info=True)
                     if attempt == self.MAX_REQUEST_ATTEMPTS - 1:
-                        logger.error(f"Max retries reached for {provider_name} after unexpected error. Returning None.")
+                        logger.error(f"Max retries reached for {provider_name} after unexpected error.")
                         return None
 
                 await asyncio.sleep(self.REQUEST_BACKOFF_FACTOR ** attempt)
 
-            logger.error(f"All attempts failed for {provider_name}. Returning None.")
+            logger.error(f"All attempts failed for {provider_name}.")
             return None
 
     async def fetch_historical_prices(self, token: str, days: int = 30) -> List[float]:
         """
         Fetch historical price data for a token over a specified number of days.
-
-        Args:
-            token (str): The token symbol.
-            days (int): The number of days of historical data (default: 30).
-
-        Returns:
-            List[float]: A list of historical prices.
         """
         cache_key = f"historical_prices_{token}_{days}"
         if cache_key in self.price_cache:
@@ -519,14 +451,6 @@ class APIConfig:
     async def _fetch_historical_prices(self, source: str, token: str, days: int) -> Optional[List[float]]:
         """
         Fetch historical prices for a token from a specified API source.
-
-        Args:
-            source (str): The API provider.
-            token (str): The token symbol (assumed lowercase for CoinGecko).
-            days (int): Number of days to fetch.
-
-        Returns:
-            Optional[List[float]]: A list of prices, or None if fetching fails.
         """
         config = self.apiconfigs.get(source)
         if not config:
@@ -534,7 +458,7 @@ class APIConfig:
             return None
 
         try:
-            # For CoinGecko, use the /coins/{id}/market_chart endpoint
+            # For CoinGecko, use the market_chart endpoint.
             url = f"{config['base_url']}/coins/{token}/market_chart"
             params = {"vs_currency": "eth", "days": days}
             async with self.session.get(url, params=params) as response:
@@ -556,12 +480,6 @@ class APIConfig:
     async def get_token_volume(self, token: str) -> float:
         """
         Get the 24-hour trading volume for a given token.
-
-        Args:
-            token (str): The token symbol.
-
-        Returns:
-            float: The trading volume, or 0.0 if unavailable.
         """
         cache_key = f"token_volume_{token}"
         if cache_key in self.volume_cache:
@@ -578,13 +496,6 @@ class APIConfig:
     async def _fetch_token_volume(self, source: str, token: str) -> Optional[float]:
         """
         Fetch the trading volume for a token from a specified source.
-
-        Args:
-            source (str): The API provider.
-            token (str): The token symbol.
-
-        Returns:
-            Optional[float]: The trading volume, or None if fetching fails.
         """
         config = self.apiconfigs.get(source)
         if not config:
@@ -595,12 +506,12 @@ class APIConfig:
                 symbols = await self._get_trading_pairs(token)
                 if not symbols:
                     return None
+                # Return the volume from the first successful call.
                 for symbol in symbols:
                     try:
                         url = f"{config['base_url']}{config['market_url']}"
                         params = {"symbol": symbol}
                         response = await self.make_request(source, url, params=params)
-                        # Use 'quoteVolume' as returned by Binance
                         if response and 'quoteVolume' in response:
                             return float(response['quoteVolume'])
                     except Exception:
@@ -624,7 +535,6 @@ class APIConfig:
                 if response and 'data' in response:
                     token_data = response['data'].get(token.upper(), {})
                     return float(token_data.get('quote', {}).get('USD', {}).get('volume_24h', 0))
-
             return None
 
         except aiohttp.ClientError as e:
@@ -640,13 +550,8 @@ class APIConfig:
     async def _get_trading_pairs(self, token: str) -> List[str]:
         """
         Get valid trading pairs for a token.
-
-        Args:
-            token (str): The token symbol.
-
-        Returns:
-            List[str]: A list of trading pair symbols.
         """
+        # Simplistic approach: assume common quote currencies.
         quote_currencies = ["USDT", "BUSD", "USD", "ETH", "BTC"]
         symbol_mappings = {
             "WETH": ["ETH"],
@@ -654,7 +559,6 @@ class APIConfig:
             "ETH": ["ETH"],
             "BTC": ["BTC"],
         }
-
         base_symbols = symbol_mappings.get(token, [token])
         pairs = []
         for base in base_symbols:
@@ -664,13 +568,6 @@ class APIConfig:
     async def _fetch_from_services(self, fetch_func: Callable[[str], Any], description: str) -> Optional[Union[List[float], float]]:
         """
         Helper method to fetch data from multiple services.
-
-        Args:
-            fetch_func (Callable[[str], Any]): A function that fetches data for a given service.
-            description (str): A description of the data being fetched.
-
-        Returns:
-            Optional[Union[List[float], float]]: The fetched data, or None if all services fail.
         """
         for service in self.apiconfigs.keys():
             try:
@@ -692,15 +589,6 @@ class APIConfig:
     ) -> Union[float, List[float]]:
         """
         Fetch token price data (current or historical).
-
-        Args:
-            token_symbol (str): The token symbol.
-            data_type (str): 'current' for latest price or 'historical' for historical data.
-            timeframe (int): Number of days for historical data.
-            vs_currency (str): The target currency (default: 'eth').
-
-        Returns:
-            Union[float, List[float]]: The current price as a float or a list of historical prices.
         """
         cache_key = f"{data_type}_{token_symbol}_{timeframe}_{vs_currency}"
         if cache_key in self.price_cache:
@@ -722,12 +610,6 @@ class APIConfig:
     def _calculate_volatility(self, price_history: List[float]) -> float:
         """
         Calculate price volatility as the standard deviation of returns.
-
-        Args:
-            price_history (List[float]): Historical price data.
-
-        Returns:
-            float: The volatility as a decimal fraction.
         """
         if not price_history or len(price_history) < 2:
             return 0.0
@@ -743,13 +625,7 @@ class APIConfig:
 
     def _calculate_momentum(self, price_history: List[float]) -> float:
         """
-        Calculate price momentum using exponential moving averages.
-
-        Args:
-            price_history (List[float]): Historical price data.
-
-        Returns:
-            float: The calculated momentum.
+        Calculate price momentum using simple moving averages.
         """
         if not price_history or len(price_history) < 2:
             return 0.0
@@ -766,13 +642,8 @@ class APIConfig:
 
     async def _gather_training_data(self, token: str) -> Optional[Dict[str, Any]]:
         """
-        Gather training data for a token for model training.
-
-        Args:
-            token (str): The token symbol.
-
-        Returns:
-            Optional[Dict[str, Any]]: A dictionary with training data, or None if data gathering fails.
+        Gather training data for a token.
+        (Placeholder: Aggregation logic can be extended.)
         """
         try:
             data = await asyncio.gather(
@@ -795,138 +666,13 @@ class APIConfig:
             logger.error(f"Error gathering training data: {e}")
             return None
 
-    async def _fetch_market_data(self, token: str) -> Optional[Dict[str, Any]]:
-        """
-        Fetch comprehensive market data for a token.
-
-        Args:
-            token (str): The token symbol.
-
-        Returns:
-            Optional[Dict[str, Any]]: A dictionary with market data, or None if fetching fails.
-        """
-        try:
-            cache_key = f"market_data_{token}"
-            if cache_key in self.market_data_cache:
-                return self.market_data_cache[cache_key]
-            data_tasks = [
-                self.get_token_metadata(token),
-                self.get_token_volume(token),
-                self.get_token_price_data(token, 'historical', timeframe=7)
-            ]
-            metadata, volume, price_history = await asyncio.gather(*data_tasks, return_exceptions=True)
-            if any(isinstance(r, Exception) for r in (metadata, volume, price_history)):
-                logger.warning(f"Some market data fetching failed for {token}")
-                return None
-            price_volatility = self._calculate_volatility(price_history) if price_history else 0
-            market_data = {
-                'market_cap': metadata.get('market_cap', 0) if metadata else 0,
-                'volume_24h': float(volume) if volume else 0,
-                'percent_change_24h': metadata.get('percent_change_24h', 0) if metadata else 0,
-                'total_supply': metadata.get('total_supply', 0) if metadata else 0,
-                'circulating_supply': metadata.get('circulating_supply', 0) if metadata else 0,
-                'volatility': price_volatility,
-                'price_momentum': self._calculate_momentum(price_history) if price_history else 0,
-                'liquidity_ratio': await self._calculate_liquidity_ratio(token),
-                'trading_pairs': len(metadata.get('trading_pairs', [])) if metadata else 0,
-                'exchange_count': len(metadata.get('exchanges', [])) if metadata else 0
-            }
-            self.market_data_cache[cache_key] = market_data
-            return market_data
-        except Exception as e:
-            logger.error(f"Error fetching market data for {token}: {e}")
-            return None
-
-    async def _calculate_liquidity_ratio(self, token: str) -> float:
-        """
-        Calculate the liquidity ratio as volume divided by market cap.
-
-        Args:
-            token (str): The token symbol.
-
-        Returns:
-            float: The liquidity ratio.
-        """
-        try:
-            volume = await self.get_token_volume(token)
-            metadata = await self.get_token_metadata(token)
-            market_cap = metadata.get('market_cap', 0) if metadata else 0
-            return volume / market_cap if market_cap > 0 else 0.0
-        except Exception as e:
-            logger.error(f"Error calculating liquidity ratio: {e}")
-            return 0.0
-
-    async def get_token_supply_data(self, token: str) -> Dict[str, Any]:
-        """
-        Get total and circulating supply for a token.
-
-        Args:
-            token (str): The token symbol.
-
-        Returns:
-            Dict[str, Any]: A dictionary with 'total_supply' and 'circulating_supply'.
-        """
-        metadata = await self.get_token_metadata(token)
-        if not metadata:
-            return {}
-        return {
-            'total_supply': metadata.get('total_supply', 0),
-            'circulating_supply': metadata.get('circulating_supply', 0)
-        }
-
-    async def get_token_market_cap(self, token: str) -> float:
-        """
-        Get the market capitalization for a token.
-
-        Args:
-            token (str): The token symbol.
-
-        Returns:
-            float: The market cap.
-        """
-        metadata = await self.get_token_metadata(token)
-        return metadata.get('market_cap', 0) if metadata else 0
-
-    async def get_price_change_24h(self, token: str) -> float:
-        """
-        Get the 24-hour price change percentage for a token.
-
-        Args:
-            token (str): The token symbol.
-
-        Returns:
-            float: The 24-hour price change percentage.
-        """
-        metadata = await self.get_token_metadata(token)
-        return metadata.get('percent_change_24h', 0) if metadata else 0
-
-    async def update_training_data(self) -> None:
-        """
-        Update training data for model training by fetching data for all tokens.
-        """
-        try:
-            token_addresses = await self.configuration.get_token_addresses()
-            update_tasks = [self._gather_training_data(token) for token in token_addresses]
-            updates = await asyncio.gather(*update_tasks, return_exceptions=True)
-            valid_updates = [update for update in updates if isinstance(update, dict)]
-            if valid_updates:
-                await self._write_training_data(valid_updates)
-                await self.train_price_model()
-        except Exception as e:
-            logger.error(f"Error updating training data: {e}")
-
     async def _write_training_data(self, updates: List[Dict[str, Any]]) -> None:
         """
         Write training data updates to a CSV file.
-
-        Args:
-            updates (List[Dict[str, Any]]): List of training data dictionaries.
         """
         try:
-            import pandas as pd
-            from io import StringIO
             import aiofiles
-
+            from io import StringIO
             df = pd.DataFrame(updates)
             training_data_path = Path(self.configuration.TRAINING_DATA_PATH)
             if training_data_path.exists():
@@ -944,16 +690,11 @@ class APIConfig:
     async def _cleanup_old_data(self, filepath: Path, days: int) -> None:
         """
         Remove training data older than the specified number of days.
-
-        Args:
-            filepath (Path): Path to the training data file.
-            days (int): Number of days to retain.
         """
         try:
+            import aiofiles
             import pandas as pd
             from io import StringIO
-            import aiofiles
-
             async with aiofiles.open(filepath, 'r') as f:
                 content = await f.read()
             if content:
@@ -970,9 +711,9 @@ class APIConfig:
         Train a linear regression model for price prediction and save the model.
         """
         try:
-            training_data_path = Path(self.configuration.TRAINING_DATA_PATH)
-            model_path = Path(self.configuration.MODEL_PATH)
-            if not training_data_path.exists():
+            training_data_path = self.configuration.TRAINING_DATA_PATH
+            model_path = self.configuration.MODEL_PATH
+            if not Path(training_data_path).exists():
                 logger.warning("No training data found")
                 return
             df = pd.read_csv(training_data_path)
@@ -993,12 +734,6 @@ class APIConfig:
     async def predict_price(self, token: str) -> float:
         """
         Predict the price of a token using the trained model.
-
-        Args:
-            token (str): The token symbol.
-
-        Returns:
-            float: The predicted price.
         """
         try:
             model_path = Path(self.configuration.MODEL_PATH)
@@ -1016,3 +751,5 @@ class APIConfig:
         except Exception as e:
             logger.error(f"Error predicting price: {e}")
             return 0.0
+
+# --- End file: apiconfig.py ---
