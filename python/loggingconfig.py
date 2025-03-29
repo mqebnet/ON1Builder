@@ -1,6 +1,5 @@
-#========================================================================================================================
-# https://github.com/John0n1/0xBuilder
-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import logging
 import sys
 import threading
@@ -37,6 +36,7 @@ def setup_logging(name: str, level: int = logging.INFO, spinner: bool = False, s
             time.sleep(0.1)
             idx += 1
         sys.stdout.write("\r" + " " * (len(message) + 10) + "\r")
+        sys.stdout.flush()
 
     if spinner:
         stop_event = threading.Event()
@@ -67,3 +67,4 @@ def setup_logging(name: str, level: int = logging.INFO, spinner: bool = False, s
         thread.join()
 
     return logger
+# --- End file: loggingconfig.py ---
