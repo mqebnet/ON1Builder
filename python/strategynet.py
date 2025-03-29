@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 StrategyNet Module
@@ -31,7 +32,6 @@ class StrategyNet:
     selects the best one based on reinforcement learning weights, executes the chosen strategy, and
     updates performance metrics accordingly.
     """
-
     REWARD_BASE_MULTIPLIER: float = -0.1
     REWARD_TIME_PENALTY: float = -0.01
 
@@ -44,12 +44,6 @@ class StrategyNet:
     ) -> None:
         """
         Initialize the StrategyNet.
-
-        Args:
-            transactioncore (Optional[TransactionCore]): The TransactionCore instance.
-            marketmonitor (Optional[MarketMonitor]): The MarketMonitor instance.
-            safetynet (Optional[SafetyNet]): The SafetyNet instance.
-            apiconfig (Optional[APIConfig]): The APIConfig instance.
         """
         self.transactioncore = transactioncore
         self.marketmonitor = marketmonitor
@@ -84,8 +78,14 @@ class StrategyNet:
                 self.advanced_sandwich_attack
             ]
         }
-        self.strategy_performance: Dict[str, StrategyPerformanceMetrics] = {}
-        self.reinforcement_weights: Dict[str, np.ndarray] = {}
+        self.strategy_performance: Dict[str, StrategyPerformanceMetrics] = {
+            strategy_type: StrategyPerformanceMetrics()
+            for strategy_type in self.strategy_types
+        }
+        self.reinforcement_weights: Dict[str, np.ndarray] = {
+            strategy_type: np.ones(len(self.get_strategies(strategy_type)))
+            for strategy_type in self.strategy_types
+        }
         self.history_data: List[Dict[str, Any]] = []
         self.configuration: StrategyConfiguration = StrategyConfiguration()
         logger.debug("StrategyNet initialized with configuration")
@@ -113,10 +113,6 @@ class StrategyNet:
     ) -> None:
         """
         Register a new strategy function under a specified strategy type.
-
-        Args:
-            strategy_type (str): The type/category of the strategy.
-            strategy_func (Callable[[Dict[str, Any]], asyncio.Future]): The strategy function.
         """
         if strategy_type not in self.strategy_types:
             logger.warning(f"Attempted to register unknown strategy type: {strategy_type}")
@@ -128,12 +124,6 @@ class StrategyNet:
     def get_strategies(self, strategy_type: str) -> List[Callable[[Dict[str, Any]], asyncio.Future]]:
         """
         Retrieve the list of strategy functions for a given strategy type.
-
-        Args:
-            strategy_type (str): The strategy type.
-
-        Returns:
-            List[Callable[[Dict[str, Any]], asyncio.Future]]: The list of strategy functions.
         """
         return self._strategy_registry.get(strategy_type, [])
 
@@ -145,13 +135,6 @@ class StrategyNet:
         """
         Select and execute the best strategy for the given transaction based on reinforcement weights.
         Updates performance metrics and reinforcement weights based on the outcome.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-            strategy_type (str): The type of strategy to execute.
-
-        Returns:
-            bool: True if the strategy executes successfully, else False.
         """
         strategies = self.get_strategies(strategy_type)
         if not strategies:
@@ -191,13 +174,6 @@ class StrategyNet:
     ) -> Callable[[Dict[str, Any]], asyncio.Future]:
         """
         Select the best strategy for the given type using an exploration/exploitation approach.
-
-        Args:
-            strategies (List[Callable[[Dict[str, Any]], asyncio.Future]]): Available strategy functions.
-            strategy_type (str): The strategy type.
-
-        Returns:
-            Callable[[Dict[str, Any]], asyncio.Future]: The selected strategy function.
         """
         weights = self.reinforcement_weights[strategy_type]
         if random.random() < self.configuration.exploration_rate:
@@ -222,13 +198,6 @@ class StrategyNet:
     ) -> None:
         """
         Update performance metrics and reinforcement weights based on the strategy execution outcome.
-
-        Args:
-            strategy_name (str): The name of the executed strategy.
-            strategy_type (str): The strategy type.
-            success (bool): Whether the strategy execution was successful.
-            profit (Decimal): The profit made from the execution.
-            execution_time (float): The time taken to execute the strategy.
         """
         metrics = self.strategy_performance[strategy_type]
         metrics.total_executions += 1
@@ -264,13 +233,6 @@ class StrategyNet:
     def get_strategy_index(self, strategy_name: str, strategy_type: str) -> int:
         """
         Get the index of a strategy function within its type.
-
-        Args:
-            strategy_name (str): The name of the strategy function.
-            strategy_type (str): The strategy type.
-
-        Returns:
-            int: The index of the strategy function; -1 if not found.
         """
         strategies = self.get_strategies(strategy_type)
         for index, strategy in enumerate(strategies):
@@ -282,14 +244,6 @@ class StrategyNet:
     def _calculate_reward(self, success: bool, profit: Decimal, execution_time: float) -> float:
         """
         Calculate a reward for a strategy based on execution outcome, profit, and time.
-
-        Args:
-            success (bool): Whether the execution was successful.
-            profit (Decimal): The profit earned.
-            execution_time (float): The time taken for execution.
-
-        Returns:
-            float: The calculated reward.
         """
         base_reward = float(profit) if success else self.REWARD_BASE_MULTIPLIER
         time_penalty = self.REWARD_TIME_PENALTY * execution_time
@@ -300,11 +254,6 @@ class StrategyNet:
     def _update_reinforcement_weight(self, strategy_type: str, index: int, reward: float) -> None:
         """
         Update the reinforcement weight of a given strategy.
-
-        Args:
-            strategy_type (str): The strategy type.
-            index (int): The index of the strategy within its type.
-            reward (float): The reward used to update the weight.
         """
         lr = self.configuration.learning_rate
         current_weight = self.reinforcement_weights[strategy_type][index]
@@ -315,12 +264,6 @@ class StrategyNet:
     async def high_value_eth_transfer(self, target_tx: Dict[str, Any]) -> bool:
         """
         Execute a high-value ETH transfer strategy if the transaction value exceeds a configurable threshold.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the ETH transaction is handled successfully, else False.
         """
         logger.info("Initiating High-Value ETH Transfer Strategy...")
         try:
@@ -387,39 +330,29 @@ class StrategyNet:
     async def aggressive_front_run(self, target_tx: Dict[str, Any]) -> bool:
         """
         Execute an aggressive front-run strategy based on risk assessment.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the aggressive front-run is executed successfully, else False.
         """
         logger.debug("Initiating Aggressive Front-Run Strategy...")
         valid, decoded_tx, token_symbol = await self.transactioncore._validate_transaction(
-            target_tx, "front_run", min_value=self.configuration.AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH
+            target_tx, "front_run", min_value=self.configuration.AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH 
         )
         if not valid:
             return False
 
+        # Removed extra token_symbol parameter here. Now _calculate_risk_score expects only target_tx and price_change.
         risk_score, market_conditions = await self.transactioncore._calculate_risk_score(
             target_tx,
-            token_symbol,
             price_change=await self.apiconfig.get_price_change_24h(token_symbol)
         )
+
         if risk_score >= self.configuration.AGGRESSIVE_FRONT_RUN_RISK_SCORE_THRESHOLD:
             logger.debug(f"Executing aggressive front-run (Risk: {risk_score:.2f})")
             return await self.transactioncore.front_run(target_tx)
+
         return False
 
     async def predictive_front_run(self, target_tx: Dict[str, Any]) -> bool:
         """
         Execute a predictive front-run strategy using price predictions and market data.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the predictive front-run is executed successfully, else False.
         """
         logger.debug("Initiating Predictive Front-Run Strategy...")
         valid, decoded_tx, token_symbol = await self.transactioncore._validate_transaction(target_tx, "front_run")
@@ -435,11 +368,9 @@ class StrategyNet:
                 return_exceptions=True
             )
             predicted_price, current_price, market_conditions, historical_prices = data
-            if any(isinstance(x, Exception) for x in data):
+
+            if any(isinstance(x, Exception) for x in data) or current_price is None or predicted_price is None:
                 logger.warning("Failed to gather complete market data.")
-                return False
-            if current_price is None or predicted_price is None:
-                logger.debug("Missing price data for analysis.")
                 return False
         except Exception as e:
             logger.error(f"Error gathering market data: {e}")
@@ -457,7 +388,6 @@ class StrategyNet:
             f"Current Price: {current_price:.6f}\n"
             f"Predicted Price: {predicted_price:.6f}\n"
             f"Expected Change: {(predicted_price / float(current_price) - 1) * 100:.2f}%\n"
-            f"Volatility: {(np.std(historical_prices) / np.mean(historical_prices)) if historical_prices else 0:.2f}\n"
             f"Opportunity Score: {opportunity_score}/100\n"
             f"Market Conditions: {market_conditions}"
         )
@@ -467,18 +397,13 @@ class StrategyNet:
                 f"(Score: {opportunity_score}/100, Expected Change: {(predicted_price / float(current_price) - 1) * 100:.2f}%)"
             )
             return await self.transactioncore.front_run(target_tx)
+
         logger.debug(f"Opportunity score {opportunity_score}/100 below threshold. Skipping front-run.")
         return False
 
     async def volatility_front_run(self, target_tx: Dict[str, Any]) -> bool:
         """
         Execute a volatility-based front-run strategy using market volatility metrics.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the volatility front-run is executed successfully, else False.
         """
         logger.debug("Initiating Volatility Front-Run Strategy...")
         valid, decoded_tx, token_symbol = await self.transactioncore._validate_transaction(target_tx, "front_run")
@@ -494,7 +419,7 @@ class StrategyNet:
             )
             market_conditions, current_price, historical_prices = results
             if any(isinstance(result, Exception) for result in results):
-                logger.warning("Failed to gather complete market data")
+                logger.warning("Incomplete market data for volatility front-run")
                 return False
         except Exception as e:
             logger.error(f"Error gathering market data: {e}")
@@ -505,6 +430,7 @@ class StrategyNet:
             current_price=current_price,
             market_conditions=market_conditions
         )
+
         logger.debug(
             f"Volatility Analysis for {token_symbol}:\n"
             f"Volatility Score: {volatility_score:.2f}/100\n"
@@ -512,72 +438,17 @@ class StrategyNet:
             f"24h Price Range: {min(historical_prices):.4f} - {max(historical_prices):.4f}\n"
             f"Market Conditions: {market_conditions}"
         )
+
         if volatility_score >= self.configuration.VOLATILITY_FRONT_RUN_SCORE_THRESHOLD:
             logger.debug(f"Executing volatility-based front-run for {token_symbol} (Volatility Score: {volatility_score:.2f}/100)")
             return await self.transactioncore.front_run(target_tx)
+
         logger.debug(f"Volatility score {volatility_score:.2f}/100 below threshold. Skipping front-run.")
-        return False
-
-    async def advanced_front_run(self, target_tx: Dict[str, Any]) -> bool:
-        """
-        Execute an advanced front-run strategy based on comprehensive market analysis and risk scoring.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the advanced front-run is executed successfully, else False.
-        """
-        logger.debug("Initiating Advanced Front-Run Strategy...")
-        valid, decoded_tx, token_symbol = await self.transactioncore._validate_transaction(target_tx, "front_run")
-        if not valid:
-            return False
-
-        try:
-            analysis_results = await asyncio.gather(
-                self.marketmonitor.predict_price_movement(token_symbol),
-                self.marketmonitor.check_market_conditions(target_tx["to"]),
-                self.apiconfig.get_real_time_price(token_symbol),
-                self.apiconfig.get_token_volume(token_symbol),
-                return_exceptions=True
-            )
-            predicted_price, market_conditions, current_price, volume = analysis_results
-            if any(isinstance(result, Exception) for result in analysis_results):
-                logger.warning("Failed to gather complete market data.")
-                return False
-            if current_price is None or predicted_price is None:
-                logger.debug("Missing price data for analysis. Skipping...")
-                return False
-        except Exception as e:
-            logger.error(f"Error gathering market data: {e}")
-            return False
-
-        price_increase = (predicted_price / float(current_price) - 1) * 100
-        risk_score, market_conditions = await self.transactioncore._calculate_risk_score(
-            target_tx,
-            token_symbol,
-            price_change=price_increase
-        )
-        logger.debug(
-            f"Analysis for {token_symbol}:\n"
-            f"Price Increase: {price_increase:.2f}%\n"
-            f"Risk Score: {risk_score}/100"
-        )
-        if risk_score >= self.configuration.ADVANCED_FRONT_RUN_RISK_SCORE_THRESHOLD:
-            logger.debug(f"Executing advanced front-run for {token_symbol} (Risk Score: {risk_score}/100)")
-            return await self.transactioncore.front_run(target_tx)
-        logger.debug(f"Risk score {risk_score}/100 below threshold. Skipping front-run.")
         return False
 
     async def price_dip_back_run(self, target_tx: Dict[str, Any]) -> bool:
         """
         Execute a back-run strategy based on a predicted price dip.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the price dip back-run is executed successfully, else False.
         """
         logger.debug("Initiating Price Dip Back-Run Strategy...")
         valid, decoded_tx, token_symbol = await self.transactioncore._validate_transaction(target_tx, "back_run")
@@ -590,25 +461,20 @@ class StrategyNet:
 
         predicted_price = await self.marketmonitor.predict_price_movement(token_symbol)
         if predicted_price < float(current_price) * self.configuration.PRICE_DIP_BACK_RUN_THRESHOLD:
-            logger.debug("Predicted price decrease exceeds threshold, proceeding with back-run.")
+            logger.debug("Predicted price decrease meets threshold, proceeding with back-run.")
             return await self.transactioncore.back_run(target_tx)
+
         logger.debug("Predicted price decrease does not meet threshold. Skipping back-run.")
         return False
 
     async def flashloan_back_run(self, target_tx: Dict[str, Any]) -> bool:
         """
-        Execute a flashloan-enabled back-run strategy if the estimated profit exceeds a minimum threshold.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the flashloan back-run is executed successfully, else False.
+        Execute a flashloan-enabled back-run strategy.
         """
         logger.debug("Initiating Flashloan Back-Run Strategy...")
         estimated_amount = await self.transactioncore.calculate_flashloan_amount(target_tx)
         estimated_profit = estimated_amount * Decimal(str(self.configuration.FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE))
-        if estimated_profit > self.configuration.min_profit_threshold:
+        if estimated_profit > self.configuration.MIN_PROFIT:
             logger.debug(f"Estimated profit: {estimated_profit} ETH meets threshold.")
             return await self.transactioncore.back_run(target_tx)
         logger.debug("Profit is insufficient for flashloan back-run. Skipping.")
@@ -616,13 +482,7 @@ class StrategyNet:
 
     async def high_volume_back_run(self, target_tx: Dict[str, Any]) -> bool:
         """
-        Execute a back-run strategy when trading volume is high.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the high volume back-run is executed successfully, else False.
+        Execute a back-run strategy when high trading volume is detected.
         """
         logger.debug("Initiating High Volume Back-Run Strategy...")
         valid, decoded_tx, token_symbol = await self.transactioncore._validate_transaction(target_tx, "back_run")
@@ -630,22 +490,17 @@ class StrategyNet:
             return False
 
         volume_24h = await self.apiconfig.get_token_volume(token_symbol)
-        volume_threshold = await self.transactioncore._get_volume_threshold(token_symbol)
+        volume_threshold = self._get_volume_threshold(token_symbol)
         if volume_24h > volume_threshold:
             logger.debug(f"High volume detected (${volume_24h:,.2f} USD), proceeding with back-run.")
             return await self.transactioncore.back_run(target_tx)
+
         logger.debug(f"Volume (${volume_24h:,.2f} USD) below threshold (${volume_threshold:,.2f} USD). Skipping.")
         return False
 
     async def advanced_back_run(self, target_tx: Dict[str, Any]) -> bool:
         """
         Execute an advanced back-run strategy based on favorable market conditions.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the advanced back-run is executed successfully, else False.
         """
         logger.debug("Initiating Advanced Back-Run Strategy...")
         valid, decoded_tx, token_symbol = await self.transactioncore._validate_transaction(target_tx, "back_run")
@@ -662,12 +517,6 @@ class StrategyNet:
     async def flash_profit_sandwich(self, target_tx: Dict[str, Any]) -> bool:
         """
         Execute a sandwich attack strategy using flashloan profit estimation.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the flash profit sandwich is executed successfully, else False.
         """
         logger.debug("Initiating Flash Profit Sandwich Strategy...")
         estimated_amount = await self.transactioncore.calculate_flashloan_amount(target_tx)
@@ -682,12 +531,6 @@ class StrategyNet:
     async def price_boost_sandwich(self, target_tx: Dict[str, Any]) -> bool:
         """
         Execute a sandwich attack strategy based on strong price momentum.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the price boost sandwich is executed successfully, else False.
         """
         logger.debug("Initiating Price Boost Sandwich Strategy...")
         valid, decoded_tx, token_symbol = await self.transactioncore._validate_transaction(target_tx, "sandwich_attack")
@@ -709,19 +552,13 @@ class StrategyNet:
     async def arbitrage_sandwich(self, target_tx: Dict[str, Any]) -> bool:
         """
         Execute a sandwich attack strategy based on arbitrage opportunities.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the arbitrage sandwich is executed successfully, else False.
         """
         logger.debug("Initiating Arbitrage Sandwich Strategy...")
         valid, decoded_tx, token_symbol = await self.transactioncore._validate_transaction(target_tx, "sandwich_attack")
         if not valid:
             return False
 
-        is_arbitrage = await self.marketmonitor.is_arbitrage_opportunity(target_tx)
+        is_arbitrage = await self.marketmonitor._is_arbitrage_opportunity(target_tx)
         if is_arbitrage:
             logger.debug(f"Arbitrage opportunity detected for {token_symbol}")
             return await self.transactioncore.execute_sandwich_attack(target_tx)
@@ -731,12 +568,6 @@ class StrategyNet:
     async def advanced_sandwich_attack(self, target_tx: Dict[str, Any]) -> bool:
         """
         Execute an advanced sandwich attack strategy with integrated risk management.
-
-        Args:
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the advanced sandwich attack is executed successfully, else False.
         """
         logger.debug("Initiating Advanced Sandwich Attack...")
         valid, decoded_tx, token_symbol = await self.transactioncore._validate_transaction(target_tx, "sandwich_attack")
@@ -750,40 +581,6 @@ class StrategyNet:
         logger.debug("Conditions unfavorable for sandwich attack. Skipping.")
         return False
 
-    async def stop(self) -> None:
-        """
-        Stop the StrategyNet by clearing performance metrics, reinforcement weights, and history data.
-        """
-        try:
-            self.strategy_performance.clear()
-            self.reinforcement_weights.clear()
-            self.history_data.clear()
-            logger.info("StrategyNet stopped successfully.")
-        except Exception as e:
-            logger.error(f"Error stopping StrategyNet: {e}")
-
-    async def _estimate_profit(self, tx: Any, decoded_params: Dict[str, Any]) -> Decimal:
-        """
-        Estimate the profit for a given transaction based on its parameters.
-
-        Args:
-            tx (Any): The transaction object.
-            decoded_params (Dict[str, Any]): Decoded parameters including the token swap path.
-
-        Returns:
-            Decimal: The estimated profit in ETH.
-        """
-        try:
-            path = decoded_params.get('path', [])
-            value = getattr(tx, 'value', 0)
-            gas_price = getattr(tx, 'gasPrice', 0)
-            estimated_profit = await self.safetynet._calculate_profit(tx, path, value, gas_price)
-            logger.debug(f"Estimated profit: {estimated_profit:.4f} ETH")
-            return estimated_profit
-        except Exception as e:
-            logger.error(f"Error estimating profit: {e}")
-            return Decimal("0")
-
     async def execute_strategy(
         self,
         strategy: Callable[[Dict[str, Any]], asyncio.Future],
@@ -791,13 +588,6 @@ class StrategyNet:
     ) -> bool:
         """
         Execute a provided strategy function with the given transaction.
-
-        Args:
-            strategy (Callable[[Dict[str, Any]], asyncio.Future]): The strategy function to execute.
-            target_tx (Dict[str, Any]): The target transaction details.
-
-        Returns:
-            bool: True if the strategy executes successfully, else False.
         """
         try:
             return await strategy(target_tx)
@@ -835,13 +625,15 @@ class StrategyConfiguration:
 class StrategyPerformanceMetrics:
     """
     Tracks performance metrics for a strategy type.
+    Now implemented with instance attributes.
     """
-    successes: int = 0
-    failures: int = 0
-    profit: Decimal = Decimal("0")
-    avg_execution_time: float = 0.0
-    success_rate: float = 0.0
-    total_executions: int = 0
+    def __init__(self):
+        self.successes: int = 0
+        self.failures: int = 0
+        self.profit: Decimal = Decimal("0")
+        self.avg_execution_time: float = 0.0
+        self.success_rate: float = 0.0
+        self.total_executions: int = 0
 
 
 class StrategyExecutionError(Exception):
