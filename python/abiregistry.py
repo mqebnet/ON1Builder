@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 ABIRegistry Module
@@ -25,12 +26,11 @@ class ABIRegistry:
     Centralized ABI registry with methods to load, validate, and extract function signatures.
     
     Attributes:
-        REQUIRED_METHODS (dict): A mapping of ABI types to the set of required method names.
+        REQUIRED_METHODS (dict): Mapping of ABI types to sets of required method names.
         abis (dict): Loaded and validated ABIs.
-        signatures (dict): Mapping of ABI type to a dict of method names and their full signatures.
-        method_selectors (dict): Mapping of ABI type to a dict of 4-byte selectors and method names.
+        signatures (dict): Mapping of ABI types to dicts of method names and their full signatures.
+        method_selectors (dict): Mapping of ABI types to dicts of 4-byte selectors and method names.
     """
-
     REQUIRED_METHODS = {
         'erc20': {'transfer', 'approve', 'transferFrom', 'balanceOf'},
         'uniswap': {'swapExactTokensForTokens', 'swapTokensForExactTokens', 'addLiquidity', 'getAmountsOut'},
@@ -53,7 +53,7 @@ class ABIRegistry:
         Asynchronously load and validate all ABIs from the 'abi' directory.
 
         Args:
-            base_path (Optional[Path]): The base path where the 'abi' directory is located.
+            base_path (Optional[Path]): Base path where the 'abi' directory is located.
                                          Defaults to the parent of this file's directory.
         """
         if self._initialized:
@@ -68,7 +68,7 @@ class ABIRegistry:
         Load and validate all ABIs from JSON files located in the 'abi' directory.
 
         Args:
-            base_path (Optional[Path]): The base path where the 'abi' directory is located.
+            base_path (Optional[Path]): Base path for the 'abi' directory.
         """
         if not base_path:
             base_path = Path(__file__).parent.parent
@@ -83,6 +83,7 @@ class ABIRegistry:
             'aave': 'aave_pool_abi.json'
         }
 
+        # Define critical ABIs that must be loaded and validated.
         critical_abis = {'erc20', 'uniswap'}
 
         await asyncio.gather(
@@ -96,8 +97,8 @@ class ABIRegistry:
 
         Args:
             abi_type (str): The type/category of the ABI.
-            abi_path (Path): The file path of the ABI JSON.
-            critical_abis (set): Set of ABI types that are considered critical.
+            abi_path (Path): Path to the ABI JSON file.
+            critical_abis (set): Set of ABI types considered critical.
 
         Raises:
             FileNotFoundError: If a critical ABI file is missing.
@@ -129,7 +130,7 @@ class ABIRegistry:
         Load and validate ABI content from the specified file path.
 
         Args:
-            abi_path (Path): The file path of the ABI.
+            abi_path (Path): Path to the ABI file.
             abi_type (str): The type/category of the ABI.
 
         Returns:
