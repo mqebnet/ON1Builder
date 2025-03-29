@@ -1,6 +1,3 @@
 {
-  "tasks": {
-    "build": "pip install -r requirements.txt",
-    "test": "pytest tests/"
-  }
+  "postCreateCommand": "pip install -r requirements.txt && pytest tests/"
 }
