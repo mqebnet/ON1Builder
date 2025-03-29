@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 MarketMonitor Module
@@ -37,7 +38,6 @@ class MarketMonitor:
         PRICE_EMA_SHORT_PERIOD (int): Short-term EMA period.
         PRICE_EMA_LONG_PERIOD (int): Long-term EMA period.
     """
-
     VOLATILITY_THRESHOLD: float = 0.05
     LIQUIDITY_THRESHOLD: int = 100_000
     PRICE_EMA_SHORT_PERIOD: int = 12
@@ -52,19 +52,13 @@ class MarketMonitor:
     ) -> None:
         """
         Initialize the MarketMonitor.
-
-        Args:
-            web3 (AsyncWeb3): An asynchronous Web3 instance.
-            configuration (Optional[Configuration]): The configuration instance.
-            apiconfig (Optional[APIConfig]): The API configuration instance.
-            transactioncore (Optional[Any]): The TransactionCore instance (if needed).
         """
         self.web3 = web3
         self.configuration = configuration
         self.apiconfig = apiconfig
         self.transactioncore = transactioncore
 
-        # Model and training related attributes (model training handled by APIConfig)
+        # Model and training related attributes.
         self.price_model: Optional[LinearRegression] = None
         self.last_training_time = 0
         self.model_accuracy = 0.0
@@ -72,18 +66,22 @@ class MarketMonitor:
         self.MIN_TRAINING_SAMPLES = self.configuration.MIN_TRAINING_SAMPLES
         self.historical_data = pd.DataFrame()
         self.prediction_cache = TTLCache(maxsize=1000, ttl=300)
+
+        # Scheduler for periodic updates.
         self.update_scheduler = {
             'training_data': 0,
             'model': 0,
             'model_retraining_interval': self.configuration.MODEL_RETRAINING_INTERVAL
         }
-        # Create caches for frequently used data
+
+        # Caches for frequently used data.
         self.caches = {
             'price': TTLCache(maxsize=2000, ttl=300),
             'volume': TTLCache(maxsize=1000, ttl=900),
             'volatility': TTLCache(maxsize=200, ttl=600)
         }
-        # Ensure the directory for model training exists
+
+        # Ensure the directory for model training exists.
         self.linear_regression_path = self.configuration.get_config_value("LINEAR_REGRESSION_PATH")
         self.model_path = self.configuration.get_config_value("MODEL_PATH")
         self.training_data_path = self.configuration.get_config_value("TRAINING_DATA_PATH")
@@ -95,7 +93,7 @@ class MarketMonitor:
         Schedules periodic updates for training data and model retraining.
         """
         try:
-            # Load or initialize the price model
+            # Load or initialize the price model.
             if os.path.exists(self.model_path):
                 try:
                     self.price_model = joblib.load(self.model_path)
@@ -108,7 +106,7 @@ class MarketMonitor:
                 self.price_model = LinearRegression()
                 joblib.dump(self.price_model, self.model_path)
 
-            # Load historical training data if available
+            # Load historical training data if available.
             if os.path.exists(self.training_data_path):
                 try:
                     self.historical_data = pd.read_csv(self.training_data_path)
@@ -119,7 +117,7 @@ class MarketMonitor:
             else:
                 self.historical_data = pd.DataFrame()
 
-            # Optionally, trigger model training if sufficient data exists (handled via APIConfig updates)
+            # Train model if sufficient data exists.
             if len(self.historical_data) >= self.MIN_TRAINING_SAMPLES:
                 try:
                     await self.apiconfig.train_price_model()
@@ -134,7 +132,6 @@ class MarketMonitor:
                 self.price_model = LinearRegression()
                 joblib.dump(self.price_model, self.model_path)
                 self.historical_data = pd.DataFrame()
-                pass
 
             logger.info("MarketMonitor initialized.")
             asyncio.create_task(self.schedule_updates())
@@ -166,12 +163,6 @@ class MarketMonitor:
     async def check_market_conditions(self, token_address: str) -> Dict[str, bool]:
         """
         Evaluate market conditions for a given token based on historical price data and volume.
-
-        Args:
-            token_address (str): The token contract address.
-
-        Returns:
-            Dict[str, bool]: A dictionary indicating various market condition flags.
         """
         market_conditions = {
             "high_volatility": False,
@@ -179,6 +170,7 @@ class MarketMonitor:
             "bearish_trend": False,
             "low_liquidity": False,
         }
+        # Get token symbol using APIConfig.
         symbol = self.apiconfig.get_token_symbol(token_address)
         if not symbol:
             logger.debug(f"Cannot get token symbol for address {token_address} to check market conditions.")
@@ -212,12 +204,6 @@ class MarketMonitor:
     async def predict_price_movement(self, token_symbol: str) -> float:
         """
         Predict future price movement for a token using a trained model.
-
-        Args:
-            token_symbol (str): The token symbol.
-
-        Returns:
-            float: The predicted price.
         """
         try:
             cache_key = f"prediction_{token_symbol}"
@@ -233,16 +219,10 @@ class MarketMonitor:
     async def _get_market_features(self, token_symbol: str) -> Optional[Dict[str, float]]:
         """
         Gather market features required for prediction and risk assessment.
-
-        Args:
-            token_symbol (str): The token symbol.
-
-        Returns:
-            Optional[Dict[str, float]]: Dictionary of market features, or None if data is incomplete.
+        (Placeholder: This method should aggregate multiple metrics.)
         """
         try:
             api_symbol = self.apiconfig._normalize_symbol(token_symbol)
-            # Gather data concurrently
             results = await asyncio.gather(
                 self.apiconfig.get_real_time_price(api_symbol),
                 self.apiconfig.get_token_volume(api_symbol),
@@ -251,24 +231,20 @@ class MarketMonitor:
                 self.get_token_price(api_symbol, data_type='historical', timeframe=1),
                 return_exceptions=True
             )
-            price, volume, supply_data, market_data, prices = results
             if any(isinstance(r, Exception) for r in results):
                 logger.warning(f"Error gathering market data for {token_symbol}: {results}")
                 return None
-
-            features = {
+            return {
                 'market_cap': await self.apiconfig.get_token_market_cap(token_symbol),
-                'volume_24h': float(volume),
+                'volume_24h': float(results[1]),
                 'percent_change_24h': await self.apiconfig.get_price_change_24h(token_symbol),
-                'total_supply': supply_data.get('total_supply', 0),
-                'circulating_supply': supply_data.get('circulating_supply', 0),
-                'volatility': self.apiconfig._calculate_volatility(prices) if prices else 0,
-                'price_momentum': self.apiconfig._calculate_momentum(prices) if prices else 0,
+                'total_supply': results[2].get('total_supply', 0) if isinstance(results[2], dict) else 0,
+                'circulating_supply': results[2].get('circulating_supply', 0) if isinstance(results[2], dict) else 0,
+                'volatility': self.apiconfig._calculate_volatility(results[4]) if results[4] else 0,
+                'price_momentum': self.apiconfig._calculate_momentum(results[4]) if results[4] else 0,
                 'liquidity_ratio': await self._calculate_liquidity_ratio(token_symbol),
-                **market_data
+                **(results[3] if isinstance(results[3], dict) else {})
             }
-            logger.debug(f"Market features for {token_symbol}: {features}")
-            return features
         except Exception as e:
             logger.error(f"Error fetching market features for {token_symbol}: {e}", exc_info=True)
             return None
@@ -276,13 +252,7 @@ class MarketMonitor:
     async def _get_trading_metrics(self, token_symbol: str) -> Dict[str, float]:
         """
         Retrieve trading metrics for a token.
-
-        Args:
-            token_symbol (str): The token symbol.
-
-        Returns:
-            Dict[str, float]: Trading metrics including average transaction value, trading pairs count,
-            exchange count, buy/sell ratio, and smart money flow.
+        (Placeholder: These methods need proper implementation.)
         """
         try:
             metrics = {
@@ -307,12 +277,7 @@ class MarketMonitor:
     async def _get_avg_transaction_value(self, token_symbol: str) -> float:
         """
         Calculate the average transaction value for a token.
-
-        Args:
-            token_symbol (str): The token symbol.
-
-        Returns:
-            float: The average transaction value.
+        (Placeholder: Implementation required.)
         """
         try:
             volume = await self.get_token_volume(token_symbol)
@@ -327,13 +292,7 @@ class MarketMonitor:
     async def _get_transaction_count(self, token_symbol: str) -> int:
         """
         Get the total number of transactions for a token.
-        (Placeholder: returns 0 as a default.)
-
-        Args:
-            token_symbol (str): The token symbol.
-
-        Returns:
-            int: The number of transactions.
+        (Placeholder: returns 0 by default.)
         """
         try:
             return 0
@@ -344,12 +303,7 @@ class MarketMonitor:
     async def _get_trading_pairs_count(self, token_symbol: str) -> int:
         """
         Get the count of trading pairs for a token.
-
-        Args:
-            token_symbol (str): The token symbol.
-
-        Returns:
-            int: Number of trading pairs.
+        (Placeholder: Implementation required.)
         """
         try:
             metadata = await self.apiconfig.get_token_metadata(token_symbol)
@@ -363,12 +317,7 @@ class MarketMonitor:
     async def _get_exchange_count(self, token_symbol: str) -> int:
         """
         Get the number of exchanges where a token is traded.
-
-        Args:
-            token_symbol (str): The token symbol.
-
-        Returns:
-            int: The exchange count.
+        (Placeholder: Implementation required.)
         """
         try:
             metadata = await self.apiconfig.get_token_metadata(token_symbol)
@@ -383,12 +332,6 @@ class MarketMonitor:
         """
         Get the buy/sell ratio for a token.
         (Placeholder: returns 1.0)
-
-        Args:
-            token_symbol (str): The token symbol.
-
-        Returns:
-            float: The buy/sell ratio.
         """
         try:
             ratio = 1.0
@@ -402,12 +345,6 @@ class MarketMonitor:
         """
         Get the smart money flow score for a token.
         (Placeholder: returns 0.0)
-
-        Args:
-            token_symbol (str): The token symbol.
-
-        Returns:
-            float: The smart money flow score.
         """
         try:
             score = 0.0
@@ -420,39 +357,18 @@ class MarketMonitor:
     async def get_token_volume(self, token_symbol: str) -> float:
         """
         Retrieve the 24-hour trading volume for a token.
-
-        Args:
-            token_symbol (str): The token symbol.
-
-        Returns:
-            float: The trading volume.
         """
         return await self.apiconfig.get_token_volume(token_symbol)
 
     async def get_token_price(self, token_symbol: str, data_type: str = 'current', timeframe: int = 1, vs_currency: str = 'eth') -> Union[float, List[float]]:
         """
         Retrieve token price data.
-
-        Args:
-            token_symbol (str): The token symbol.
-            data_type (str): 'current' for latest price, 'historical' for historical data.
-            timeframe (int): Number of days for historical data.
-            vs_currency (str): Target currency (default "eth").
-
-        Returns:
-            Union[float, List[float]]: The price data.
         """
         return await self.apiconfig.get_token_price_data(token_symbol, data_type, timeframe, vs_currency)
 
     async def _calculate_liquidity_ratio(self, token: str) -> float:
         """
         Calculate the liquidity ratio as volume divided by market cap.
-
-        Args:
-            token (str): The token symbol.
-
-        Returns:
-            float: The liquidity ratio.
         """
         try:
             volume = await self.get_token_volume(token)
@@ -477,12 +393,7 @@ class MarketMonitor:
     async def _is_arbitrage_opportunity(self, token_symbol: str) -> bool:
         """
         Determine if there is an arbitrage opportunity for a token.
-
-        Args:
-            token_symbol (str): The token symbol.
-
-        Returns:
-            bool: True if arbitrage opportunity exists, else False.
+        (Simplistic placeholder implementation.)
         """
         try:
             price = await self.apiconfig.get_real_time_price(token_symbol)
@@ -500,12 +411,7 @@ class MarketMonitor:
     async def _get_trading_metrics(self, token_symbol: str) -> Dict[str, float]:
         """
         Retrieve additional trading metrics for a token.
-
-        Args:
-            token_symbol (str): The token symbol.
-
-        Returns:
-            Dict[str, float]: A dictionary of trading metrics.
+        (Placeholder implementation.)
         """
         try:
             metrics = {
@@ -527,60 +433,133 @@ class MarketMonitor:
                 'smart_money_flow': 0.0
             }
 
-    # The following methods for calculating trading metrics are placeholders.
-    async def _get_avg_transaction_value(self, token_symbol: str) -> float:
+    async def update_training_data(self) -> None:
+        """
+        Update training data for model training by fetching data for all tokens.
+        """
         try:
-            volume = await self.get_token_volume(token_symbol)
-            tx_count = await self._get_transaction_count(token_symbol)
-            avg_value = volume / tx_count if tx_count > 0 else 0.0
-            logger.debug(f"Average transaction value for {token_symbol}: {avg_value}")
-            return avg_value
+            token_addresses = await self.configuration.get_token_addresses()
+            update_tasks = [self._gather_training_data(token) for token in token_addresses]
+            updates = await asyncio.gather(*update_tasks, return_exceptions=True)
+            valid_updates = [update for update in updates if isinstance(update, dict)]
+            if valid_updates:
+                await self._write_training_data(valid_updates)
+                await self.train_price_model()
         except Exception as e:
-            logger.error(f"Error calculating average transaction value: {e}", exc_info=True)
+            logger.error(f"Error updating training data: {e}")
+
+    async def _gather_training_data(self, token: str) -> Optional[Dict[str, Any]]:
+        """
+        Gather training data for a token for model training.
+        (Placeholder: Data aggregation logic required.)
+        """
+        try:
+            data = await asyncio.gather(
+                self.get_real_time_price(token),
+                self.get_token_volume(token),
+                self._fetch_market_data(token),
+                return_exceptions=True
+            )
+            if any(isinstance(r, Exception) for r in data):
+                logger.warning(f"Error gathering data for {token}")
+                return None
+            return {
+                'timestamp': int(time.time()),
+                'symbol': token,
+                'price_usd': float(data[0]),
+                'volume_24h': float(data[1]),
+                **(data[2] if isinstance(data[2], dict) else {})
+            }
+        except Exception as e:
+            logger.error(f"Error gathering training data: {e}")
+            return None
+
+    async def _fetch_market_data(self, token: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch comprehensive market data for a token.
+        (Placeholder: Simplistic aggregation.)
+        """
+        try:
+            cache_key = f"market_data_{token}"
+            if cache_key in self.caches['price']:
+                return self.caches['price'][cache_key]
+            metadata = await self.apiconfig.get_token_metadata(token)
+            volume = await self.get_token_volume(token)
+            price_history = await self.get_token_price(token, 'historical', timeframe=7)
+            price_volatility = self.apiconfig._calculate_volatility(price_history) if price_history else 0
+            market_data = {
+                'market_cap': metadata.get('market_cap', 0) if metadata else 0,
+                'volume_24h': float(volume) if volume else 0,
+                'percent_change_24h': metadata.get('percent_change_24h', 0) if metadata else 0,
+                'total_supply': metadata.get('total_supply', 0) if metadata else 0,
+                'circulating_supply': metadata.get('circulating_supply', 0) if metadata else 0,
+                'volatility': price_volatility,
+                'price_momentum': self.apiconfig._calculate_momentum(price_history) if price_history else 0,
+                'liquidity_ratio': await self._calculate_liquidity_ratio(token),
+                'trading_pairs': len(metadata.get('trading_pairs', [])) if metadata else 0,
+                'exchange_count': len(metadata.get('exchanges', [])) if metadata else 0
+            }
+            self.caches['price'][cache_key] = market_data
+            return market_data
+        except Exception as e:
+            logger.error(f"Error fetching market data for {token}: {e}", exc_info=True)
+            return None
+
+    async def train_price_model(self) -> None:
+        """
+        Train a linear regression model for price prediction and save the model.
+        """
+        try:
+            training_data_path = self.configuration.TRAINING_DATA_PATH
+            model_path = self.configuration.MODEL_PATH
+            if not os.path.exists(training_data_path):
+                logger.warning("No training data found")
+                return
+            df = pd.read_csv(training_data_path)
+            if len(df) < self.configuration.MIN_TRAINING_SAMPLES:
+                logger.warning(f"Insufficient training data: {len(df)} samples")
+                return
+            features = ['price_usd', 'volume_24h', 'market_cap', 'volatility',
+                        'liquidity_ratio', 'price_momentum']
+            X = df[features].fillna(0)
+            y = df['price_usd'].fillna(0)
+            model = LinearRegression()
+            model.fit(X, y)
+            joblib.dump(model, model_path)
+            logger.debug(f"Price model trained and saved to {model_path}")
+        except Exception as e:
+            logger.error(f"Error training price model: {e}")
+
+    async def predict_price(self, token: str) -> float:
+        """
+        Predict the price of a token using the trained model.
+        """
+        try:
+            model_path = self.configuration.MODEL_PATH
+            if not os.path.exists(model_path):
+                await self.train_price_model()
+                if not os.path.exists(model_path):
+                    return 0.0
+            model = joblib.load(model_path)
+            market_data = await self._fetch_market_data(token)
+            if not market_data:
+                return 0.0
+            features = pd.DataFrame([market_data])
+            prediction = model.predict(features)[0]
+            return float(prediction)
+        except Exception as e:
+            logger.error(f"Error predicting price: {e}")
             return 0.0
 
-    async def _get_transaction_count(self, token_symbol: str) -> int:
+    async def stop(self) -> None:
+        """
+        Stop the MarketMonitor by clearing caches.
+        """
         try:
-            # Placeholder for actual transaction count
-            return 0
+            for cache in self.caches.values():
+                cache.clear()
+            logger.info("MarketMonitor stopped.")
         except Exception as e:
-            logger.error(f"Error getting transaction count: {e}", exc_info=True)
-            return 0
+            logger.error(f"Error stopping MarketMonitor: {e}", exc_info=True)
 
-    async def _get_trading_pairs_count(self, token_symbol: str) -> int:
-        try:
-            metadata = await self.apiconfig.get_token_metadata(token_symbol)
-            count = len(metadata.get('trading_pairs', [])) if metadata else 0
-            logger.debug(f"Trading pairs count for {token_symbol}: {count}")
-            return count
-        except Exception as e:
-            logger.error(f"Error getting trading pairs for {token_symbol}: {e}", exc_info=True)
-            return 0
-
-    async def _get_exchange_count(self, token_symbol: str) -> int:
-        try:
-            metadata = await self.apiconfig.get_token_metadata(token_symbol)
-            count = len(metadata.get('exchanges', [])) if metadata else 0
-            logger.debug(f"Exchange count for {token_symbol}: {count}")
-            return count
-        except Exception as e:
-            logger.error(f"Error getting exchange count for {token_symbol}: {e}", exc_info=True)
-            return 0
-
-    async def _get_buy_sell_ratio(self, token_symbol: str) -> float:
-        try:
-            ratio = 1.0
-            logger.debug(f"Buy/sell ratio for {token_symbol}: {ratio}")
-            return ratio
-        except Exception as e:
-            logger.error(f"Error calculating buy/sell ratio: {e}", exc_info=True)
-            return 1.0
-
-    async def _get_smart_money_flow(self, token_symbol: str) -> float:
-        try:
-            score = 0.0
-            logger.debug(f"Smart money flow for {token_symbol}: {score}")
-            return score
-        except Exception as e:
-            logger.error(f"Error calculating smart money flow: {e}", exc_info=True)
-            return 0.0
+# --- End file: marketmonitor.py ---
