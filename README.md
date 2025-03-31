@@ -1,7 +1,9 @@
-# 0xBuilder: Your MEV Toolkit for Ethereum
+# ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎0xBuilder: Your MEV Toolkit for Ethereum
 
-[![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/release/python-3120/)
-[![Latest Release](https://img.shields.io/badge/Release-0.22.03_beta-black.svg)](https://github.com/John0n1/0xBuilder/releases/tag/v0.22.3-beta)
+‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎[![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎ ‎[![Latest Release](https://img.shields.io/badge/Release-0.22.03_beta-black.svg)](https://github.com/John0n1/0xBuilder/releases/tag/v0.22.3-beta)
+
+![ON1BUILDER](https://github.com/user-attachments/assets/4f60cb4e-1722-4609-a5f1-86e96ce4f6c7)
 
 **Maximize your Ethereum trading potential with 0xBuilder, a powerful framework designed for high-frequency trading and Maximal Extractable Value (MEV) strategies.**
 
@@ -12,11 +14,7 @@
 * **Sandwich Attacks**: Profit from manipulating transaction order in decentralized exchanges.
 * **Flash Loan Arbitrage**: Leverage flash loans for zero-capital arbitrage opportunities.
 
-<p align="center">
-  <a href="https://mermaid.live/edit#pako:eNp1kttu2zAMhl-FELBdNUBPF2uArcg5aZe0WHLTysbA2YotRJYMWd7qJtmzj5GdwNkwX8j-yU808ZNbFplYsC5LLOYprIaBBnp6_PKtX0oVCwtLh9aF0Ol8gT6faekkKvkudQIDo9cyCesrfU8MOAW1iNwhPxEuBU31G2TgkSGfiyw3RsHcUDVjCW2AoQdGvKdRVe8CVhZ1gVTM6KJBRh4Zb5-tWUuHP5SApzw31pVUq7rf11R9jg_s7kUUO5jwAaqoVOgbQx3D6E1EpVdzUzho1Vs6i04kVdiusjBtZgdkVJ2e-IamV3xsjXadb6UOzxLXvI_R5t_4DV9SG79klELPOUJCOMvf8l78E3Uk4r8bqs_pledmfKywSJVBfd_kp9d1plE3Z-r2qGo98_KBP-VOZvVUF4Z-Ch9hgkfPHzz0SA2vhau-L4Sjycg8J68GqYg2RePM55UtBfyGu8vO3acPzeXH_9l3SsJXXg9DFO2J1yt38rn9ZhcsEzZDGdPmbg_xgLlUZCJgXfqM0W4CFug9cVg6s6x0xLqOmrtg1pRJyrprVAWpMo_J2aFEWv_sFM1Rvxpz1Ps_TBb5rA">
-    <img src="https://mermaid.ink/img/pako:eNp1kttu2zAMhl-FELBdNUBPF2uArcg5aZe0WHLTysbA2YotRJYMWd7qJtmzj5GdwNkwX8j-yU808ZNbFplYsC5LLOYprIaBBnp6_PKtX0oVCwtLh9aF0Ol8gT6faekkKvkudQIDo9cyCesrfU8MOAW1iNwhPxEuBU31G2TgkSGfiyw3RsHcUDVjCW2AoQdGvKdRVe8CVhZ1gVTM6KJBRh4Zb5-tWUuHP5SApzw31pVUq7rf11R9jg_s7kUUO5jwAaqoVOgbQx3D6E1EpVdzUzho1Vs6i04kVdiusjBtZgdkVJ2e-IamV3xsjXadb6UOzxLXvI_R5t_4DV9SG79klELPOUJCOMvf8l78E3Uk4r8bqs_pledmfKywSJVBfd_kp9d1plE3Z-r2qGo98_KBP-VOZvVUF4Z-Ch9hgkfPHzz0SA2vhau-L4Sjycg8J68GqYg2RePM55UtBfyGu8vO3acPzeXH_9l3SsJXXg9DFO2J1yt38rn9ZhcsEzZDGdPmbg_xgLlUZCJgXfqM0W4CFug9cVg6s6x0xLqOmrtg1pRJyrprVAWpMo_J2aFEWv_sFM1Rvxpz1Ps_TBb5rA?type=png" alt="0xBuilder Architecture Diagram">
-  </a>
-</p>
+[![](https://mermaid.ink/img/pako:eNptk01z4jAMhv-KxoeeKAMJkJLDzgQCJeWjndLZw5oe3MSAp4mdcZzdppT_vsoHLew2OSSyn1eSJflAQhVx4pKdZukenvyNBHw82nkb5SKOuIa1Ydo8w_X1DxjRhWIRjJXcil2umRFKPteKUQ141BsFl0sjulzAEqPE2eXGmHphqHJpIJBbpZNv3PnUewhgzotL6ZhiCpKHBoyCidlzzfMEVhijwcYV5tNACiNYLN45ZoD_Sgu5axi_Yia02YAlT1KlYriCJdOv3IDPDGvYScVOD0HEpRHbAh602grDXmIO92mqtMnLSDw7bmStmJaKjy_sA27p5DeLc2Y4hljzuEx_bbCIfFc8n4tWysC50D_5vK2ymHXpVCtprh_zU7WaDYuOWPj6_7pN10xGf0S4B88YRC63e3Qas2wP2FsJnn4RmNSurGRNzboVFtAHzVOmOTxpJjMWnnVrZtVIY9kXVu9k1XZQmXf0PjUiKRtzyzIsyErJEJvEJIZOsMiN57uKnuMBttwUK25c-Mn1eQdELEyBDh5FdjrX_LOMpQywt_-U8wuqRlknPKrRqwtyQSdvPMzNd0de1BN2OlX5JS28RSIirtE5b5GE40iXJjmUzIbgnCZ8Q1z8jXDCNmQjj6hJmfylVHKSaZXv9sTdsjhDK08jHBBfMLyfyecqy41aFzL81HCJN3Vc3iXidq2-U3kl7oG8Ebdn37T7jtUf2F3LGfaGVosUxB3Ybafj2N2Bja8zdG6OLfJepdFp3zi9IT69jj3s2_2-dfwL8ZxE0Q?type=png)](https://mermaid.live/edit#pako:eNptk01z4jAMhv-KxoeeKAMJkJLDzgQCJeWjndLZw5oe3MSAp4mdcZzdppT_vsoHLew2OSSyn1eSJflAQhVx4pKdZukenvyNBHw82nkb5SKOuIa1Ydo8w_X1DxjRhWIRjJXcil2umRFKPteKUQ141BsFl0sjulzAEqPE2eXGmHphqHJpIJBbpZNv3PnUewhgzotL6ZhiCpKHBoyCidlzzfMEVhijwcYV5tNACiNYLN45ZoD_Sgu5axi_Yia02YAlT1KlYriCJdOv3IDPDGvYScVOD0HEpRHbAh602grDXmIO92mqtMnLSDw7bmStmJaKjy_sA27p5DeLc2Y4hljzuEx_bbCIfFc8n4tWysC50D_5vK2ymHXpVCtprh_zU7WaDYuOWPj6_7pN10xGf0S4B88YRC63e3Qas2wP2FsJnn4RmNSurGRNzboVFtAHzVOmOTxpJjMWnnVrZtVIY9kXVu9k1XZQmXf0PjUiKRtzyzIsyErJEJvEJIZOsMiN57uKnuMBttwUK25c-Mn1eQdELEyBDh5FdjrX_LOMpQywt_-U8wuqRlknPKrRqwtyQSdvPMzNd0de1BN2OlX5JS28RSIirtE5b5GE40iXJjmUzIbgnCZ8Q1z8jXDCNmQjj6hJmfylVHKSaZXv9sTdsjhDK08jHBBfMLyfyecqy41aFzL81HCJN3Vc3iXidq2-U3kl7oG8Ebdn37T7jtUf2F3LGfaGVosUxB3Ybafj2N2Bja8zdG6OLfJepdFp3zi9IT69jj3s2_2-dfwL8ZxE0Q)
 
 > **⚠️ Important: Under Active Development**  
 > 0xBuilder is currently in active development. Expect potential bugs and use with extreme caution. **Your use is at your own risk.**
