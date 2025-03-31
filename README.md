@@ -1,13 +1,13 @@
-# ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎0xBuilder: Your MEV Toolkit for Ethereum
+# ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ON1Builder: Your MEV Toolkit for Ethereum
 
 ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎[![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/release/python-3120/)
-‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎ ‎[![Latest Release](https://img.shields.io/badge/Release-0.22.03_beta-black.svg)](https://github.com/John0n1/0xBuilder/releases/tag/v0.22.3-beta)
+‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎ ‎[![Latest Release](https://img.shields.io/badge/Release-0.22.03_beta-black.svg)](https://github.com/John0n1/ON1Builder/releases/tag/v0.22.3-beta)
 
 ![ON1BUILDER](https://github.com/user-attachments/assets/4f60cb4e-1722-4609-a5f1-86e96ce4f6c7)
 
-**Maximize your Ethereum trading potential with 0xBuilder, a powerful framework designed for high-frequency trading and Maximal Extractable Value (MEV) strategies.**
+**Maximize your Ethereum trading potential with ON1Builder, a powerful framework designed for high-frequency trading and Maximal Extractable Value (MEV) strategies.**
 
-0xBuilder empowers you with tools for:
+ON1Builder empowers you with tools for:
 
 * **Front-running**: Capitalize on pending transactions for profit.
 * **Back-running**: Strategically execute trades after specific transactions.
@@ -17,11 +17,11 @@
 [![](https://mermaid.ink/img/pako:eNptk01z4jAMhv-KxoeeKAMJkJLDzgQCJeWjndLZw5oe3MSAp4mdcZzdppT_vsoHLew2OSSyn1eSJflAQhVx4pKdZukenvyNBHw82nkb5SKOuIa1Ydo8w_X1DxjRhWIRjJXcil2umRFKPteKUQ141BsFl0sjulzAEqPE2eXGmHphqHJpIJBbpZNv3PnUewhgzotL6ZhiCpKHBoyCidlzzfMEVhijwcYV5tNACiNYLN45ZoD_Sgu5axi_Yia02YAlT1KlYriCJdOv3IDPDGvYScVOD0HEpRHbAh602grDXmIO92mqtMnLSDw7bmStmJaKjy_sA27p5DeLc2Y4hljzuEx_bbCIfFc8n4tWysC50D_5vK2ymHXpVCtprh_zU7WaDYuOWPj6_7pN10xGf0S4B88YRC63e3Qas2wP2FsJnn4RmNSurGRNzboVFtAHzVOmOTxpJjMWnnVrZtVIY9kXVu9k1XZQmXf0PjUiKRtzyzIsyErJEJvEJIZOsMiN57uKnuMBttwUK25c-Mn1eQdELEyBDh5FdjrX_LOMpQywt_-U8wuqRlknPKrRqwtyQSdvPMzNd0de1BN2OlX5JS28RSIirtE5b5GE40iXJjmUzIbgnCZ8Q1z8jXDCNmQjj6hJmfylVHKSaZXv9sTdsjhDK08jHBBfMLyfyecqy41aFzL81HCJN3Vc3iXidq2-U3kl7oG8Ebdn37T7jtUf2F3LGfaGVosUxB3Ybafj2N2Bja8zdG6OLfJepdFp3zi9IT69jj3s2_2-dfwL8ZxE0Q?type=png)](https://mermaid.live/edit#pako:eNptk01z4jAMhv-KxoeeKAMJkJLDzgQCJeWjndLZw5oe3MSAp4mdcZzdppT_vsoHLew2OSSyn1eSJflAQhVx4pKdZukenvyNBHw82nkb5SKOuIa1Ydo8w_X1DxjRhWIRjJXcil2umRFKPteKUQ141BsFl0sjulzAEqPE2eXGmHphqHJpIJBbpZNv3PnUewhgzotL6ZhiCpKHBoyCidlzzfMEVhijwcYV5tNACiNYLN45ZoD_Sgu5axi_Yia02YAlT1KlYriCJdOv3IDPDGvYScVOD0HEpRHbAh602grDXmIO92mqtMnLSDw7bmStmJaKjy_sA27p5DeLc2Y4hljzuEx_bbCIfFc8n4tWysC50D_5vK2ymHXpVCtprh_zU7WaDYuOWPj6_7pN10xGf0S4B88YRC63e3Qas2wP2FsJnn4RmNSurGRNzboVFtAHzVOmOTxpJjMWnnVrZtVIY9kXVu9k1XZQmXf0PjUiKRtzyzIsyErJEJvEJIZOsMiN57uKnuMBttwUK25c-Mn1eQdELEyBDh5FdjrX_LOMpQywt_-U8wuqRlknPKrRqwtyQSdvPMzNd0de1BN2OlX5JS28RSIirtE5b5GE40iXJjmUzIbgnCZ8Q1z8jXDCNmQjj6hJmfylVHKSaZXv9sTdsjhDK08jHBBfMLyfyecqy41aFzL81HCJN3Vc3iXidq2-U3kl7oG8Ebdn37T7jtUf2F3LGfaGVosUxB3Ybafj2N2Bja8zdG6OLfJepdFp3zi9IT69jj3s2_2-dfwL8ZxE0Q)
 
 > **⚠️ Important: Under Active Development**  
-> 0xBuilder is currently in active development. Expect potential bugs and use with extreme caution. **Your use is at your own risk.**
+> ON1Builder is currently in active development. Expect potential bugs and use with extreme caution. **Your use is at your own risk.**
 
 ## Key Features
 
-0xBuilder provides a comprehensive suite of features for effective MEV exploitation:
+ON1Builder provides a comprehensive suite of features for effective MEV exploitation:
 
 * **Mempool Monitoring**: Real-time analysis of the Ethereum mempool to identify profitable opportunities.
 * **Advanced Trading Strategies**: Implements sophisticated strategies like front-running, back-running, sandwich attacks, and flash loan arbitrage.
@@ -37,7 +37,7 @@
 ## Project Structure
 
 ```
-/0xBuilder/
+/ON1Builder/
 ├── abi/                      # Smart Contract ABIs (JSON format)
 ├── contracts/                # Solidity Smart Contracts (Flashloan, Interfaces)
 ├── linear_regression/        # Machine Learning for Price Prediction (Models, Data)
@@ -53,7 +53,7 @@
 │   ├── apiconfig.py          # API Integration & Data Handling
 │   ├── configuration.py      # Configuration Loading
 │   ├── abiregistry.py        # Centralized ABI Management
-│   ├── 0xBuilder.log        # Default Log File
+│   ├── ON1Builder.log        # Default Log File
 │   ├── __init__.py
 │   └── pyutils/              # Utility Modules
 ├── utils/                    # JSON Configuration Files (Tokens, Signatures)
@@ -92,7 +92,7 @@ Run your own Ethereum Execution and Consensus (Beacon) client. **Geth and Prysm 
 1. **Install Geth**: Follow [Geth installation guide](https://geth.ethereum.org/docs/install-and-build/installing-geth).
 2. **Start Geth Node**:
    ```bash
-   ./geth --mainnet --syncmode snap --http --http.api eth,net,admin,web3,txpool --ws --ws.api eth,net,admin,web3,txpool --maxpeers 100 --cache 16000 --ipcpath ~/0xBuilder/geth.ipc --allow-insecure-unlock --http.corsdomain "*"
+   ./geth --mainnet --syncmode snap --http --http.api eth,net,admin,web3,txpool --ws --ws.api eth,net,admin,web3,txpool --maxpeers 100 --cache 16000 --ipcpath ~/ON1Builder/geth.ipc --allow-insecure-unlock --http.corsdomain "*"
    ```
 3. **Verify Sync**:
    ```bash
@@ -113,8 +113,8 @@ Use [Prysm](https://docs.prylabs.network/docs/install/install-with-script) or [L
 
 1. **Clone the Repository:**
    ```bash
-   git clone https://github.com/John0n1/0xBuilder.git
-   cd 0xBuilder
+   git clone https://github.com/John0n1/ON1Builder.git
+   cd ON1Builder
    ```
 
 2. **Create a Virtual Environment (Recommended):**
@@ -136,7 +136,7 @@ Use [Prysm](https://docs.prylabs.network/docs/install/install-with-script) or [L
 
 ## Configuration
 
-0xBuilder uses environment variables and JSON configuration files for customization.
+ON1Builder uses environment variables and JSON configuration files for customization.
 
 ### Environment Variables (.env file)
 
@@ -254,14 +254,14 @@ Ensure:
    # Windows
    .\venv\Scripts\activate
    ```
-2. Start 0xBuilder:
+2. Start ON1Builder:
    ```bash
    python python/main.py
    ```
 
 ## Strategies Implemented
 
-0xBuilder includes a range of MEV strategies:
+ON1Builder includes a range of MEV strategies:
 
 **Front-Running Strategies:**
 
@@ -290,7 +290,7 @@ Ensure:
 
 ## Logging and Monitoring
 
-Detailed logs are written to `python/0xBuilder.log` and also output to the console. These logs provide insights into:
+Detailed logs are written to `python/ON1Builder.log` and also output to the console. These logs provide insights into:
 
 * Mempool activity
 * Strategy execution and performance
@@ -315,7 +315,7 @@ Detailed logs are written to `python/0xBuilder.log` and also output to the conso
 1. Enable verbose logging by setting the log level to `DEBUG` in `python/maincore.py`.
 2. Ensure all dependencies are installed (`pip install -r requirements.txt`).
 3. Test on a testnet (e.g., Sepolia) before deploying to mainnet.
-4. Review logs in `python/0xBuilder.log` for detailed error messages.
+4. Review logs in `python/ON1Builder.log` for detailed error messages.
 
 ## Contributing
 
@@ -333,4 +333,4 @@ See `CONTRIBUTING.md` for more information.
 This project is licensed under the [MIT License](LICENSE). See the LICENSE file for details.
 
 **Disclaimer:**  
-Trading and MEV strategies involve significant risk. Use 0xBuilder at your own risk. The developers are not responsible for any losses incurred using this software.
+Trading and MEV strategies involve significant risk. Use ON1Builder at your own risk. The developers are not responsible for any losses incurred using this software.

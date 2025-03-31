@@ -1,5 +1,5 @@
-# This file is part of the 0xBuilder package.
+# This file is part of the ON1Builder package.
 
 """
-0xBuilder package initialization.
+ON1Builder package initialization.
 """

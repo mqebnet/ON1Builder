@@ -3,7 +3,7 @@
 """
 StrategyNet Module
 
-This module implements an advanced strategy network for 0xBuilder operations. It coordinates various
+This module implements an advanced strategy network for ON1Builder operations. It coordinates various
 strategies (e.g., ETH transfers, front-run, back-run, sandwich attacks) and uses reinforcement
 learning to select and update the best-performing strategies over time.
 """

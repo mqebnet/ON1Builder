@@ -5,7 +5,7 @@ SafetyNet Module
 
 Provides risk management and transaction validation utilities, including balance caching,
 profit verification, gas cost estimation, dynamic slippage adjustment, network congestion 
-assessment, and risk scoring for 0xBuilder.
+assessment, and risk scoring for ON1Builder.
 """
 
 import asyncio

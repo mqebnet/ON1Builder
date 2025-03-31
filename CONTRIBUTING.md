@@ -1,11 +1,11 @@
-# Contributing to 0xBuilder MEV Bot 
+# Contributing to ON1Builder MEV Bot 
 
 ## Quick Start
 
 1. **Fork & Clone**
 ```bash
-git clone https://github.com/John0n1/0xbuilder.git
-cd 0xBuilder
+git clone https://github.com/John0n1/ON1Builder.git
+cd ON1Builder
 ```
 
 2. **Set Up**

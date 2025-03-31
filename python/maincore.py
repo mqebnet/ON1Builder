@@ -3,7 +3,7 @@
 """
 MainCore Module
 
-This is the heart of the 0xBuilder project. It builds and manages the entire MEV bot,
+This is the heart of the ON1Builder project. It builds and manages the entire MEV bot,
 initializing all components (configuration, Web3, account, ABI registry, APIConfig, NonceCore,
 SafetyNet, TransactionCore, MarketMonitor, MempoolMonitor, and StrategyNet), orchestrating the
 main execution loop, monitoring component health and memory usage, and handling graceful shutdown.
@@ -84,7 +84,7 @@ class MainCore:
         }
         self._component_health: Dict[str, bool] = {name: False for name in self.components}
         self.WEB3_MAX_RETRIES = self.configuration.get_config_value("WEB3_MAX_RETRIES", 3)
-        logger.info("Initializing 0xBuilder...")
+        logger.info("Initializing ON1Builder...")
         time.sleep(2)  # Allow some time for the environment to stabilize
 
     async def _initialize_components(self) -> None:
@@ -338,7 +338,7 @@ class MainCore:
         Main execution loop that starts vital background tasks such as mempool monitoring,
         processing profitable transactions, memory monitoring, and component health checks.
         """
-        logger.info("Starting 0xBuilder main loop...")
+        logger.info("Starting ON1Builder main loop...")
         self.running = True
         initial_snapshot = tracemalloc.take_snapshot()
 
@@ -554,7 +554,7 @@ async def run_bot() -> None:
             logger.debug("Final memory allocations at shutdown:")
             for stat in snapshot.statistics('lineno')[:10]:
                 logger.debug(str(stat))
-        logger.debug("0xBuilder shutdown complete")
+        logger.debug("ON1Builder shutdown complete")
 
 if __name__ == "__main__":
     try:

@@ -1,7 +1,7 @@
 """
-0xBuilder package initialization.
+ON1Builder package initialization.
 """
-# ./0xBuilder/utils/Python/__init__.py
+# ./ON1Builder/utils/Python/__init__.py
 
 from strategyexecutionerror import StrategyExecutionError
 
@@ -9,20 +9,20 @@ __all__: list[str] = ['StrategyExecutionError']
 
 def initialize_package() -> None:
     """
-    Initialize the 0xBuilder package.
+    Initialize the ON1Builder package.
     """
     try:
         # Add any package initialization logic here
         pass
     except Exception as e:
-        raise RuntimeError(f"Failed to initialize 0xBuilder package: {e}")
+        raise RuntimeError(f"Failed to initialize ON1Builder package: {e}")
 
 def cleanup_package() -> None:
     """
-    Clean up resources used by the 0xBuilder package.
+    Clean up resources used by the ON1Builder package.
     """
     try:
         # Add any package cleanup logic here
         pass
     except Exception as e:
-        raise RuntimeError(f"Failed to clean up 0xBuilder package: {e}")
+        raise RuntimeError(f"Failed to clean up ON1Builder package: {e}")

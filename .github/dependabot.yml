@@ -1,4 +1,4 @@
-# Dependabot - 0xBuilder
+# Dependabot - ON1Builder
 version: 2
 updates:
   - package-ecosystem: "pip"

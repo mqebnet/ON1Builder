@@ -1,4 +1,4 @@
-# ./0xBuilder/linear_regression/training_data.csv
+# ./ON1Builder/linear_regression/training_data.csv
 timestamp,symbol,price_usd,market_cap,volume_24h,percent_change_24h,total_supply,circulating_supply,volatility,liquidity_ratio,avg_transaction_value,trading_pairs,exchange_count,price_momentum,buy_sell_ratio,smart_money_flow
 1737308400,BTC,106124.00,2100392754878,70939406253,1.2,21000000,19000000,0.045,0.88,25.00,1500,400,0.60,1.2,0.95
 1737308400,ETH,3386.52,408393020243,32327860181,4.5,123456789,120345678,0.038,0.82,12.50,550,160,0.65,1.15,0.78

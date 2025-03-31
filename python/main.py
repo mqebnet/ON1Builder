@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #========================================================================================================================
-# https://github.com/John0n1/0xBuilder
+# https://github.com/John0n1/ON1Builder
 
 import signal
 import asyncio
@@ -51,7 +51,7 @@ async def run_bot() -> None:
             logger.debug("Final memory allocations at shutdown:")
             for stat in snapshot.statistics('lineno')[:10]:
                 logger.debug(str(stat))
-        logger.debug("0xBuilder shutdown complete")
+        logger.debug("ON1Builder shutdown complete")
 
 
 async def main() -> None:
@@ -70,4 +70,4 @@ if __name__ == "__main__":
         logger.debug("Top 10 memory allocations at error:")
         for stat in snapshot.statistics('lineno')[:10]:
             logger.debug(str(stat))
-        logger.debug("0xBuilder terminated")
+        logger.debug("ON1Builder terminated")

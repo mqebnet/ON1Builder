@@ -3,7 +3,7 @@
 """
 TransactionCore Module
 
-This module defines the 0xBuilder TransactionCore class that handles all transaction-related operations,
+This module defines the ON1Builder TransactionCore class that handles all transaction-related operations,
 including building, simulating, signing, and executing transactions for various strategies 
 (front-run, back-run, sandwich attacks, etc.). It also interacts with smart contracts, 
 performs gas estimation, and manages flashloans.
