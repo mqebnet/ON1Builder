@@ -1,3 +1,5 @@
+# LICENSE: MIT // github.com/John0n1/ON1Builder
+
 import pytest
 from unittest.mock import AsyncMock, patch
 from python.mempoolmonitor import MempoolMonitor

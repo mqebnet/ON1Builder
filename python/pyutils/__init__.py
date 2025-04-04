@@ -1,3 +1,5 @@
+# LICENSE: MIT // github.com/John0n1/ON1Builder
+
 """
 ON1Builder package initialization.
 """

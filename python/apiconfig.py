@@ -1,12 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-APIConfig Module
-
-Provides cryptocurrency data integration from multiple sources (Binance, CoinGecko,
-CoinMarketCap, CryptoCompare). This module handles rate limiting, caching, endpoint
-construction, and multi-source aggregation for price, volume, and market data.
-"""
+# LICENSE: MIT // github.com/John0n1/ON1Builder
 
 import asyncio
 import json

@@ -1,3 +1,5 @@
+# LICENSE: MIT // github.com/John0n1/ON1Builder
+
 import pytest
 from pathlib import Path
 from unittest.mock import patch, AsyncMock

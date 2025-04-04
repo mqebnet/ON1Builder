@@ -1,13 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-TransactionCore Module
-
-This module defines the ON1Builder TransactionCore class that handles all transaction-related operations,
-including building, simulating, signing, and executing transactions for various strategies 
-(front-run, back-run, sandwich attacks, etc.). It also interacts with smart contracts, 
-performs gas estimation, and manages flashloans.
-"""
+# LICENSE: MIT // github.com/John0n1/ON1Builder
 
 import asyncio
 import aiohttp

@@ -1,12 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-ABIRegistry Module
-
-A centralized registry for loading, validating, and mapping ABIs. It supports asynchronous
-loading of ABIs from JSON files, validates that each ABI contains required methods, and
-extracts function signatures and selectors for later use.
-"""
+# LICENSE: MIT // github.com/John0n1/ON1Builder
 
 import asyncio
 import aiofiles

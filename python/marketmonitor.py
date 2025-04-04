@@ -1,12 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-MarketMonitor Module
-
-Provides advanced market monitoring for real-time analysis, prediction, and risk assessment.
-It gathers market data (prices, volumes, volatility, etc.), supports model training and prediction,
-and exposes various metrics for strategy evaluation.
-"""
+# LICENSE: MIT // github.com/John0n1/ON1Builder
 
 import asyncio
 import os

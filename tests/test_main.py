@@ -1,6 +1,8 @@
+# LICENSE: MIT // github.com/John0n1/ON1Builder
+
 import pytest
 from unittest.mock import AsyncMock, patch
-from src.main import main, run_bot
+from python.main import main, run_bot
 
 @pytest.mark.asyncio
 async def test_main():

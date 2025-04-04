@@ -1,3 +1,5 @@
+# LICENSE: MIT // github.com/John0n1/ON1Builder
+
 aiofiles==24.1.0
 aiohttp==3.11.16
 async_timeout==5.0.1

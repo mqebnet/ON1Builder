@@ -1,13 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-MainCore Module
-
-This is the heart of the ON1Builder project. It builds and manages the entire MEV bot,
-initializing all components (configuration, Web3, account, ABI registry, APIConfig, NonceCore,
-SafetyNet, TransactionCore, MarketMonitor, MempoolMonitor, and StrategyNet), orchestrating the
-main execution loop, monitoring component health and memory usage, and handling graceful shutdown.
-"""
+# LICENSE: MIT // github.com/John0n1/ON1Builder
 
 import asyncio
 import tracemalloc
@@ -22,7 +13,6 @@ from web3.eth import AsyncEth
 from web3.middleware import ExtraDataToPOAMiddleware
 from web3 import AsyncIPCProvider, AsyncHTTPProvider, WebSocketProvider
 from eth_account import Account
-from web3.exceptions import Web3Exception
 
 from abiregistry import ABIRegistry
 from apiconfig import APIConfig

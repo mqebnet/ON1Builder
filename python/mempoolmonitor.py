@@ -1,12 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-MempoolMonitor Module
-
-This module monitors pending transactions from the mempool, queues them for processing based on priority,
-and analyzes transactions for profitability. It supports both filter-based and polling-based monitoring
-mechanisms and integrates with the SafetyNet, NonceCore, APIConfig, and MarketMonitor components.
-"""
+# LICENSE: MIT // github.com/John0n1/ON1Builder
 
 import asyncio
 import time
@@ -16,7 +8,7 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 from web3 import AsyncWeb3
-from web3.exceptions import TransactionNotFound, Web3ValueError
+from web3.exceptions import TransactionNotFound
 
 from abiregistry import ABIRegistry
 from apiconfig import APIConfig

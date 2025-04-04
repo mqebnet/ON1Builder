@@ -1,7 +1,9 @@
+# LICENSE: MIT // github.com/John0n1/ON1Builder
+
 import pytest
 from unittest.mock import AsyncMock, patch
-from maincore import MainCore
-from configuration import Configuration
+from python.maincore import MainCore
+from python.configuration import Configuration
 
 @pytest.fixture
 def configuration():

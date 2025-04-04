@@ -1,18 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-StrategyNet Module
-
-This module implements an advanced strategy network for ON1Builder operations. It coordinates various
-strategies (e.g., ETH transfers, front-run, back-run, sandwich attacks) and uses reinforcement
-learning to select and update the best-performing strategies over time.
-"""
+# LICENSE: MIT // github.com/John0n1/ON1Builder
 
 import asyncio
 import time
 import numpy as np
 import random
-from typing import Any, Dict, List, Optional, Callable, Tuple
+from typing import Any, Dict, List, Optional, Callable
 from decimal import Decimal
 
 from apiconfig import APIConfig

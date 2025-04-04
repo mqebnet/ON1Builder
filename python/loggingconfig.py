@@ -1,11 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# LICENSE: MIT // github.com/John0n1/ON1Builder
+
 import logging
 import sys
 import threading
 import time
 import colorlog
-from typing import Optional
 
 def setup_logging(name: str, level: int = logging.INFO, spinner: bool = False, spinner_message: str = "Loading") -> logging.Logger:
     """

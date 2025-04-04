@@ -1,12 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-SafetyNet Module
-
-Provides risk management and transaction validation utilities, including balance caching,
-profit verification, gas cost estimation, dynamic slippage adjustment, network congestion 
-assessment, and risk scoring for ON1Builder.
-"""
+# LICENSE: MIT // github.com/John0n1/ON1Builder
 
 import asyncio
 import time

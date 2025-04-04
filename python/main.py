@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#========================================================================================================================
-# https://github.com/John0n1/ON1Builder
+# LICENSE: MIT // github.com/John0n1/ON1Builder
 
 import signal
 import asyncio
