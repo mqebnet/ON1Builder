@@ -1,8 +1,6 @@
 # ‎ON1Builder MEV
 
-‎[![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/release/python-3120/)
-
-[![Latest Release](https://img.shields.io/badge/Release-1.0.1-green.svg)](https://github.com/John0n1/ON1Builder/releases/tag/v1.0.1)
+‎[![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/release/python-3120/) [![Latest Release](https://img.shields.io/badge/Release-1.0.1-green.svg)](https://github.com/John0n1/ON1Builder/releases/tag/v1.0.1)
 
 ![ON1BUILDER](https://github.com/user-attachments/assets/4f60cb4e-1722-4609-a5f1-86e96ce4f6c7)
 
@@ -40,27 +38,41 @@ ON1Builder provides a comprehensive suite of features for effective MEV exploita
 
 ```
 /ON1Builder/
-├── abi/                      # Smart Contract ABIs (JSON format)
-├── contracts/                # Solidity Smart Contracts (Flashloan, Interfaces)
-├── linear_regression/        # Machine Learning for Price Prediction (Models, Data)
-├── python/                  # Core Python Bot Logic
-│   ├── safetynet.py          # Risk Management & Safety Checks
-│   ├── strategynet.py        # MEV Strategy Implementation
-│   ├── mempoolmonitor.py     # Mempool Monitoring Engine
-│   ├── marketmonitor.py      # Market Data Analysis
-│   ├── main.py               # Main Bot Entry Point
-│   ├── transactioncore.py    # Transaction Handling & Execution
-│   ├── maincore.py           # Core Application Logic
-│   ├── noncecore.py          # Nonce Management
-│   ├── apiconfig.py          # API Integration & Data Handling
-│   ├── configuration.py      # Configuration Loading
-│   ├── abiregistry.py        # Centralized ABI Management
-│   ├── ON1Builder.log        # Default Log File
+├── abi/
+│   ├── flashloan_abi.json
+│   ├── aave_pool_abi.json
+│   ├── uniswap_abi.json
+│   ├── erc20_abi.json
+│   ├── sushiswap_abi.json
+├── contracts/
+│   ├── FlashloanSimple.sol          
+├── linear_regression/
+│   ├── pricedata.csv
+│   ├── learning.joblib
+├── python/                
+│   ├── safetynet.py         
+│   ├── strategynet.py        
+│   ├── mempoolmonitor.py    
+│   ├── marketmonitor.py    
+│   ├── main.py 
+│   ├── transactioncore.py
+│   ├── maincore.py
+│   ├── noncecore.py
+│   ├── apiconfig.py
+│   ├── configuration.py
+│   ├── abiregistry.py
+│   ├── ON1Builder.log
 │   ├── __init__.py
-│   └── pyutils/              # Utility Modules
-├── utils/                    # JSON Configuration Files (Tokens, Signatures)
-├── .env                      # Environment Variable Configuration
-└── requirements.txt          # Python Dependencies
+│   └── pyutils/
+│       ├── StrategyExecutionError.py
+├── utils/
+│   ├── token_addresses.json
+│   ├── token_symbols.json
+│   ├── erc20_signatures.json
+├── tests/
+├── .env
+├── geth.ipc (optionally)
+└── requirements.txt
 ```
 
 ## Prerequisites
