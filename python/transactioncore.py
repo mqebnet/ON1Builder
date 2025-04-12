@@ -1518,7 +1518,7 @@ class TransactionCore:
         logger.debug("Conditions unfavorable for sandwich attack. Skipping.")
         return False
 
-    async def _analyze_opportunity_score(
+    async def _calculate_opportunity_score(
         self,
         price_change: float,
         volatility: float,
@@ -1526,8 +1526,72 @@ class TransactionCore:
         current_price: float, 
         historical_prices: List[float]
     ) -> float:
-        # This helper is similar to _calculate_opportunity_score.
-        return await self._calculate_opportunity_score(price_change, volatility, market_conditions, current_price, historical_prices)
+        """
+        Calculate a comprehensive opportunity score (0-100) for front-run strategies based on multiple metrics.
+        """
+        score = 0
+        components = {
+           "price_change": {
+               "very_strong": {"threshold": 5.0, "points": 40},
+               "strong": {"threshold": 3.0, "points": 30},
+               "moderate": {"threshold": 1.0, "points": 20},
+               "slight": {"threshold": 0.5, "points": 10}
+           },
+           "volatility": {
+               "very_low": {"threshold": 0.02, "points": 20},
+               "low": {"threshold": 0.05, "points": 15},
+               "moderate": {"threshold": 0.08, "points": 10},
+           },
+           "market_conditions": {
+                "bullish_trend": {"points": 10},
+                "not_high_volatility": {"points": 5},
+                "not_low_liquidity": {"points": 5},
+           },
+            "price_trend": {
+                "upward": {"points": 20},
+                "stable": {"points": 10},
+           }
+       }
+
+        if price_change > components["price_change"]["very_strong"]["threshold"]:
+            score += components["price_change"]["very_strong"]["points"]
+        elif price_change > components["price_change"]["strong"]["threshold"]:
+            score += components["price_change"]["strong"]["points"]
+        elif price_change > components["price_change"]["moderate"]["threshold"]:
+            score += components["price_change"]["moderate"]["points"]
+        elif price_change > components["price_change"]["slight"]["threshold"]:
+            score += components["price_change"]["slight"]["points"]
+
+        if historical_prices:
+            avg_price = sum(historical_prices) / len(historical_prices)
+            if current_price > avg_price * 1.1:
+                score += 10
+            elif current_price > avg_price * 1.05:
+                score += 5
+
+        if volatility < components["volatility"]["very_low"]["threshold"]:
+           score += components["volatility"]["very_low"]["points"]
+        elif volatility < components["volatility"]["low"]["threshold"]:
+           score += components["volatility"]["low"]["points"]
+        elif volatility < components["volatility"]["moderate"]["threshold"]:
+           score += components["volatility"]["moderate"]["points"]
+
+        if market_conditions.get("bullish_trend", False):
+            score += components["market_conditions"]["bullish_trend"]["points"]
+        if not market_conditions.get("high_volatility", True):
+            score += components["market_conditions"]["not_high_volatility"]["points"]
+        if not market_conditions.get("low_liquidity", True):
+            score += components["market_conditions"]["not_low_liquidity"]["points"]
+
+        if historical_prices and len(historical_prices) > 1:
+            recent_trend = (historical_prices[-1] / historical_prices[0] - 1) * 100
+            if recent_trend > 0:
+                score += components["price_trend"]["upward"]["points"]
+            elif recent_trend > -1:
+                score += components["price_trend"]["stable"]["points"]
+
+        logger.debug(f"Calculated opportunity score: {score}/100")
+        return score
 
     async def _calculate_volatility_score(
         self,
@@ -1591,10 +1655,54 @@ class TransactionCore:
         price_change: float
     ) -> Tuple[float, Dict[str, bool]]:
         """
-        (Already defined above; see aggressive_front_run for risk normalization.)
+        Calculate a risk score (0-1) for the target transaction based on price change, gas price, and market conditions.
+        The raw score (0-100) is normalized to a fraction.
         """
-        # This method has been defined earlier.
-        pass  # (Placeholder if needed; otherwise, use the one above)
+        score = 0
+        components = {
+            "price_change": {
+                "very_high": {"threshold": 10.0, "points": 40},
+                "high": {"threshold": 7.0, "points": 30},
+                "moderate": {"threshold": 4.0, "points": 20},
+                "low": {"threshold": 2.0, "points": 10}
+            },
+            "gas_price": {
+                "very_high": {"threshold": 200, "points": 30},
+                "high": {"threshold": 150, "points": 20},
+                "moderate": {"threshold": 100, "points": 10}
+            },
+            "market_conditions": {
+                "high_volatility": {"points": 20},
+                "low_liquidity": {"points": 10}
+            }
+        }
+
+        if price_change > components["price_change"]["very_high"]["threshold"]:
+            score += components["price_change"]["very_high"]["points"]
+        elif price_change > components["price_change"]["high"]["threshold"]:
+            score += components["price_change"]["high"]["points"]
+        elif price_change > components["price_change"]["moderate"]["threshold"]:
+            score += components["price_change"]["moderate"]["points"]
+        elif price_change > components["price_change"]["low"]["threshold"]:
+            score += components["price_change"]["low"]["points"]
+
+        gas_price = await self.safetynet.get_dynamic_gas_price()
+        if gas_price > components["gas_price"]["very_high"]["threshold"]:
+            score += components["gas_price"]["very_high"]["points"]
+        elif gas_price > components["gas_price"]["high"]["threshold"]:
+            score += components["gas_price"]["high"]["points"]
+        elif gas_price > components["gas_price"]["moderate"]["threshold"]:
+            score += components["gas_price"]["moderate"]["points"]
+
+        market_conditions = await self.marketmonitor.check_market_conditions(target_tx["to"])
+        if market_conditions.get("high_volatility", False):
+            score += components["market_conditions"]["high_volatility"]["points"]
+        if market_conditions.get("low_liquidity", False):
+            score += components["market_conditions"]["low_liquidity"]["points"]
+
+        logger.debug(f"Calculated raw risk score: {score}/100")
+        normalized_score = score / 100.0
+        return normalized_score, market_conditions
 
     def _get_volume_threshold(self, token_symbol: str) -> float:
         """
