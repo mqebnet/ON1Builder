@@ -15,6 +15,7 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
 
     event FlashLoanRequested(address token, uint256 amount);
     event FlashLoanExecuted(address token, uint256 amount, uint256 premium, bool success);
+    event FlashLoanFailed(address token, uint256 amount, uint256 premium, string reason);
 
     constructor(address _addressProvider, address _gasPriceOracle) FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_addressProvider)) {
         owner = payable(msg.sender); // Contract deployer becomes the owner
@@ -62,10 +63,15 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
         address initiator,
         bytes calldata params
     ) external override nonReentrant returns (bool) {
+        try {
+            // Add your flash loan logic here
 
-        emit FlashLoanExecuted(asset, amount, premium, true);
-
-        return true;
+            emit FlashLoanExecuted(asset, amount, premium, true);
+            return true;
+        } catch (bytes memory reason) {
+            emit FlashLoanFailed(asset, amount, premium, string(reason));
+            return false;
+        }
     }
 
     function withdrawToken(address _tokenAddress) public onlyOwner {

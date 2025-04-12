@@ -23,13 +23,13 @@ async def run_bot() -> None:
     core = MainCore(configuration)
 
     # Define a shutdown handler that triggers a graceful stop.
-    def shutdown_handler() -> None:
+    async def shutdown_handler() -> None:
         logger.debug("Received shutdown signal. Initiating graceful shutdown...")
-        asyncio.create_task(core.stop())
+        await core.stop()
 
     # Register signal handlers for graceful shutdown.
     for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, shutdown_handler)
+        loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown_handler()))
 
     try:
         await core.initialize()
