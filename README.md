@@ -3,12 +3,7 @@
 [![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg?logo=python)](https://www.python.org/downloads/release/python-3120/)
 ![GitHub last commit](https://img.shields.io/github/last-commit/John0n1/ON1Builder?display_timestamp=committer&logo=Github&logoColor=%23181717&color=cyan)
 
-<<<<<<< HEAD
 [![License](https://img.shields.io/badge/License-MIT-neon.svg)](LICENSE)
-=======
-![on1builder](https://github.com/user-attachments/assets/59e03abe-67ee-4195-9030-63f49c48e46f)
-
->>>>>>> c26431de26cde76f6ad892de3aae5dabe5dfbd13
 
 
 ![on1builder](https://github.com/user-attachments/assets/59e03abe-67ee-4195-9030-63f49c48e46f)
