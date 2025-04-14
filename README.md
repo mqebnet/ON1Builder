@@ -12,7 +12,6 @@
 It leverages fully asynchronous Python code, robust logging, and modular design to offer rapid, resilient, and configurable transaction execution.
 
 ---
-
 ## Table of Contents
 
 - [Overview](#overview)
