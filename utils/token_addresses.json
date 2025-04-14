@@ -1,4 +1,6 @@
 {
+    "_comment": "Maps common token symbols to their Ethereum Mainnet contract addresses. Verify addresses if using a different network.",
+
     "WETH": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
     "ETH": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     "WBTC": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
@@ -17,13 +19,9 @@
     "BAL": "0xba100000625a3754423978a60c9317c58a424e3d",
     "1INCH": "0x111111111117dc0aa78b770fa6a738034120c302",
     "MATIC": "0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0",
-    "SOL": "0x50b6e9a3a4921e818cbcf1853aae3b5d8c18e600",
-    "LUNA": "0xd2877702675e6ceb975b4a1dff9fb7baf4c91ea9",
-    "APE": "0x0841bd0b734e4f5853f0dd8d7ea041c241fb0da6",
     "SHIB": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
-    "FTT": "0x50d1c9771902476076ecfc8b2a83ad6b9355a4c9",
-    "REN": "0x408e41876cccdc0f92210600ef50372656052a38",
-    "CREAM": "0x2ba592f78db6436527729929aaf6c908497cb200",
-    "YFII": "0xa1d0e215a23d7030842fc67ce582a6afa3ccab83",
-    "SRM": "0x476c5e26a75bd202a9683ffd34359c0cc15be0ff"
+    "APE": "0x4d224452801aced8b2f0aebe155379bb5d594381",
+
+    "_comment_verify": "feel free to verify relevance or removing less common/delisted tokens below depending on strategy needs.",
+    "REN": "0x408e41876cccdc0f92210600ef50372656052a38"
 }

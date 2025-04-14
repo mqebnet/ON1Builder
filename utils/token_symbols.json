@@ -1,8 +1,9 @@
 {
+    "_comment": "Maps internal token symbols to identifiers used by external APIs (primarily CoinGecko). Ensure these IDs match the target API.",
+
     "WETH": "ethereum",
     "ETH": "ethereum",
     "WBTC": "wrapped-bitcoin",
-    "BTC": "bitcoin",
     "USDT": "tether",
     "USDC": "usd-coin",
     "DAI": "dai",
@@ -17,14 +18,10 @@
     "YFI": "yearn-finance",
     "BAL": "balancer",
     "1INCH": "1inch",
-    "MATIC": "polygon",
-    "SOL": "solana",
-    "LUNA": "terra-luna",
-    "APE": "apecoin",
+    "MATIC": "matic-network", 
     "SHIB": "shiba-inu",
-    "FTT": "ftx-token",
-    "REN": "republic-protocol",
-    "CREAM": "cream-finance",
-    "YFII": "dfi-money",
-    "SRM": "serum"
+    "APE": "apecoin",
+
+    "_comment_verify": "Mappings for less common/delisted tokens below. Uncomment if needed and verify API IDs.",
+    "REN": "republic-protocol"
 }
