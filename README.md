@@ -1,137 +1,138 @@
-# ‎ON1Builder MEV
+# ON1Builder MEV
 
-‎[![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/release/python-3120/) [![Latest Release](https://img.shields.io/badge/Release-1.0.1-green.svg)](https://github.com/John0n1/ON1Builder/releases/tag/v1.0.1)
+[![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![Latest Release](https://img.shields.io/badge/Release-1.0.1-green.svg)](https://github.com/John0n1/ON1Builder/releases/tag/v1.0.1)
 
-![ON1BUILDER](https://github.com/user-attachments/assets/4f60cb4e-1722-4609-a5f1-86e96ce4f6c7)
+![ON1BUILDER Logo](https://github.com/user-attachments/assets/4f60cb4e-1722-4609-a5f1-86e96ce4f6c7)
 
-**ON1Builder, a powerful framework designed for high-frequency trading and Maximal Extractable Value (MEV) strategies.**
+**ON1Builder** is a powerful, production‑ready framework designed for high‑frequency trading and Maximal Extractable Value (MEV) strategies on decentralized platforms.  
+It leverages fully asynchronous Python code, robust logging, and modular design to offer rapid, resilient, and configurable transaction execution.
 
-ON1Builder empowers you with tools for:
+---
 
-* **Front-running**: Capitalize on pending transactions for profit.
-* **Back-running**: Strategically execute trades after specific transactions.
-* **Sandwich Attacks**: Profit from manipulating transaction order in decentralized exchanges.
-* **Flash Loan Arbitrage**: Leverage flash loans for zero-capital arbitrage opportunities.
+## Table of Contents
 
-[![](https://mermaid.ink/img/pako:eNptk01T4zAMhv-KxwdOhaFNS2gOO5M2LQT6wVBmD-tyMInaekjsjKvsEkr_-yofhXaX5JDIfl5JluQdj0wM3ONrK7MNewqWmtHji_msPchVEoNlC5QWn9n5-Q82EBMjYzY0eqXWuZWojH6uJYMa8IU_CE-XBmI6YVMKk2xPN4bCjyKTa2ShXhmbfuMuEP5DyO6hOJUOBaWgIUKGho1wAxbylM0oRoMNKywQoVaoZKLegTKgf2OVXjdMUDEj0WywKaSZMQk7Y1NpXwFZIFE27Khix7swBo1qVbAHa1YK5UsCbJ5lxmJeRoLtfqlrxbhUfHxhH-xGjH7LJJcIFGIBSZn-AqmIsC6ej0Uzg-xYGBx83lRZ3LbF2BqN54_5oVrNRkcMZPT6_7ojFlLHf1S0YT4iIafbXTFO5HbDqLea-fZFUVLrspI1dduusFA8WMikBfZkpd7K6Khbt50aaSznxOoerNoOK_NOzDNUadmYG7mlgsyMjqhJUlPolIrceL6r6Hs6wAqwmAF67CfY4w6oRGFBDh7V9nCu-88yljJGvf2nnF9QNco2hbhGz07IiRi9QZTjd0ee1BN2OFX55S26RirmHtocWjwFGunS5LuSWXKa0xSW3KPfmCZsyZd6T5pM6l_GpAeZNfl6w72VTLZk5VlMAxIoSRc0_VyVOZpFoaNPDWi6qcPyLnGv2658cm_H38hyri96bqd35bQ7br_b77R4wb0r58K9dJ32lUOv23ev9y3-XiVxeXHtdvv0dC-dfs_p9Tr7vw5iRI0?type=png)](https://mermaid.live/edit#pako:eNptk01T4zAMhv-KxwdOhaFNS2gOO5M2LQT6wVBmD-tyMInaekjsjKvsEkr_-yofhXaX5JDIfl5JluQdj0wM3ONrK7MNewqWmtHji_msPchVEoNlC5QWn9n5-Q82EBMjYzY0eqXWuZWojH6uJYMa8IU_CE-XBmI6YVMKk2xPN4bCjyKTa2ShXhmbfuMuEP5DyO6hOJUOBaWgIUKGho1wAxbylM0oRoMNKywQoVaoZKLegTKgf2OVXjdMUDEj0WywKaSZMQk7Y1NpXwFZIFE27Khix7swBo1qVbAHa1YK5UsCbJ5lxmJeRoLtfqlrxbhUfHxhH-xGjH7LJJcIFGIBSZn-AqmIsC6ej0Uzg-xYGBx83lRZ3LbF2BqN54_5oVrNRkcMZPT6_7ojFlLHf1S0YT4iIafbXTFO5HbDqLea-fZFUVLrspI1dduusFA8WMikBfZkpd7K6Khbt50aaSznxOoerNoOK_NOzDNUadmYG7mlgsyMjqhJUlPolIrceL6r6Hs6wAqwmAF67CfY4w6oRGFBDh7V9nCu-88yljJGvf2nnF9QNco2hbhGz07IiRi9QZTjd0ee1BN2OFX55S26RirmHtocWjwFGunS5LuSWXKa0xSW3KPfmCZsyZd6T5pM6l_GpAeZNfl6w72VTLZk5VlMAxIoSRc0_VyVOZpFoaNPDWi6qcPyLnGv2658cm_H38hyri96bqd35bQ7br_b77R4wb0r58K9dJ32lUOv23ev9y3-XiVxeXHtdvv0dC-dfs_p9Tr7vw5iRI0)
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Project Architecture](#project-architecture)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [License](#license)
+- [Disclaimer](#disclaimer)
 
+---
 
-> **⚠️ Important: Under Active Development**  
-> ON1Builder is currently in active development. Expect potential bugs and use with extreme caution. **Your use is at your own risk.**
+## Overview
+
+ON1Builder empowers you to exploit MEV opportunities using advanced strategies:
+- **Front-Running:** Capitalize on pending transactions.
+- **Back-Running:** Execute trades after significant events.
+- **Sandwich Attacks:** Profit from transaction ordering.
+- **Flash Loan Arbitrage:** Leverage zero‑capital flash loans for profitable trades.
+
+The framework is built with asynchronous Python (asyncio) so that all components—from network communication to complex strategy selection—operate without blocking the event loop.
+
+---
 
 ## Key Features
 
-ON1Builder provides a comprehensive suite of features for effective MEV exploitation:
+- **Asynchronous Core Modules:** Each component (Configuration, ABIRegistry, NonceCore, SafetyNet, TransactionCore, MarketMonitor, MempoolMonitor, StrategyNet, MainCore) is designed to run asynchronously.
+- **Robust Configuration:** A fully centralized and validated configuration system using a production‑ready `.env` file.
+- **Smart Contract Interaction:** Uses verified ABIs for ERC20 tokens and decentralized protocols (Uniswap, Sushiswap, Aave).
+- **Nonce Management:** Advanced nonce management with caching and retries.
+- **Safety Checks:** Dynamic gas pricing, profit estimation with Decimal precision, and adjustable slippage tolerance based on real‑time network congestion.
+- **Market Data Integration:** Aggregates live prices from multiple APIs with rate‑limiting, TTL caching, and model‑based predictions.
+- **MEV Strategies:** Implements a range of strategies (front‑run, back‑run, sandwich) with a reinforcement‑learning approach to select the best tactic.
+- **Extensive Logging & Monitoring:** Detailed logs, memory monitoring, component health checks, and graceful shutdown handling.
 
-* **Mempool Monitoring**: Real-time analysis of the Ethereum mempool to identify profitable opportunities.
-* **Advanced Trading Strategies**: Implements sophisticated strategies like front-running, back-running, sandwich attacks, and flash loan arbitrage.
-* **Flash Loan Integration (Aave V3)**: Utilizes Aave V3 flash loans for capital-efficient trading.
-* **Data-Driven Decisions**: Integrates with cryptocurrency APIs for real-time market data analysis.
-* **Gas Optimization**: Dynamically adjusts gas prices to minimize transaction costs.
-* **Robust Transaction Management**: Includes nonce management and atomic transaction bundling for reliable execution.
-* **Risk Mitigation**: Built-in safety checks and risk assessments to protect operations.
-* **DeFi Protocol Support**: Seamlessly interacts with popular DeFi platforms like Uniswap, Sushiswap, and Aave.
-* **Highly Configurable**: Adaptable to various wallets, tokens, trading pairs, and strategies.
-* **Detailed Logging**: Comprehensive logs for performance analysis, debugging, and strategy refinement.
+---
 
-## Project Structure
+## Project Architecture
+
+The project is organized into the following directories and files:
 
 ```
 /ON1Builder/
 ├── abi/
-│   ├── flashloan_abi.json
+│   ├── erc20_abi.json
+│   ├── aave_flashloan_abi.json
 │   ├── aave_pool_abi.json
 │   ├── uniswap_abi.json
-│   ├── erc20_abi.json
 │   ├── sushiswap_abi.json
+│   ├── erc20_signatures.json
+│   └── gas_price_oracle_abi.json
 ├── contracts/
-│   ├── FlashloanSimple.sol          
+│   ├── SimpleFlashloan.sol
+│   └── IERC20.sol
 ├── linear_regression/
-│   ├── pricedata.csv
-│   ├── learning.joblib
-├── python/                
-│   ├── safetynet.py         
-│   ├── strategynet.py        
-│   ├── mempoolmonitor.py    
-│   ├── marketmonitor.py    
-│   ├── main.py 
-│   ├── transactioncore.py
-│   ├── maincore.py
-│   ├── noncecore.py
-│   ├── apiconfig.py
+│   ├── price_model.joblib
+│   └── training_data.csv
+├── python/
+│   ├── __init__.py
 │   ├── configuration.py
 │   ├── abiregistry.py
-│   ├── ON1Builder.log
-│   ├── __init__.py
-│   └── pyutils/
-│       ├── StrategyExecutionError.py
+│   ├── noncecore.py
+│   ├── safetynet.py
+│   ├── transactioncore.py
+│   ├── apiconfig.py
+│   ├── marketmonitor.py
+│   ├── mempoolmonitor.py
+│   ├── strategynet.py
+│   ├── maincore.py
+│   ├── main.py
+│   └── loggingconfig.py
 ├── utils/
 │   ├── token_addresses.json
 │   ├── token_symbols.json
-│   ├── erc20_signatures.json
 ├── tests/
+│   └── <multiple test files for modules>
 ├── .env
-├── geth.ipc (optionally)
+├── .gitignore
+├── README.md
 └── requirements.txt
 ```
 
+**Core Modules Explanation:**
+- **Configuration:** Loads and validates environment variables and file paths.
+- **ABIRegistry:** Loads ABIs from JSON files and extracts function selectors.
+- **NonceCore:** Manages nonces with caching and retries to prevent transaction clashes.
+- **SafetyNet:** Assesses transaction risk, calculates gas costs and slippage, and ensures profit viability.
+- **TransactionCore:** Builds, signs, simulates, and executes transactions with robust error handling.
+- **APIConfig:** Integrates with multiple third‑party APIs for live market data and historical prices.
+- **MarketMonitor:** Continuously monitors market conditions and supports model training for price prediction.
+- **MempoolMonitor:** Scans the Ethereum mempool for pending transactions and queues profitable ones.
+- **StrategyNet:** Implements a reinforcement‑learning-based system to select and execute the best MEV strategy.
+- **MainCore:** Orchestrates all components, runs the event loop, monitors memory and component health, and handles graceful shutdown.
+- **main.py:** Entry‑point for running the bot.
+
+[![](https://mermaid.ink/img/pako:eNptk01T4zAMhv-KxwdOhaFNS2gOO5M2LQT6wVBmD-tyMInaekjsjKvsEkr_-yofhXaX5JDIfl5JluQdj0wM3ONrK7MNewqWmtHji_msPchVEoNlC5QWn9n5-Q82EBMjYzY0eqXWuZWojH6uJYMa8IU_CE-XBmI6YVMKk2xPN4bCjyKTa2ShXhmbfuMuEP5DyO6hOJUOBaWgIUKGho1wAxbylM0oRoMNKywQoVaoZKLegTKgf2OVXjdMUDEj0WywKaSZMQk7Y1NpXwFZIFE27Khix7swBo1qVbAHa1YK5UsCbJ5lxmJeRoLtfqlrxbhUfHxhH-xGjH7LJJcIFGIBSZn-AqmIsC6ej0Uzg-xYGBx83lRZ3LbF2BqN54_5oVrNRkcMZPT6_7ojFlLHf1S0YT4iIafbXTFO5HbDqLea-fZFUVLrspI1dduusFA8WMikBfZkpd7K6Khbt50aaSznxOoerNoOK_NOzDNUadmYG7mlgsyMjqhJUlPolIrceL6r6Hs6wAqwmAF67CfY4w6oRGFBDh7V9nCu-88yljJGvf2nnF9QNco2hbhGz07IiRi9QZTjd0ee1BN2OFX55S26RirmHtocWjwFGunS5LuSWXKa0xSW3KPfmCZsyZd6T5pM6l_GpAeZNfl6w72VTLZk5VlMAxIoSRc0_VyVOZpFoaNPDWi6qcPyLnGv2658cm_H38hyri96bqd35bQ7br_b77R4wb0r58K9dJ32lUOv23ev9y3-XiVxeXHtdvv0dC-dfs_p9Tr7vw5iRI0?type=png)](https://mermaid.live/edit#pako:eNptk01T4zAMhv-KxwdOhaFNS2gOO5M2LQT6wVBmD-tyMInaekjsjKvsEkr_-yofhXaX5JDIfl5JluQdj0wM3ONrK7MNewqWmtHji_msPchVEoNlC5QWn9n5-Q82EBMjYzY0eqXWuZWojH6uJYMa8IU_CE-XBmI6YVMKk2xPN4bCjyKTa2ShXhmbfuMuEP5DyO6hOJUOBaWgIUKGho1wAxbylM0oRoMNKywQoVaoZKLegTKgf2OVXjdMUDEj0WywKaSZMQk7Y1NpXwFZIFE27Khix7swBo1qVbAHa1YK5UsCbJ5lxmJeRoLtfqlrxbhUfHxhH-xGjH7LJJcIFGIBSZn-AqmIsC6ej0Uzg-xYGBx83lRZ3LbF2BqN54_5oVrNRkcMZPT6_7ojFlLHf1S0YT4iIafbXTFO5HbDqLea-fZFUVLrspI1dduusFA8WMikBfZkpd7K6Khbt50aaSznxOoerNoOK_NOzDNUadmYG7mlgsyMjqhJUlPolIrceL6r6Hs6wAqwmAF67CfY4w6oRGFBDh7V9nCu-88yljJGvf2nnF9QNco2hbhGz07IiRi9QZTjd0ee1BN2OFX55S26RirmHtocWjwFGunS5LuSWXKa0xSW3KPfmCZsyZd6T5pM6l_GpAeZNfl6w72VTLZk5VlMAxIoSRc0_VyVOZpFoaNPDWi6qcPyLnGv2658cm_H38hyri96bqd35bQ7br_b77R4wb0r58K9dJ32lUOv23ev9y3-XiVxeXHtdvv0dC-dfs_p9Tr7vw5iRI0)
+
+---
+
 ## Prerequisites
 
-### System Requirements
+- **Operating System:** Linux (Ubuntu 20.04+ recommended), Windows 10/11, macOS 12+
+- **Python:** Version 3.12 or higher is required.
+- **Ethereum Client:** Geth (or alternative clients like Nethermind/Besu) is recommended.
+- **Dependencies:** See `requirements.txt`—all necessary libraries are listed there.
+- **Hardware:** At least 4 CPU cores, 16GB RAM, and NVMe SSD storage is recommended for node synchronization.
 
-* **Operating System**: Linux (Ubuntu 20.04+ recommended), Windows 10/11, macOS 12+
-* **Internet**: Stable connection (50Mbps+ recommended)
-* **Hardware**:
-  * CPU: 4+ cores, 3.0GHz+ (e.g., Intel i7 or equivalent)
-  * RAM: 16GB minimum
-  * Storage: 1.5TB NVMe SSD (for local Ethereum node synchronization)
-
-### Software Requirements
-
-* **Python**: Version 3.12 or higher
-* **Ethereum Execution Client**: One of:
-  * [Geth](https://geth.ethereum.org/) (Recommended)
-  * [Nethermind](https://www.nethermind.io/)
-  * [Besu](https://besu.hyperledger.org/)
-  * [Erigon](https://github.com/ledgerwatch/erigon)
-  * [Reth](https://reth.rs/) (Testnets only)
-  * [EthereumJS](https://github.com/ethereumjs/ethereumjs-monorepo)
-
-## Ethereum Node Setup
-
-Run your own Ethereum Execution and Consensus (Beacon) client. **Geth and Prysm are highly recommended.**
-
-### Example: Setting up Geth
-
-1. **Install Geth**: Follow [Geth installation guide](https://geth.ethereum.org/docs/install-and-build/installing-geth).
-2. **Start Geth Node**:
-   ```bash
-   ./geth --mainnet --syncmode snap --http --http.api eth,net,admin,web3,txpool --ws --ws.api eth,net,admin,web3,txpool --maxpeers 100 --cache 16000 --ipcpath ~/ON1Builder/geth.ipc --allow-insecure-unlock --http.corsdomain "*"
-   ```
-3. **Verify Sync**:
-   ```bash
-   geth attach ipc:/path/to/geth.ipc
-   > eth.syncing
-   ```
-   Wait until synchronization is complete.
-
-### Beacon Node Setup
-
-Use [Prysm](https://docs.prylabs.network/docs/install/install-with-script) or [Lighthouse](https://lighthouse-book.sigmaprime.io/installation.html).
-
-```bash
-./prysm.sh beacon-chain --mainnet --checkpoint-sync-url=https://beaconcha.in/api/v1/genesis --genesis-beacon-api-url=https://beaconcha.in --http-web3provider=/path/to/geth.ipc
-```
+---
 
 ## Installation
 
 1. **Clone the Repository:**
+
    ```bash
    git clone https://github.com/John0n1/ON1Builder.git
    cd ON1Builder
    ```
 
-2. **Create a Virtual Environment (Recommended):**
+2. **Create and Activate a Virtual Environment:**
+
    ```bash
    # Linux/macOS
    python3 -m venv venv
@@ -143,208 +144,203 @@ Use [Prysm](https://docs.prylabs.network/docs/install/install-with-script) or [L
    ```
 
 3. **Install Dependencies:**
+
    ```bash
-   python -m pip install --upgrade pip
+   pip install --upgrade pip
    pip install -r requirements.txt
    ```
 
-## Configuration
+4. **Configure Environment Variables:**
 
-ON1Builder uses environment variables and JSON configuration files for customization.
+   - Copy the provided `.env.example` (or use the provided full example) to a file named `.env` in the project root and update each key with real values.
 
-### Environment Variables (.env file)
-
-1. **Copy Example .env:**
    ```bash
    cp .env.example .env
-   ```
-2. **Edit .env**: Configure values such as API keys, Ethereum node endpoints, wallet details, and file paths.
-
-### JSON Configuration Files (utils/ directory)
-
-Customize the following files:
-
-* **token_addresses.json**: Map token symbols to contract addresses.
-* **token_symbols.json**: Map token symbols to API identifiers.
-* **erc20_signatures.json**: Define ERC20 function signatures.
-
-## Deploy Your Flash Loan Contract
-
-Deploy the `SimpleFlashloan.sol` contract using Remix:
-
-1. Open [Remix IDE](https://remix.ethereum.org/).
-2. Create a new file `SimpleFlashloan.sol` and paste the following code:
-
-   ```solidity
-   // SPDX-License-Identifier: MIT
-   pragma solidity ^0.8.20;
-
-   import "https://github.com/aave/aave-v3-core/blob/master/contracts/flashloan/base/FlashLoanSimpleReceiverBase.sol";
-   import "https://github.com/aave/aave-v3-core/blob/master/contracts/interfaces/IPoolAddressesProvider.sol";
-   import "https://github.com/aave/aave-v3-core/blob/master/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
-
-   contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
-       address payable public owner;
-
-       event FlashLoanRequested(address token, uint256 amount);
-       event FlashLoanExecuted(address token, uint256 amount, uint256 premium, bool success);
-
-       constructor(address _addressProvider) FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_addressProvider)) {
-           owner = payable(msg.sender);
-       }
-
-       modifier onlyOwner() {
-           require(msg.sender == owner, "Not contract owner");
-           _;
-       }
-
-       function fn_RequestFlashLoan(address _token, uint256 _amount) public onlyOwner {
-           emit FlashLoanRequested(_token, _amount);
-           POOL.flashLoanSimple(address(this), _token, _amount, "", 0);
-       }
-
-       function executeOperation(
-           address asset,
-           uint256 amount,
-           uint256 premium,
-           address initiator,
-           bytes calldata params
-       ) external override returns (bool) {
-           require(IERC20(asset).approve(address(POOL), amount + premium), "Approval failed");
-           emit FlashLoanExecuted(asset, amount, premium, true);
-           return true;
-       }
-
-       function withdrawToken(address _tokenAddress) public onlyOwner {
-           IERC20 token = IERC20(_tokenAddress);
-           uint256 balance = token.balanceOf(address(this));
-           require(balance > 0, "No tokens to withdraw");
-           token.transfer(owner, balance);
-       }
-
-       function withdrawETH() public onlyOwner {
-           uint256 balance = address(this).balance;
-           require(balance > 0, "No ETH to withdraw");
-           owner.transfer(balance);
-       }
-
-       receive() external payable {}
-   }
+   # Edit .env with your favorite editor:
+   nano .env
    ```
 
-3. Compile and deploy using Remix.  
-4. Update your `.env` file with the deployed contract address:
-   ```ini
-   AAVE_FLASHLOAN_ADDRESS=0xYourDeployedContractAddress
-   ```
+---
 
-## Register for API Keys
+## Configuration
 
-Obtain API keys from:
+The project uses a central `.env` file (see [the example below](#example-env-file)) along with JSON configuration files in the `utils/` directory. These files define:
 
-* [Infura](https://infura.io/)
-* [Etherscan](https://etherscan.io/apis)
-* [CoinGecko](https://www.coingecko.com/en/api)
-* [CoinMarketCap](https://coinmarketcap.com/api/)
-* [CryptoCompare](https://min-api.cryptocompare.com/)
+- Network and trading parameters.
+- API keys and endpoints.
+- Ethereum account information.
+- Paths to ABI files and ML model resources.
 
-Add your keys to the `.env` file.
+> **Note:** Ensure all file paths in the `.env` file match your project structure.
 
-## Run the Bot
+---
 
-Ensure:
+## Usage
 
-* Your Ethereum node is fully synchronized.
-* The `.env` file and JSON configuration files are correctly set.
-* Your wallet is funded with enough ETH to cover gas costs.
+### Starting the Bot
 
-**Steps:**
+Ensure that:
+- Your Ethereum node is up and running.
+- The `.env` file is correctly set.
+- All JSON configuration files are present and formatted correctly.
 
-1. Activate your virtual environment:
-   ```bash
-   # Linux/macOS
-   source venv/bin/activate
+Activate the virtual environment and start the bot:
 
-   # Windows
-   .\venv\Scripts\activate
-   ```
-2. Start ON1Builder:
-   ```bash
-   python python/main.py
-   ```
+```bash
+source venv/bin/activate  # Linux/macOS
+# or on Windows:
+# .\venv\Scripts\activate
 
-## Strategies Implemented
+python python/main.py
+```
 
-ON1Builder includes a range of MEV strategies:
+### Bot Behavior
 
-**Front-Running Strategies:**
+- **Mempool Monitoring:**  
+  Continuously scans the mempool for transactions that meet your criteria.
 
-* Aggressive Front-Running
-* Predictive Front-Running
-* Volatility Front-Running
-* Advanced Front-Running
+- **Strategy Execution:**  
+  Uses various MEV strategies (front‑run, back‑run, sandwich) to execute profitable trades.
 
-**Back-Running Strategies:**
+- **Logging:**  
+  Detailed logs are written to both the console and a log file (`python/ON1Builder.log`).
 
-* Price Dip Back-Running
-* Flashloan Back-Running
-* High Volume Back-Running
-* Advanced Back-Running
+- **Graceful Shutdown:**  
+  The bot listens for shutdown signals (SIGINT/SIGTERM) to safely cancel tasks and disconnect from the Ethereum node.
 
-**Sandwich Attack Strategies:**
+---
 
-* Flash Profit Sandwich Attack
-* Price Boost Sandwich Attack
-* Arbitrage Sandwich Attack
-* Advanced Sandwich Attack
+## Example .env File
 
-**Other Strategies:**
+Below is an example of a full, production‑ready `.env` file covering all required keys (update values as needed):
 
-* High-Value ETH Transfer Monitoring
+```ini
+# --------------------- General Settings ---------------------
+MAX_GAS_PRICE=100000000000
+GAS_LIMIT=1000000
+MAX_SLIPPAGE=0.01
+MIN_PROFIT=0.001
+MIN_BALANCE=0.000001
+MEMORY_CHECK_INTERVAL=300
+COMPONENT_HEALTH_CHECK_INTERVAL=60
+PROFITABLE_TX_PROCESS_TIMEOUT=1.0
 
-## Logging and Monitoring
+# --------------------- Standard Addresses ---------------------
+WETH_ADDRESS=0xC02aaa39b223FE8D0a0e5C4F27eAD9083C756Cc2
+USDC_ADDRESS=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+USDT_ADDRESS=0xdAC17F958D2ee523a2206206994597C13D831ec7
 
-Detailed logs are written to `python/ON1Builder.log` and also output to the console. These logs provide insights into:
+# --------------------- API Keys and Endpoints ---------------------
+ETHERSCAN_API_KEY=ABCDEF1234567890ABCDEF1234567890
+INFURA_PROJECT_ID=infura_project_1234567890
+INFURA_API_KEY=infura_api_key_1234567890
+COINGECKO_API_KEY=coingecko_api_key_123456
+COINMARKETCAP_API_KEY=coinmarketcap_api_key_123456
+CRYPTOCOMPARE_API_KEY=cryptocompare_api_key_123456
+HTTP_ENDPOINT=http://127.0.0.1:8545
+WEBSOCKET_ENDPOINT=ws://127.0.0.1:8546
+IPC_ENDPOINT=/path/to/geth.ipc
 
-* Mempool activity
-* Strategy execution and performance
-* Profit tracking
-* Error and exception details
+# --------------------- Account Configuration ---------------------
+WALLET_ADDRESS=0xYourEthereumAddress000000000000000000000000
+WALLET_KEY=0xYourPrivateKeyABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234
 
-## Troubleshooting
+# --------------------- File Paths ---------------------
+ERC20_ABI=abi/erc20_abi.json
+AAVE_FLASHLOAN_ABI=abi/aave_flashloan_abi.json
+AAVE_POOL_ABI=abi/aave_pool_abi.json
+UNISWAP_ABI=abi/uniswap_abi.json
+SUSHISWAP_ABI=abi/sushiswap_abi.json
+ERC20_SIGNATURES=abi/erc20_signatures.json
+TOKEN_ADDRESSES=utils/token_addresses.json
+TOKEN_SYMBOLS=utils/token_symbols.json
+GAS_PRICE_ORACLE_ABI=abi/gas_price_oracle_abi.json
 
-**Common Issues:**
+# --------------------- Router Addresses ---------------------
+UNISWAP_ADDRESS=0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
+SUSHISWAP_ADDRESS=0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F
+AAVE_POOL_ADDRESS=0xb53c1a33016b2dc2ff3653530bff1848a515c8c5
+AAVE_FLASHLOAN_ADDRESS=0xYourAaveFlashloanAddress000000000000000000
+GAS_PRICE_ORACLE_ADDRESS=0xYourGasPriceOracleAddress00000000000000000
 
-| Issue                              | Solution                                                              |
-| ---------------------------------- | --------------------------------------------------------------------- |
-| **Node Connection Errors**         | Verify your Ethereum node is running and that the endpoints in `.env` are correct. |
-| **API Rate Limit Exceeded**        | Throttle requests or upgrade your API plan for higher limits.         |
-| **Insufficient ETH Balance**       | Ensure your wallet has enough ETH to cover gas costs.                  |
-| **Nonce Synchronization Problems** | Restart the bot or reset the nonce manually if necessary.              |
-| **Ethereum Node Not Synced**       | Wait until your Ethereum client is fully synchronized before running the bot. |
-| **Flash Loan Contract Issues**     | Verify your flash loan contract is deployed correctly and the address is correct in `.env`. |
+# --------------------- Slippage and Gas Configuration ---------------------
+SLIPPAGE_DEFAULT=0.1
+MIN_SLIPPAGE=0.01
+MAX_SLIPPAGE=0.5
+SLIPPAGE_HIGH_CONGESTION=0.05
+SLIPPAGE_LOW_CONGESTION=0.2
+MAX_GAS_PRICE_GWEI=500
+MIN_PROFIT_MULTIPLIER=2.0
+BASE_GAS_LIMIT=21000
+DEFAULT_CANCEL_GAS_PRICE_GWEI=60
+ETH_TX_GAS_PRICE_MULTIPLIER=1.2
 
-**Debugging Tips:**
+# --------------------- ML Model Configuration ---------------------
+MODEL_RETRAINING_INTERVAL=3600
+MIN_TRAINING_SAMPLES=100
+MODEL_ACCURACY_THRESHOLD=0.7
+PREDICTION_CACHE_TTL=300
+LINEAR_REGRESSION_PATH=linear_regression
+MODEL_PATH=linear_regression/price_model.joblib
+TRAINING_DATA_PATH=linear_regression/training_data.csv
 
-1. Enable verbose logging by setting the log level to `DEBUG` in `python/maincore.py`.
-2. Ensure all dependencies are installed (`pip install -r requirements.txt`).
-3. Test on a testnet (e.g., Sepolia) before deploying to mainnet.
-4. Review logs in `python/ON1Builder.log` for detailed error messages.
+# --------------------- Mempool Monitor Configuration ---------------------
+MEMPOOL_MAX_RETRIES=3
+MEMPOOL_RETRY_DELAY=2
+MEMPOOL_BATCH_SIZE=10
+MEMPOOL_MAX_PARALLEL_TASKS=5
+
+# --------------------- Nonce Core Configuration ---------------------
+NONCE_CACHE_TTL=60
+NONCE_RETRY_DELAY=1
+NONCE_MAX_RETRIES=5
+NONCE_TRANSACTION_TIMEOUT=120
+
+# --------------------- Safety Net Configuration ---------------------
+SAFETYNET_CACHE_TTL=300
+SAFETYNET_GAS_PRICE_TTL=30
+
+# --------------------- Strategy Net Configuration ---------------------
+AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH=0.1
+AGGRESSIVE_FRONT_RUN_RISK_SCORE_THRESHOLD=0.7
+FRONT_RUN_OPPORTUNITY_SCORE_THRESHOLD=75
+VOLATILITY_FRONT_RUN_SCORE_THRESHOLD=75
+ADVANCED_FRONT_RUN_RISK_SCORE_THRESHOLD=75
+PRICE_DIP_BACK_RUN_THRESHOLD=0.99
+FLASHLOAN_BACK_RUN_PROFIT_PERCENTAGE=0.02
+HIGH_VOLUME_BACK_RUN_DEFAULT_THRESHOLD_USD=100000
+SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI=200
+PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD=0.02
+
+# --------------------- Mempool High Value Transaction Monitoring ---------------------
+HIGH_VALUE_THRESHOLD=1000000000000000000
+```
+
+---
 
 ## Contributing
 
-Contributions are highly welcome! To contribute:
+Contributions are welcome! Please follow these steps to contribute:
 
 1. Fork the repository.
-2. Create a new branch for your feature or bug fix.
-3. Write your code following PEP 8 guidelines and add tests.
-4. Submit a pull request with detailed descriptions of your changes.
+2. Clone your fork and create a feature branch.
+3. Follow PEP8 style guidelines and write tests for any new features or bug fixes.
+4. Submit a pull request with a detailed description of your changes.
 
-See `CONTRIBUTING.md` for more information.
+See our [CONTRIBUTING.md](CONTRIBUTING.md) for further instructions.
+
+---
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE). See the LICENSE file for details.
+This project is licensed under the [MIT License](LICENSE). See the LICENSE file for full details.
 
-**Disclaimer:**  
-Trading and MEV strategies involve significant risk. Use ON1Builder at your own risk. The developers are not responsible for any losses incurred using this software.
+---
+
+## Disclaimer
+
+Trading and MEV strategies involve significant risks. Use ON1Builder at your own risk. The developers are not responsible for any financial losses incurred from using this software.
+
+---
+
+Happy Trading!  
