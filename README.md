@@ -2,7 +2,8 @@
 
 ‎[![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/release/python-3120/) [![Latest Release](https://img.shields.io/badge/Release-1.0.1-green.svg)](https://github.com/John0n1/ON1Builder/releases/tag/v1.0.1)
 
-![ON1BUILDER](https://github.com/user-attachments/assets/4f60cb4e-1722-4609-a5f1-86e96ce4f6c7)
+![on1builder](https://github.com/user-attachments/assets/59e03abe-67ee-4195-9030-63f49c48e46f)
+
 
 **ON1Builder, a powerful framework designed for high-frequency trading and Maximal Extractable Value (MEV) strategies.**
 
