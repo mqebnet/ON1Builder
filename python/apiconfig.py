@@ -388,7 +388,7 @@ class APIConfig:
                 return 0.0
             df_features = pd.DataFrame([{
                 "price_usd": sum(market_data) / len(market_data),
-                "volume_24h": 0,
+                "volume_24h": await self.get_token_volume_data(token),
                 "market_cap": 0,
                 "volatility": 0,
                 "liquidity_ratio": 0,

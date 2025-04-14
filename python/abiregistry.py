@@ -209,3 +209,19 @@ class ABIRegistry:
         self.abis[abi_type] = new_abi
         self._extract_signatures(new_abi, abi_type)
         logger.info(f"Updated {abi_type} ABI dynamically.")
+
+    async def validate_abi(self, abi_type: str) -> bool:
+        """
+        Validate the ABI for a given type.
+
+        Args:
+            abi_type (str): The type of the ABI to validate.
+
+        Returns:
+            bool: True if the ABI is valid, else False.
+        """
+        abi = self.abis.get(abi_type)
+        if not abi:
+            logger.error(f"ABI for {abi_type} not found.")
+            return False
+        return self._validate_abi(abi, abi_type)
