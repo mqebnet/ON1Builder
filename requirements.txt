@@ -61,6 +61,6 @@ utils==1.0.2
 web3==7.10.0
 websockets==15.0.1
 yarl==1.19.0
+Flask-Cors==4.0.2
 Flask==2.2.5
-Flask-Cors==3.0.10
 gunicorn==23.0.0
