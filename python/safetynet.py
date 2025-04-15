@@ -14,7 +14,7 @@ from marketmonitor import MarketMonitor
 from loggingconfig import setup_logging
 import logging
 
-logger = setup_logging("SafetyNet", level=logging.INFO)
+logger = setup_logging("SafetyNet", level=logging.DEBUG)
 
 
 class SafetyNet:

@@ -11,7 +11,7 @@ from eth_utils import is_checksum_address, to_checksum_address
 from loggingconfig import setup_logging
 import logging
 
-logger = setup_logging("Configuration", level=logging.INFO)
+logger = setup_logging("Configuration", level=logging.DEBUG)
 
 
 class Configuration:

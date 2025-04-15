@@ -8,7 +8,7 @@ from eth_utils import function_signature_to_4byte_selector
 from loggingconfig import setup_logging
 import logging
 
-logger = setup_logging("AbiRegistry", level=logging.INFO)
+logger = setup_logging("AbiRegistry", level=logging.DEBUG)
 
 class ABIRegistry:
     """

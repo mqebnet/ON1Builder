@@ -14,7 +14,7 @@ from marketmonitor import MarketMonitor
 from loggingconfig import setup_logging
 import logging
 
-logger = setup_logging("StrategyNet", level=logging.INFO)
+logger = setup_logging("StrategyNet", level=logging.DEBUG)
 
 class StrategyPerformanceMetrics:
     def __init__(self):
@@ -49,7 +49,6 @@ class StrategyNet:
         self.safetynet = safetynet
         self.apiconfig = apiconfig
         self.strategy_types = ["eth_transaction", "front_run", "back_run", "sandwich_attack"]
-        # Define the strategy registry by type. In this example, we assume that TransactionCore already implements these.
         self._strategy_registry: Dict[str, List[Callable[[Dict[str, Any]], asyncio.Future]]] = {
             "eth_transaction": [self.transactioncore.handle_eth_transaction],
             "front_run": [
@@ -78,6 +77,9 @@ class StrategyNet:
         }
         self.configuration: StrategyConfiguration = StrategyConfiguration()
         logger.debug("StrategyNet initialized.")
+    
+    async def initialize(self) -> None:
+        pass
 
     def get_strategies(self, strategy_type: str) -> List[Callable[[Dict[str, Any]], asyncio.Future]]:
         return self._strategy_registry.get(strategy_type, [])
@@ -148,9 +150,9 @@ class StrategyNet:
             return False
         start_time = time.time()
         selected_strategy = await self._select_best_strategy(strategies, strategy_type)
-        profit_before = await self.transactioncore.get_current_profit()
+        profit_before = self.transactioncore.current_profit  # replaced await get_current_profit()
         success = await selected_strategy(target_tx)
-        profit_after = await self.transactioncore.get_current_profit()
+        profit_after = self.transactioncore.current_profit  # replaced await get_current_profit()
         execution_time = time.time() - start_time
         profit_made = Decimal(profit_after) - Decimal(profit_before)
         await self._update_strategy_metrics(selected_strategy.__name__, strategy_type, success, profit_made, execution_time)

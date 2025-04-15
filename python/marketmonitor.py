@@ -14,7 +14,7 @@ from configuration import Configuration
 from loggingconfig import setup_logging
 import logging
 
-logger = setup_logging("MarketMonitor", level=logging.INFO)
+logger = setup_logging("MarketMonitor", level=logging.DEBUG)
 
 class MarketMonitor:
     """
@@ -139,6 +139,11 @@ class MarketMonitor:
             "bearish_trend": False,
             "low_liquidity": False,
         }
+        
+        if not token_address:
+            logger.debug("Token address is None or empty")
+            return market_conditions
+            
         # Get token symbol from APIConfig.
         symbol = self.apiconfig.get_token_symbol(token_address)
         if not symbol:

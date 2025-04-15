@@ -14,7 +14,7 @@ from configuration import Configuration
 from loggingconfig import setup_logging
 import logging
 
-logger = setup_logging("APIConfig", level=logging.INFO)
+logger = setup_logging("APIConfig", level=logging.DEBUG)
 
 class APIConfig:
     MAX_REQUEST_ATTEMPTS: int = 5
@@ -98,6 +98,10 @@ class APIConfig:
             await self.session.close()
 
     def get_token_symbol(self, address: str) -> Optional[str]:
+        """Get token symbol for an address with null check."""
+        if not address:
+            logger.debug("Received empty/None address in get_token_symbol")
+            return None
         return self.token_address_to_symbol.get(address.lower())
 
     def get_token_address(self, symbol: str) -> Optional[str]:
@@ -143,6 +147,11 @@ class APIConfig:
             return None
 
     async def get_real_time_price(self, token: str, vs_currency: str = "eth") -> Optional[Decimal]:
+        """Get real-time price for a token."""
+        if not token:
+            logger.warning("Empty token provided to get_real_time_price")
+            return None
+            
         if token.startswith("0x"):
             token = self.token_address_to_symbol.get(token.lower())
             if not token:
@@ -344,7 +353,7 @@ class APIConfig:
                 self.price_cache[cache_key] = data
             return data
         except Exception as e:
-            logger.error(f"Error fetching token price data for {token_symbol}: {e}", exc_info=True)
+            logger.error(f"Error fetching token price data for {token_symbol}: {e}")
             return [] if data_type == "historical" else 0.0
 
     async def get_token_volume_data(self, token_symbol: str) -> float:

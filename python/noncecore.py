@@ -9,7 +9,7 @@ from configuration import Configuration
 from loggingconfig import setup_logging
 import logging
 
-logger = setup_logging("NonceCore", level=logging.INFO)
+logger = setup_logging("NonceCore", level=logging.DEBUG)
 
 class NonceCore:
     """

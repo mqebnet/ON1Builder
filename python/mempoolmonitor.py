@@ -13,7 +13,7 @@ from marketmonitor import MarketMonitor
 from loggingconfig import setup_logging
 import logging
 
-logger = setup_logging("MempoolMonitor", level=logging.INFO)
+logger = setup_logging("MempoolMonitor", level=logging.DEBUG)
 
 class MempoolMonitor:
     """

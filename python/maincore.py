@@ -2,6 +2,7 @@ import asyncio
 import tracemalloc
 import async_timeout
 import time
+import os
 import sys
 import signal
 from typing import Any, Dict, List, Optional
@@ -25,7 +26,7 @@ from transactioncore import TransactionCore
 from loggingconfig import setup_logging
 import logging
 
-logger = setup_logging("MainCore", level=logging.INFO)
+logger = setup_logging("MainCore", level=logging.DEBUG)
 
 class MainCore:
     """
@@ -170,16 +171,6 @@ class MainCore:
             self.components["safetynet"] = SafetyNet(self.web3, self.configuration, self.account.address, self.account, self.components["apiconfig"], self.components.get("marketmonitor"))
             await self.components["safetynet"].initialize()
 
-            # Initialize TransactionCore
-            self.components["transactioncore"] = TransactionCore(
-                self.web3,
-                self.account,
-                self.configuration,
-                noncecore=self.components["noncecore"],
-                safetynet=self.components["safetynet"],
-            )
-            await self.components["transactioncore"].initialize()
-
             # Initialize MarketMonitor
             self.components["marketmonitor"] = MarketMonitor(
                 web3=self.web3,
@@ -189,9 +180,23 @@ class MainCore:
             )
             await self.components["marketmonitor"].initialize()
 
+            # Initialize TransactionCore
+            self.components["transactioncore"] = TransactionCore(
+                self.web3,
+                self.account,
+                self.configuration,
+                noncecore=self.components["noncecore"],
+                safetynet=self.components["safetynet"],
+                apiconfig=self.components["apiconfig"],
+                marketmonitor=self.components["marketmonitor"]
+            )
+            await self.components["transactioncore"].initialize()
+
             # Initialize MempoolMonitor
             token_addresses = await self.configuration.get_token_addresses()
-            erc20_signatures = await self.configuration.get_erc20_signatures()
+            erc20_abi_path = str((__file__ and
+                (os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'abi', 'erc20_abi.json')))
+            ))
             self.components["mempoolmonitor"] = MempoolMonitor(
                 web3=self.web3,
                 safetynet=self.components["safetynet"],
@@ -199,8 +204,8 @@ class MainCore:
                 apiconfig=self.components["apiconfig"],
                 monitored_tokens=token_addresses,
                 configuration=self.configuration,
-                erc20_abi=erc20_signatures,
-                marketmonitor=self.components["marketmonitor"]
+                marketmonitor=self.components["marketmonitor"],
+                erc20_abi_path=erc20_abi_path
             )
             await self.components["mempoolmonitor"].initialize()
 
