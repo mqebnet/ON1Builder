@@ -174,8 +174,6 @@ The project uses a central `.env` file (see [the example below](#example-env-fil
 - Ethereum account information.
 - Paths to ABI files and ML model resources.
 
-> **Note:** Ensure all file paths in the `.env` file match your project structure.
-
 ---
 
 ## Usage
