@@ -1,8 +1,11 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 import threading
 import asyncio
 import time
+import queue
+import logging
 
 import sys
 import os
@@ -13,6 +16,7 @@ from loggingconfig import setup_logging
 
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 logger = setup_logging("FlaskUI", level=20)
 
@@ -21,6 +25,29 @@ bot_thread = None
 bot_loop = None
 main_core = None
 main_core_lock = threading.Lock()
+
+class WebSocketLogHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.log_queue = queue.Queue()
+        self.current_level = logging.INFO
+
+    def emit(self, record):
+        try:
+            log_entry = {
+                'level': record.levelname,
+                'message': self.format(record),
+                'timestamp': time.strftime('%H:%M:%S', time.localtime(record.created))
+            }
+            self.log_queue.put(log_entry)
+            socketio.emit('log_message', log_entry)
+        except Exception:
+            self.handleError(record)
+
+# Initialize WebSocket logging
+ws_handler = WebSocketLogHandler()
+ws_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(ws_handler)
 
 def run_bot_in_thread():
     global bot_running, bot_loop, main_core
@@ -147,5 +174,23 @@ def get_components():
     status = {k: v is not None for k, v in main_core.components.items()}
     return jsonify(status), 200
 
+@app.route('/set_log_level', methods=['POST'])
+def set_log_level():
+    level = request.json.get('level', 'INFO')
+    level_map = {
+        'DEBUG': logging.DEBUG,
+        'INFO': logging.INFO
+    }
+    if level in level_map:
+        ws_handler.current_level = level_map[level]
+        logging.getLogger().setLevel(level_map[level])
+        return jsonify({"status": "Log level updated", "level": level}), 200
+    return jsonify({"error": "Invalid log level"}), 400
+
+@socketio.on('connect')
+def handle_connect():
+    recent_logs = list(ws_handler.log_queue.queue)[-100:]  # Get last 100 logs
+    emit('initial_logs', recent_logs)
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
