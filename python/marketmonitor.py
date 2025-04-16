@@ -1,9 +1,12 @@
+# File: python/marketmonitor.py
+
 import asyncio
 import os
 import time
 import joblib
 import pandas as pd
 import numpy as np
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from sklearn.linear_model import LinearRegression
 from cachetools import TTLCache
@@ -46,9 +49,9 @@ class MarketMonitor:
 
         # Cache for recent market data
         self.price_cache: TTLCache = TTLCache(maxsize=2000, ttl=300)
-        self.update_scheduler: Dict[str, int] = {
-            "training_data": 0,
-            "model": 0,
+        self.update_scheduler: Dict[str, float] = {
+            "training_data": 0.0,
+            "model": 0.0,
             "model_retraining_interval": self.configuration.MODEL_RETRAINING_INTERVAL,
         }
 
@@ -116,7 +119,7 @@ class MarketMonitor:
             try:
                 current_time = time.time()
                 if current_time - self.update_scheduler["training_data"] >= self.update_scheduler["model_retraining_interval"]:
-                    await self.apiconfig.update_training_data()
+                    await self.update_training_data()
                     self.update_scheduler["training_data"] = current_time
                 if current_time - self.update_scheduler["model"] >= self.update_scheduler["model_retraining_interval"]:
                     await self.train_price_model()
@@ -151,7 +154,7 @@ class MarketMonitor:
             return market_conditions
         try:
             api_symbol = symbol.upper()
-            prices = await self.apiconfig.get_token_price_data(api_symbol, "historical", timeframe=1)
+            prices = await self.apiconfig.get_token_price_data(api_symbol, "historical", timeframe=1, vs_currency="usd")
             if not prices or len(prices) < 2:
                 logger.debug(f"Not enough price data for {symbol}.")
                 return market_conditions
@@ -182,7 +185,6 @@ class MarketMonitor:
         """
         try:
             cache_key = f"prediction_{token_symbol}"
-            # Use a local cache if available; else, predict.
             if cache_key in self.apiconfig.prediction_cache:
                 return self.apiconfig.prediction_cache[cache_key]
             prediction = await self.apiconfig.predict_price(token_symbol)
@@ -203,6 +205,96 @@ class MarketMonitor:
         Retrieve token price data either as a current price or historical data.
         """
         return await self.apiconfig.get_token_price_data(token_symbol, data_type, timeframe, vs_currency)
+
+    async def update_training_data(self) -> None:
+        """
+        Update the training data CSV with new market information.
+        This method fetches the latest historical prices, volume, and metadata for each monitored token,
+        computes derived features, and appends the data to the training_data.csv.
+        """
+        logger.info("Updating training data...")
+        training_file = self.training_data_path
+
+        # Attempt to load existing training data
+        try:
+            existing_df = pd.read_csv(training_file)
+        except Exception:
+            existing_df = pd.DataFrame()
+
+        # Collect new data rows in a list
+        new_rows = []
+        # Get all monitored token symbols from APIConfig mapping
+        token_symbols = list(self.apiconfig.token_symbol_to_address.keys())
+        for token in token_symbols:
+            try:
+                # Historical prices (assume this returns a list of price values in USD)
+                historical_prices: List[float] = await self.apiconfig.get_token_price_data(token, "historical", timeframe=1, vs_currency="usd")
+                if not historical_prices:
+                    logger.debug(f"No historical prices for token {token}. Skipping.")
+                    continue
+
+                current_price = historical_prices[-1]
+                avg_price = np.mean(historical_prices)
+                volatility = float(np.std(historical_prices) / avg_price) if avg_price > 0 else 0.0
+                percent_change_24h = ((historical_prices[-1] - historical_prices[0]) / historical_prices[0] * 100) if historical_prices[0] != 0 else 0.0
+                price_momentum = ((historical_prices[-1] - historical_prices[0]) / historical_prices[0]) if historical_prices[0] != 0 else 0.0
+
+                # Get 24h volume from APIConfig (in USD)
+                volume_24h = await self.apiconfig.get_token_volume(token)
+
+                # Get token metadata (including market cap, total/circulating supply, etc.)
+                metadata: Dict[str, Any] = await self.apiconfig.get_token_metadata(token)
+                market_cap = metadata.get("market_cap", 0)
+                total_supply = metadata.get("total_supply", 0)
+                circulating_supply = metadata.get("circulating_supply", 0)
+                trading_pairs = metadata.get("trading_pairs", 0)
+                exchange_count = metadata.get("exchange_count", 0)
+
+                # Compute liquidity ratio if market cap is available
+                liquidity_ratio = (volume_24h / market_cap) if market_cap > 0 else 0.0
+
+                # For avg_transaction_value, buy_sell_ratio, smart_money_flow, assume
+                # we compute neutral values as 0.0 (for production you would call proper endpoints)
+                avg_transaction_value = 0.0
+                buy_sell_ratio = 1.0  # Neutral ratio (1.0 means balanced)
+                smart_money_flow = 0.0
+
+                row = {
+                    "timestamp": int(datetime.utcnow().timestamp()),
+                    "symbol": token,
+                    "price_usd": current_price,
+                    "market_cap": market_cap,
+                    "volume_24h": volume_24h,
+                    "percent_change_24h": percent_change_24h,
+                    "total_supply": total_supply,
+                    "circulating_supply": circulating_supply,
+                    "volatility": volatility,
+                    "liquidity_ratio": liquidity_ratio,
+                    "avg_transaction_value": avg_transaction_value,
+                    "trading_pairs": trading_pairs,
+                    "exchange_count": exchange_count,
+                    "price_momentum": price_momentum,
+                    "buy_sell_ratio": buy_sell_ratio,
+                    "smart_money_flow": smart_money_flow
+                }
+                new_rows.append(row)
+                logger.debug(f"Token {token} data appended: {row}")
+            except Exception as e:
+                logger.error(f"Error updating training data for token {token}: {e}", exc_info=True)
+
+        if new_rows:
+            new_df = pd.DataFrame(new_rows)
+            if not existing_df.empty:
+                combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+                combined_df.drop_duplicates(subset=["timestamp", "symbol"], inplace=True)
+                combined_df.sort_values("timestamp", inplace=True)
+            else:
+                combined_df = new_df
+            # Save the updated CSV file
+            combined_df.to_csv(training_file, index=False)
+            logger.info(f"Training data updated with {len(new_rows)} new samples. Total samples: {len(combined_df)}")
+        else:
+            logger.info("No new training data was fetched.")
 
     async def train_price_model(self) -> None:
         """
@@ -234,8 +326,7 @@ class MarketMonitor:
         Stop MarketMonitor operations by clearing caches.
         """
         try:
-            for cache in [self.price_cache]:
-                cache.clear()
+            self.price_cache.clear()
             logger.info("MarketMonitor stopped.")
         except Exception as e:
             logger.error(f"Error stopping MarketMonitor: {e}", exc_info=True)
