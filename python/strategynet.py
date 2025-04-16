@@ -1,4 +1,4 @@
-# python/strategynet.py
+# File: python/strategynet.py
 
 import asyncio
 import time
@@ -71,6 +71,7 @@ class StrategyNet:
         self.strategy_performance: Dict[str, StrategyPerformanceMetrics] = {
             stype: StrategyPerformanceMetrics() for stype in self.strategy_types
         }
+        # Start with equal weights for all strategies per type.
         self.reinforcement_weights: Dict[str, np.ndarray] = {
             stype: np.ones(len(self._strategy_registry[stype]))
             for stype in self.strategy_types
@@ -79,7 +80,8 @@ class StrategyNet:
         logger.debug("StrategyNet initialized.")
     
     async def initialize(self) -> None:
-        pass
+        # For production, additional initialization could be done here.
+        logger.info("StrategyNet initialization complete.")
 
     def get_strategies(self, strategy_type: str) -> List[Callable[[Dict[str, Any]], asyncio.Future]]:
         return self._strategy_registry.get(strategy_type, [])
@@ -90,12 +92,32 @@ class StrategyNet:
             logger.debug("Exploration: randomly selecting a strategy.")
             return random.choice(strategies)
         max_weight = np.max(weights)
-        exp_weights = np.exp(weights - max_weight)
+        exp_weights = np.exp(weights - max_weight)  # for numerical stability
         probabilities = exp_weights / exp_weights.sum()
         selected_index = np.random.choice(len(strategies), p=probabilities)
         selected_strategy = strategies[selected_index]
-        logger.debug(f"Selected strategy '{selected_strategy.__name__}' (weight {weights[selected_index]:.4f}).")
+        logger.debug(f"Selected strategy '{selected_strategy.__name__}' (weight: {weights[selected_index]:.4f}).")
         return selected_strategy
+
+    def _calculate_reward(self, success: bool, profit: Decimal, execution_time: float) -> float:
+        """
+        Compute the reward of a strategy execution.
+        Rewards are based on profit (if successful) minus penalties for slow execution and high risk.
+        """
+        # Base reward: profit in ETH if successful; a small negative base if not
+        base_reward = float(profit) if success else -0.1
+        # Time penalty: larger execution times incur a penalty
+        time_penalty = 0.01 * execution_time
+        # Risk penalty: a fixed penalty representing inherent variability
+        risk_penalty = 0.05  # In a real system, compute variance from historical execution times
+        # Worst-case penalty: additional penalty if execution_time exceeds a threshold (e.g., 2 seconds)
+        worst_case_threshold = 2.0
+        worst_case_penalty = 0.05 * max(0.0, execution_time - worst_case_threshold)
+        total_reward = base_reward - time_penalty - risk_penalty - worst_case_penalty
+        logger.debug(f"Reward computed: base: {base_reward:.4f}, time_penalty: {time_penalty:.4f}, "
+                     f"risk_penalty: {risk_penalty:.4f}, worst_case_penalty: {worst_case_penalty:.4f}, "
+                     f"total: {total_reward:.4f}")
+        return total_reward
 
     async def _update_strategy_metrics(self,
                                        strategy_name: str,
@@ -110,16 +132,29 @@ class StrategyNet:
             metrics.profit += profit
         else:
             metrics.failures += 1
-        metrics.avg_execution_time = (
-            metrics.avg_execution_time * self.configuration.decay_factor +
-            execution_time * (1 - self.configuration.decay_factor)
-        )
+
+        # Update average execution time using an exponential moving average
+        decay = self.configuration.decay_factor
+        metrics.avg_execution_time = (metrics.avg_execution_time * decay +
+                                      execution_time * (1 - decay))
         metrics.success_rate = metrics.successes / metrics.total_executions
+
+        # Determine the index of the strategy
         strategy_index = self.get_strategy_index(strategy_name, strategy_type)
         if strategy_index >= 0:
+            current_weight = self.reinforcement_weights[strategy_type][strategy_index]
             reward = self._calculate_reward(success, profit, execution_time)
-            self._update_reinforcement_weight(strategy_type, strategy_index, reward)
-        logger.debug(f"Updated metrics for {strategy_name} ({strategy_type}): success_rate {metrics.success_rate:.4f}")
+            # Q-learning inspired update: using a discount factor (gamma) and learning rate
+            gamma = 0.9  # discount factor
+            # For this design, we use the current weight as the next maximum; in a complete system, you’d compute next max Q.
+            next_max_q = current_weight
+            learning_rate = self.configuration.learning_rate
+            updated_weight = current_weight + learning_rate * (reward + gamma * next_max_q - current_weight)
+            self.reinforcement_weights[strategy_type][strategy_index] = max(0.1, updated_weight)
+            logger.debug(f"Updated weight for {strategy_name} (type: {strategy_type}, index: {strategy_index}) "
+                         f"from {current_weight:.4f} to {updated_weight:.4f}")
+        logger.debug(f"Strategy metrics for {strategy_type}: total_executions: {metrics.total_executions}, "
+                     f"success_rate: {metrics.success_rate:.4f}, avg_execution_time: {metrics.avg_execution_time:.4f}")
 
     def get_strategy_index(self, strategy_name: str, strategy_type: str) -> int:
         strategies = self.get_strategies(strategy_type)
@@ -129,20 +164,6 @@ class StrategyNet:
         logger.warning(f"Strategy {strategy_name} not found for type {strategy_type}")
         return -1
 
-    def _calculate_reward(self, success: bool, profit: Decimal, execution_time: float) -> float:
-        base_reward = float(profit) if success else -0.1
-        time_penalty = 0.01 * execution_time
-        total_reward = base_reward - time_penalty
-        logger.debug(f"Reward for strategy: {total_reward:.4f} (Base: {base_reward}, Penalty: {time_penalty})")
-        return total_reward
-
-    def _update_reinforcement_weight(self, strategy_type: str, index: int, reward: float) -> None:
-        lr = self.configuration.learning_rate
-        current_weight = self.reinforcement_weights[strategy_type][index]
-        new_weight = current_weight * (1 - lr) + reward * lr
-        self.reinforcement_weights[strategy_type][index] = max(0.1, new_weight)
-        logger.debug(f"Updated weight for index {index} in {strategy_type}: {new_weight:.4f}")
-
     async def execute_best_strategy(self, target_tx: Dict[str, Any], strategy_type: str) -> bool:
         strategies = self.get_strategies(strategy_type)
         if not strategies:
@@ -150,10 +171,10 @@ class StrategyNet:
             return False
         start_time = time.time()
         selected_strategy = await self._select_best_strategy(strategies, strategy_type)
-        profit_before = self.transactioncore.current_profit  # replaced await get_current_profit()
+        profit_before = Decimal(self.transactioncore.current_profit)
         success = await selected_strategy(target_tx)
-        profit_after = self.transactioncore.current_profit  # replaced await get_current_profit()
+        profit_after = Decimal(self.transactioncore.current_profit)
         execution_time = time.time() - start_time
-        profit_made = Decimal(profit_after) - Decimal(profit_before)
+        profit_made = profit_after - profit_before
         await self._update_strategy_metrics(selected_strategy.__name__, strategy_type, success, profit_made, execution_time)
         return success
