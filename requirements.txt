@@ -58,7 +58,7 @@ urllib3==2.4.0
 utils==1.0.2
 web3==7.10.0
 websockets==15.0.1
-yarl==1.19.0
+yarl==1.20.0
 flask==3.1.0
 flask-cors==5.0.1
 flask_socketio==5.12.0
