@@ -171,12 +171,6 @@ Licensed under MIT. Flashloan arbitrage entails financial risk; use at your own 
 
 ---
 
-## Appendix
-- Data Flow Diagram: `docs/mermaid1.svg`
-- Performance Metrics: dynamically generated at runtime.
-
-
-
 ## 10. Appendix – Diagrams
 
 **Table 1: Summary of Main Components**
@@ -206,7 +200,7 @@ Licensed under MIT. Flashloan arbitrage entails financial risk; use at your own 
 
 ---
 
-**Table 2: Example Performance Metrics (Dynamic Values)**
+**Table 2:Performance Metrics (Dynamic Values)**
 
 | **Metric**                   | **Value**             | **Unit**   |
 |------------------------------|-----------------------|------------|
@@ -220,7 +214,5 @@ Licensed under MIT. Flashloan arbitrage entails financial risk; use at your own 
 | Transactions Executed        | 185                   | count      |
 
 ---
-
 ![on1builder](https://github.com/user-attachments/assets/59e03abe-67ee-4195-9030-63f49c48e46f)
-
 ---
