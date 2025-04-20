@@ -168,6 +168,10 @@ class Configuration:
         self.MODEL_PATH: str = str(self.BASE_PATH / "linear_regression" / "price_model.joblib")
         self.TRAINING_DATA_PATH: str = str(self.BASE_PATH / "linear_regression" / "training_data.csv")
 
+        # --- MarketMonitor thresholds ---
+        self.VOLATILITY_THRESHOLD: float = self._get_env_float("VOLATILITY_THRESHOLD", 0.05, "Volatility threshold for high volatility")
+        self.LIQUIDITY_THRESHOLD: float = self._get_env_float("LIQUIDITY_THRESHOLD", 100_000, "Liquidity threshold for low liquidity")
+
         # --------------------- Mempool Monitor Configuration ---------------------
         self.MEMPOOL_MAX_RETRIES: int = self._get_env_int("MEMPOOL_MAX_RETRIES", 3, "Mempool maximum retry count")
         self.MEMPOOL_RETRY_DELAY: int = self._get_env_int("MEMPOOL_RETRY_DELAY", 2, "Mempool retry delay (seconds)")
@@ -591,7 +595,7 @@ class Configuration:
             logger.warning(f"Missing API keys: {', '.join(missing_keys)}")
         if invalid_keys:
             logger.error(f"Invalid API keys: {', '.join(invalid_keys)}")
-            raise ValueError(f"Invalid API keys detected: {', '.join(invalid_keys)}")
+            pass 
 
     def _validate_addresses(self) -> None:
         """
