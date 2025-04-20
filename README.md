@@ -43,7 +43,7 @@
 
 ## 1. Executive Summary
 
-ON1Builder is a cutting‑edge MEV (Miner Extractable Value) and flashloan arbitrage bot that operates seamlessly on Ethereum mainnet and testnets. It combines:
+ON1Builder is a versatile Maximal Extractable Value (MEV) flashloan arbitrage bot operating on Ethereum's mainnet and testnets. It integrates:
 
 - **Smart‑contract flashloans** via Aave V3  
 - **Automated DEX routing** on Uniswap and Sushiswap  
