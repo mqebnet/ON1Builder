@@ -194,9 +194,6 @@ class MainCore:
 
             # Initialize MempoolMonitor
             token_addresses = await self.configuration.get_token_addresses()
-            erc20_abi_path = str((__file__ and
-                (os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'abi', 'erc20_abi.json')))
-            ))
             self.components["mempoolmonitor"] = MempoolMonitor(
                 web3=self.web3,
                 safetynet=self.components["safetynet"],
@@ -204,8 +201,7 @@ class MainCore:
                 apiconfig=self.components["apiconfig"],
                 monitored_tokens=token_addresses,
                 configuration=self.configuration,
-                marketmonitor=self.components["marketmonitor"],
-                erc20_abi_path=erc20_abi_path
+                marketmonitor=self.components["marketmonitor"]
             )
             await self.components["mempoolmonitor"].initialize()
 
