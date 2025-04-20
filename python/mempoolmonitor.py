@@ -1,8 +1,7 @@
 # python/mempoolmonitor.py
 
 import asyncio
-
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Self
 from web3 import AsyncWeb3
 from web3.exceptions import TransactionNotFound
 from configuration import Configuration
@@ -27,7 +26,6 @@ class MempoolMonitor:
                  apiconfig: APIConfig,
                  monitored_tokens: List[str],
                  configuration: Configuration,
-                 erc20_abi_path: str,  # now a full path string
                  marketmonitor: MarketMonitor):
         self.web3 = web3
         self.configuration = configuration
@@ -35,7 +33,11 @@ class MempoolMonitor:
         self.noncecore = noncecore
         self.apiconfig = apiconfig
         self.marketmonitor = marketmonitor
-        self.monitored_tokens = set(monitored_tokens)
+        # Accept both addresses and symbols, but store as normalized addresses for lookup
+        self.monitored_tokens = set(
+            apiconfig.get_token_address(t) if not t.startswith("0x") else t.lower()
+            for t in monitored_tokens
+        )
         self.pending_transactions = asyncio.Queue()
         self.profitable_transactions = asyncio.Queue()
         self.task_queue = asyncio.PriorityQueue()
@@ -203,15 +205,25 @@ class MempoolMonitor:
         """
         result = {"is_profitable": False}
         try:
+            # Use correct address/symbol mapping for token checks
+            to_addr = tx.get("to", "")
+            if to_addr:
+                symbol = self.apiconfig.get_token_symbol(to_addr)
+            else:
+                symbol = None
             gas_price = tx.get("gasPrice", 0)
             value = tx.get("value", 0)
-            if gas_price > 0 and value > 0:
+            # Only analyze if the transaction is for a monitored token
+            if (gas_price > 0 and value > 0 and
+                (to_addr.lower() in self.monitored_tokens or (symbol and symbol in self.apiconfig.token_symbol_to_address))):
                 result = {
                     "is_profitable": True,
                     "tx_hash": tx.get("hash").hex() if "hash" in tx else "unknown",
                     "gasPrice": gas_price,
                     "value": value,
-                    "strategy_type": "front_run"  # Placeholder strategy assignment.
+                    "strategy_type": "front_run",
+                    "token_symbol": symbol,
+                    "token_address": to_addr
                 }
         except Exception as e:
             logger.error(f"Analysis error: {e}")
