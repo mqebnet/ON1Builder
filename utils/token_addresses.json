@@ -1,6 +1,4 @@
 {
-    "_comment": "Maps common token symbols to their Ethereum Mainnet contract addresses. Verify addresses if using a different network.",
-
     "WETH": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
     "ETH": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     "WBTC": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
@@ -21,7 +19,5 @@
     "MATIC": "0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0",
     "SHIB": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
     "APE": "0x4d224452801aced8b2f0aebe155379bb5d594381",
-
-    "_comment_verify": "feel free to verify relevance or removing less common/delisted tokens below depending on strategy needs.",
     "REN": "0x408e41876cccdc0f92210600ef50372656052a38"
 }
