@@ -261,7 +261,7 @@ pip install -r requirements.txt
 
 ### 7.3 Configuration
 
-Copy and edit the example `.env` (no trial URLs, no JWT secrets):
+Copy and edit the example `.env`:
 
 ```bash
 cp .env.example .env
