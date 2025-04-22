@@ -13,7 +13,7 @@ ckzg==2.1.1
 colorama==0.4.6
 colorlog==6.9.0
 cytoolz==1.0.1
-eth-account==0.13.6
+eth-account==0.13.7
 eth-hash==0.7.1
 eth-rlp==2.2.0
 eth-typing==5.2.1
