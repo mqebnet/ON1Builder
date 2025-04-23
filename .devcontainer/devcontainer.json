@@ -1,3 +1,29 @@
 {
-  "postCreateCommand": "pip install -r requirements.txt && pytest tests/"
+  "name": "ON1Builder Dev Container",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12", // Updated to Python 3.12
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12"
+    }
+  },
+  "postCreateCommand": "pip install -r requirements.txt && pytest tests/",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python", // Python extension
+        "ms-python.vscode-pylance", // Pylance for IntelliSense
+        "ms-toolsai.jupyter", // Jupyter support
+        "ms-python.black-formatter", // Black formatter
+        "ms-python.flake8", // Flake8 linter
+        "ms-python.isort" // isort for imports
+      ],
+      "settings": {
+        "python.formatting.provider": "black",
+        "python.linting.flake8Enabled": true,
+        "python.linting.enabled": true,
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "workspaceFolder": "/workspace/ON1Builder" // Set default workspace folder
 }
