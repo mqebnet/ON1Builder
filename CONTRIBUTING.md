@@ -1,6 +1,4 @@
-# Contributing to ON1Builder MEV Bot 
-
-## Quick Start
+# Contributing to ON1Builder MEV Bot 🚀
 
 1. **Fork & Clone**
 ```bash
@@ -18,7 +16,7 @@ pip install -r requirements.txt
 3. **Configure**
 ```bash
 cp .env.example .env
-# Fill in your API keys
+# Fill in API keys
 ```
 
 ## What You Need
@@ -58,8 +56,6 @@ git checkout -b feature/cool-new-thing
 ## Style Guide 📝
 
 - Follow PEP 8
-- Use type hints
-- Max 88 chars per line
 - Clear variable names
 
 ## Testing
@@ -77,6 +73,3 @@ pytest tests/
 
 MIT License
 
----
-
-Remember: Keep it simple, have fun, and happy coding!
