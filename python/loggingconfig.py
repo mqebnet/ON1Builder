@@ -8,25 +8,18 @@ import colorlog
 
 def setup_logging(name: str, level: int = logging.INFO, spinner: bool = False, spinner_message: str = "Loading") -> logging.Logger:
     """
-    Set up logging for the application with optional spinner animation.
+    Configure and return a logger.
 
     Args:
-        name (str): Name of the logger.
-        level (int): Logging level (default: logging.INFO).
-        spinner (bool): Whether to show a spinner animation (default: False).
-        spinner_message (str): Message to display with the spinner (default: "Loading").
-
+        name (str): Logger name.
+        level (int): Logging level.
+        spinner (bool): Whether to display a spinner animation.
+        spinner_message (str): Spinner message.
+    
     Returns:
-        logging.Logger: Configured logger instance.
+        logging.Logger: Configured logger.
     """
     def spinner_task(message: str, stop_event: threading.Event) -> None:
-        """
-        Spinner task for smoother animation.
-
-        Args:
-            message (str): Message to display with the spinner.
-            stop_event (threading.Event): Event to stop the spinner.
-        """
         spinner_chars = ['|', '/', '-', '\\']
         idx = 0
         while not stop_event.is_set():
