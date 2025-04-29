@@ -1,4 +1,3 @@
-# File: python/marketmonitor.py
 import asyncio
 import os
 import time
@@ -21,9 +20,7 @@ logger = setup_logging("MarketMonitor", level=logging.DEBUG)
 
 class MarketMonitor:
     """
-    Monitors market data in real‑time and predicts price movement using a linear
-    regression model.  It periodically updates training data and retrains the
-    model as needed.
+    Monitors real-time market data and predicts price movement using a linear regression model.
     """
 
     VOLATILITY_THRESHOLD: float = 0.05         # 5 % volatility threshold
@@ -85,7 +82,6 @@ class MarketMonitor:
         training data.  Then start the periodic update tasks.
         """
         try:
-            # --- Model ---------------------------------------------------- #
             if os.path.exists(self.model_path):
                 try:
                     self.price_model = await asyncio.to_thread(
@@ -102,7 +98,6 @@ class MarketMonitor:
                 self.price_model = LinearRegression()
                 await asyncio.to_thread(joblib.dump, self.price_model, self.model_path)
 
-            # --- Historical data ----------------------------------------- #
             if os.path.exists(self.training_data_path):
                 try:
                     self.historical_data = await asyncio.to_thread(
@@ -117,7 +112,6 @@ class MarketMonitor:
             else:
                 self.historical_data = pd.DataFrame()
 
-            # --- Train model if we already have enough samples ------------ #
             if len(self.historical_data) >= self.MIN_TRAINING_SAMPLES:
                 try:
                     await self.train_price_model()
