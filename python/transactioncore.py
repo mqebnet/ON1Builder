@@ -21,22 +21,7 @@ logger = setup_logging("TransactionCore", level=logging.DEBUG)
 
 class TransactionCore:
     """
-    Main transaction engine responsible for building, signing, simulating,
-    and executing transactions for MEV strategies.
-
-    In addition to the basic execution and signing methods, this class now
-    implements several MEV strategy functions:
-      - front_run
-      - aggressive_front_run
-      - predictive_front_run
-      - volatility_front_run
-      - back_run
-      - price_dip_back_run
-      - flashloan_back_run
-      - high_volume_back_run
-
-    Each strategy uses a combination of market data, dynamic gas pricing,
-    and transaction parameters to decide whether or not to execute a trade.
+    Transaction engine for building, signing, simulating, and executing MEV transactions.
     """
     DEFAULT_GAS_LIMIT: int = 100_000
     DEFAULT_PROFIT_TRANSFER_MULTIPLIER: Decimal = Decimal("1e18")
@@ -141,7 +126,7 @@ class TransactionCore:
 
     async def build_transaction(self, function_call: Any, additional_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Build a transaction with dynamic gas parameters and correct nonce.
+        Build a transaction with dynamic gas parameters and a correct nonce.
         """
         additional_params = additional_params or {}
         try:
@@ -154,7 +139,7 @@ class TransactionCore:
                 "chainId": chain_id,
                 "nonce": nonce,
                 "from": self.account.address,
-                "gas": self.DEFAULT_GAS_LIMIT  # Add default gas
+                "gas": self.DEFAULT_GAS_LIMIT
             }
             if supports_eip1559:
                 base_fee = latest_block["baseFeePerGas"]
@@ -198,13 +183,11 @@ class TransactionCore:
             'to', 'value', 'data', 'chainId', 'from', 'type'
         }
         cleaned_tx = {k: v for k, v in tx.items() if k in valid_fields}
-        # Chain ID is required, fetch it if missing
         return cleaned_tx
 
     async def sign_transaction(self, transaction: Dict[str, Any]) -> bytes:
         """Sign the given transaction using the account's private key."""
         try:
-            # Clean the transaction data and ensure chainId is set
             clean_tx = self._clean_transaction_data(transaction)
             if 'chainId' not in clean_tx:
                 clean_tx['chainId'] = await self.web3.eth.chain_id
@@ -249,12 +232,11 @@ class TransactionCore:
 
     async def execute_transaction(self, tx: Dict[str, Any]) -> Optional[str]:
         """
-        Execute a transaction with retries and gas price checks.
+        Execute a transaction with retries and check against maximum gas price.
         """
         max_retries = self.configuration.MEMPOOL_MAX_RETRIES
         retry_delay = self.configuration.MEMPOOL_RETRY_DELAY
-        
-        # Ensure required fields are present
+
         if "nonce" not in tx:
             tx["nonce"] = await self.noncecore.get_nonce()
         if "gas" not in tx:
@@ -268,7 +250,7 @@ class TransactionCore:
                 await self.noncecore.refresh_nonce()
                 return tx_hash.hex()
             except Exception as e:
-                logger.error(f"Transaction execution attempt {attempt} failed: {e}", exc_info=True)
+                logger.error(f"Attempt {attempt} failed: {e}", exc_info=True)
                 await asyncio.sleep(retry_delay * (attempt + 1))
             gas_price_gwei = Decimal(tx.get("gasPrice", self.DEFAULT_GAS_PRICE_GWEI))
             if gas_price_gwei > Decimal(self.configuration.MAX_GAS_PRICE_GWEI):
@@ -347,38 +329,31 @@ class TransactionCore:
         """
         try:
             tx_hash = target_tx.get("tx_hash", "unknown")
-            # Validate that the transaction value is positive (in Wei)
             eth_value_wei = int(target_tx.get("value", 0))
             if eth_value_wei <= 0:
                 logger.debug("ETH transaction value is zero or negative; skipping execution.")
                 return False
 
-            # Construct the transaction details.
             nonce = await self.noncecore.get_nonce()
             chain_id = await self.web3.eth.chain_id
 
             tx_details = {
-                "to": target_tx.get("to", ""),  # Recipient should match the target transaction's 'to'
+                "to": target_tx.get("to", ""),
                 "value": eth_value_wei,
                 "nonce": nonce,
                 "chainId": chain_id,
                 "from": self.account.address,
             }
 
-            # Set gas limit for standard ETH transfer.
             tx_details["gas"] = 21000
 
-            # Determine gas price:
-            # If the target transaction provides a gas price, use it multiplied by a safety factor.
             raw_gas_price = target_tx.get("gasPrice")
             if raw_gas_price:
                 tx_details["gasPrice"] = int(int(raw_gas_price) * self.configuration.ETH_TX_GAS_PRICE_MULTIPLIER)
             else:
-                # Otherwise, fetch the dynamic gas price.
                 gas_price = await self.safetynet.get_dynamic_gas_price()
                 tx_details["gasPrice"] = int(self.web3.to_wei(gas_price * self.gas_price_multiplier, "gwei"))
 
-            # Log the transaction details.
             logger.debug(
                 f"Handling ETH transaction:\n"
                 f"  Original tx hash: {tx_hash}\n"
@@ -388,7 +363,6 @@ class TransactionCore:
                 f"  Gas Price: {tx_details.get('gasPrice')} (in Wei)"
             )
 
-            # Execute the transaction.
             executed_tx_hash = await self.execute_transaction(tx_details)
             if executed_tx_hash:
                 logger.info(f"Successfully executed ETH transaction with hash: {executed_tx_hash}")
@@ -410,7 +384,6 @@ class TransactionCore:
         try:
             logger.info(f"Starting sandwich attack for tx: {target_tx.get('tx_hash', 'unknown')}")
             
-            # Step 1: Prepare flashloan transaction
             flashloan_asset = target_tx.get("asset")
             flashloan_amount = target_tx.get("flashloan_amount", 0)
             flashloan_tx = await self.prepare_flashloan_transaction(flashloan_asset, flashloan_amount)
@@ -418,13 +391,11 @@ class TransactionCore:
                 logger.error("Failed to prepare flashloan transaction.")
                 return False
 
-            # Step 2: Simulate flashloan transaction
             flashloan_simulated = await self.simulate_transaction(flashloan_tx)
             if not flashloan_simulated:
                 logger.error("Flashloan transaction simulation failed.")
                 return False
 
-            # Step 3: Execute flashloan transaction
             flashloan_result = await self.execute_transaction(flashloan_tx)
             if (flashloan_result is None):
                 logger.error("Flashloan transaction execution failed.")
@@ -432,13 +403,11 @@ class TransactionCore:
 
             logger.debug(f"Flashloan executed successfully: {flashloan_result}")
 
-            # Step 4: Prepare & simulate front-run transaction
             front_run_simulated = await self.simulate_transaction(target_tx)
             if not front_run_simulated:
                 logger.error("Front-run transaction simulation failed.")
                 return False
 
-            # Step 5: Execute front-run transaction
             front_run_result = await self.front_run(target_tx)
             if not front_run_result:
                 logger.error("Front-run transaction execution failed.")
@@ -446,13 +415,11 @@ class TransactionCore:
 
             logger.debug("Front-run executed successfully.")
 
-            # Step 6: Prepare & simulate back-run transaction
             back_run_simulated = await self.simulate_transaction(target_tx)
             if not back_run_simulated:
                 logger.error("Back-run transaction simulation failed.")
                 return False
 
-            # Step 7: Execute back-run transaction
             back_run_result = await self.back_run(target_tx)
             if not back_run_result:
                 logger.error("Back-run transaction execution failed.")
@@ -519,7 +486,7 @@ class TransactionCore:
                 logger.debug("Missing price data; skipping predictive front-run.")
                 return False
             percentage_increase = (Decimal(predicted_price) - Decimal(current_price)) / Decimal(current_price)
-            threshold = Decimal("0.05")  # 5% threshold
+            threshold = Decimal("0.05")
             logger.debug(f"Predictive front-run: expected increase {(percentage_increase*100):.2f}% (threshold {threshold*100:.2f}%).")
             if percentage_increase >= threshold:
                 return await self.front_run(target_tx)
@@ -541,7 +508,6 @@ class TransactionCore:
                 logger.error("MarketMonitor not initialized for volatility check")
                 return False
 
-            # Add null check for target address
             target_address = target_tx.get("to")
             if not target_address:
                 logger.debug("Missing target address; skipping volatility front-run.")
