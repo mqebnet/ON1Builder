@@ -36,8 +36,7 @@ class StrategyConfiguration:
 
 class StrategyNet:
     """
-    Orchestrates the selection and execution of strategies using reinforcement learning weights.
-    It does not implement the trading actions itself, but instead calls into TransactionCore.
+    Orchestrates strategy selection and execution via reinforcement learning.
     """
     def __init__(self,
                  transactioncore: TransactionCore,
@@ -67,11 +66,9 @@ class StrategyNet:
                 self.transactioncore.execute_sandwich_attack
             ]
         }
-        # Initialize performance metrics and reinforcement weights.
         self.strategy_performance: Dict[str, StrategyPerformanceMetrics] = {
             stype: StrategyPerformanceMetrics() for stype in self.strategy_types
         }
-        # Start with equal weights for all strategies per type.
         self.reinforcement_weights: Dict[str, np.ndarray] = {
             stype: np.ones(len(self._strategy_registry[stype]))
             for stype in self.strategy_types
@@ -80,7 +77,6 @@ class StrategyNet:
         logger.debug("StrategyNet initialized.")
     
     async def initialize(self) -> None:
-        # For production, additional initialization could be done here.
         logger.info("StrategyNet initialization complete.")
 
     def get_strategies(self, strategy_type: str) -> List[Callable[[Dict[str, Any]], asyncio.Future]]:
@@ -92,7 +88,7 @@ class StrategyNet:
             logger.debug("Exploration: randomly selecting a strategy.")
             return random.choice(strategies)
         max_weight = np.max(weights)
-        exp_weights = np.exp(weights - max_weight)  # for numerical stability
+        exp_weights = np.exp(weights - max_weight)
         probabilities = exp_weights / exp_weights.sum()
         selected_index = np.random.choice(len(strategies), p=probabilities)
         selected_strategy = strategies[selected_index]
@@ -100,17 +96,9 @@ class StrategyNet:
         return selected_strategy
 
     def _calculate_reward(self, success: bool, profit: Decimal, execution_time: float) -> float:
-        """
-        Compute the reward of a strategy execution.
-        Rewards are based on profit (if successful) minus penalties for slow execution and high risk.
-        """
-        # Base reward: profit in ETH if successful; a small negative base if not
         base_reward = float(profit) if success else -0.1
-        # Time penalty: larger execution times incur a penalty
         time_penalty = 0.01 * execution_time
-        # Risk penalty: a fixed penalty representing inherent variability
-        risk_penalty = 0.05  # In a real system, compute variance from historical execution times
-        # Worst-case penalty: additional penalty if execution_time exceeds a threshold (e.g., 2 seconds)
+        risk_penalty = 0.05
         worst_case_threshold = 2.0
         worst_case_penalty = 0.05 * max(0.0, execution_time - worst_case_threshold)
         total_reward = base_reward - time_penalty - risk_penalty - worst_case_penalty
@@ -133,20 +121,16 @@ class StrategyNet:
         else:
             metrics.failures += 1
 
-        # Update average execution time using an exponential moving average
         decay = self.configuration.decay_factor
         metrics.avg_execution_time = (metrics.avg_execution_time * decay +
                                       execution_time * (1 - decay))
         metrics.success_rate = metrics.successes / metrics.total_executions
 
-        # Determine the index of the strategy
         strategy_index = self.get_strategy_index(strategy_name, strategy_type)
         if strategy_index >= 0:
             current_weight = self.reinforcement_weights[strategy_type][strategy_index]
             reward = self._calculate_reward(success, profit, execution_time)
-            # Q-learning inspired update: using a discount factor (gamma) and learning rate
-            gamma = 0.9  # discount factor
-            # For this design, we use the current weight as the next maximum; in a complete system, you’d compute next max Q.
+            gamma = 0.9
             next_max_q = current_weight
             learning_rate = self.configuration.learning_rate
             updated_weight = current_weight + learning_rate * (reward + gamma * next_max_q - current_weight)

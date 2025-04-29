@@ -6,9 +6,9 @@ import asyncio
 import time
 import queue
 import logging
-
 import sys
 import os
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'python')))
 from maincore import MainCore
 from configuration import Configuration
@@ -17,7 +17,6 @@ from loggingconfig import setup_logging
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
-
 logger = setup_logging("FlaskUI", level=20)
 
 bot_running = False
@@ -30,7 +29,6 @@ class WebSocketLogHandler(logging.Handler):
     def __init__(self):
         super().__init__()
         self.log_queue = queue.Queue()
-        self.current_level = logging.INFO
 
     def emit(self, record):
         try:
@@ -44,7 +42,6 @@ class WebSocketLogHandler(logging.Handler):
         except Exception:
             self.handleError(record)
 
-# Initialize WebSocket logging
 ws_handler = WebSocketLogHandler()
 ws_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(ws_handler)
@@ -65,7 +62,6 @@ def run_bot_in_thread():
 
 @app.route('/')
 def index():
-    # Serve the UI index.html file
     ui_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'ui'))
     return send_from_directory(ui_dir, 'index.html')
 
@@ -77,8 +73,7 @@ def start_bot():
         bot_thread = threading.Thread(target=run_bot_in_thread, daemon=True)
         bot_thread.start()
         return jsonify({"status": "Bot started"}), 200
-    else:
-        return jsonify({"status": "Bot is already running"}), 400
+    return jsonify({"status": "Bot is already running"}), 400
 
 @app.route('/stop', methods=['POST'])
 def stop_bot():
@@ -91,15 +86,13 @@ def stop_bot():
             except Exception as e:
                 logger.error(f"Error stopping bot: {e}")
         return jsonify({"status": "Bot stopped"}), 200
-    else:
-        return jsonify({"status": "Bot is not running"}), 400
+    return jsonify({"status": "Bot is not running"}), 400
 
 @app.route('/status', methods=['GET'])
 def get_status():
-    global bot_running, main_core
     status = {"running": bot_running}
-    if main_core:
-        status["components"] = {k: v is not None for k, v in getattr(main_core, "components", {}).items()}
+    if main_core and hasattr(main_core, "components"):
+        status["components"] = {k: v is not None for k, v in main_core.components.items()}
     return jsonify(status), 200
 
 def get_metrics_sync(coro):
@@ -114,7 +107,6 @@ def get_metrics_sync(coro):
     return None
 
 def get_real_metrics():
-    global main_core
     default_metrics = {
         "transaction_success_rate": 0.0,
         "average_execution_time": 0.0,
@@ -132,20 +124,9 @@ def get_real_metrics():
         tc = comps.get("transactioncore")
         sn = comps.get("safetynet")
         stn = comps.get("strategynet")
-        # Fetch balance asynchronously
-        balance = 0.0
-        if sn and hasattr(sn, "account"):
-            balance = float(get_metrics_sync(sn.get_balance(sn.account)) or 0.0)
-        # Fetch network congestion asynchronously
-        network_congestion = 0.0
-        if sn:
-            network_congestion = float(get_metrics_sync(sn.get_network_congestion()) or 0.0)
-        # Strategy performance
-        strategy_perf = None
-        if stn and hasattr(stn, "strategy_performance"):
-            perf = stn.strategy_performance.get("front_run")
-            if perf:
-                strategy_perf = perf
+        balance = float(get_metrics_sync(sn.get_balance(sn.account)) or 0.0) if sn and hasattr(sn, "account") else 0.0
+        network_congestion = float(get_metrics_sync(sn.get_network_congestion()) or 0.0) if sn else 0.0
+        strategy_perf = stn.strategy_performance.get("front_run") if stn and hasattr(stn, "strategy_performance") else None
         metrics = {
             "transaction_success_rate": getattr(strategy_perf, "success_rate", 0.0) if strategy_perf else 0.0,
             "average_execution_time": getattr(strategy_perf, "avg_execution_time", 0.0) if strategy_perf else 0.0,
@@ -158,29 +139,23 @@ def get_real_metrics():
         }
         return metrics
     except Exception as e:
-        logger.error(f"Error fetching real metrics: {e}")
+        logger.error(f"Error fetching metrics: {e}")
         return default_metrics
 
 @app.route('/metrics', methods=['GET'])
 def get_metrics():
-    metrics = get_real_metrics()
-    return jsonify(metrics), 200
+    return jsonify(get_real_metrics()), 200
 
 @app.route('/components', methods=['GET'])
 def get_components():
-    global main_core
     if not main_core or not hasattr(main_core, "components"):
         return jsonify({"error": "Bot not running"}), 400
-    status = {k: v is not None for k, v in main_core.components.items()}
-    return jsonify(status), 200
+    return jsonify({k: v is not None for k, v in main_core.components.items()}), 200
 
 @app.route('/set_log_level', methods=['POST'])
 def set_log_level():
     level = request.json.get('level', 'INFO')
-    level_map = {
-        'DEBUG': logging.DEBUG,
-        'INFO': logging.INFO
-    }
+    level_map = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO}
     if level in level_map:
         ws_handler.current_level = level_map[level]
         logging.getLogger().setLevel(level_map[level])
@@ -189,7 +164,7 @@ def set_log_level():
 
 @socketio.on('connect')
 def handle_connect():
-    recent_logs = list(ws_handler.log_queue.queue)[-100:]  # Get last 100 logs
+    recent_logs = list(ws_handler.log_queue.queue)[-100:]
     emit('initial_logs', recent_logs)
 
 if __name__ == '__main__':

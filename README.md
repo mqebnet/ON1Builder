@@ -1,347 +1,34 @@
-![file_000000006c1061fab66922c93267144c](https://github.com/user-attachments/assets/2de01349-71b1-4da3-bc1d-4d7e3e453b78)
+# ON1Builder
 
-[![Built With Python](https://img.shields.io/badge/Built%20with-Python%203.12-blue?logo=python)](https://www.python.org/)
-![GitHub last commit](https://img.shields.io/github/last-commit/John0n1/ON1Builder?display_timestamp=committer&logo=Github&logoColor=%23181717&color=cyan)
-[![Ethereum Mainnet](https://img.shields.io/badge/Ethereum-Mainnet-black?logo=ethereum)](https://ethereum.org/)
+![ON1Builder Logo](https://github.com/user-attachments/assets/59e03abe-67ee-4195-9030-63f49c48e46f)
+
+[![Built with Python 3.12](https://img.shields.io/badge/Built%20with-Python%203.12-blue?logo=python)](https://www.python.org/)
+[![ON1Builder Wiki](https://img.shields.io/badge/ON1Builder-Wiki-blue?logo=GitHub&logoColor=white)](https://github.com/John0n1/ON1Builder/wiki)
+[![Last Commit](https://img.shields.io/github/last-commit/John0n1/ON1Builder?display_timestamp=committer&logo=GitHub&color=white)](https://github.com/John0n1/ON1Builder/commits/main)
 
 
-## Table of Contents
+## Overview
 
-1. [Executive Summary](#1-executive-summary)  
-2. [Project Overview](#2-project-overview)  
-3. [Architecture and Components](#3-architecture-and-components)  
-   3.1. [Environment & Configuration](#environment--configuration)  
-   3.2. [Smart Contracts](#smart-contracts)  
-   3.3. [Python Modules](#python-modules)  
-   &nbsp;&nbsp;&nbsp;3.3.1. [APIConfig](#apiconfig)  
-   &nbsp;&nbsp;&nbsp;3.3.2. [MarketMonitor](#marketmonitor)  
-   &nbsp;&nbsp;&nbsp;3.3.3. [TransactionCore](#transactioncore)  
-   &nbsp;&nbsp;&nbsp;3.3.4. [StrategyNet](#strategynet)  
-   &nbsp;&nbsp;&nbsp;3.3.5. [NonceCore](#noncecore)  
-   &nbsp;&nbsp;&nbsp;3.3.6. [SafetyNet](#safetynet)  
-   &nbsp;&nbsp;&nbsp;3.3.7. [MainCore](#maincore)  
-   &nbsp;&nbsp;&nbsp;3.3.8. [ABI Registry & Logging](#abiregistry--loggingconfig)  
-   3.4. [User Interface / Dashboard](#user-interface--dashboard)  
-4. [Key Features and Statistics](#4-key-features-and-statistics)  
-   4.1. [Flashloan and Arbitrage Strategies](#41-flashloan-and-arbitrage-strategies)  
-   4.2. [Market Monitoring & Machine Learning](#42-market-monitoring--machine-learning)  
-   4.3. [Transaction Execution and Safety](#43-transaction-execution-and-safety)  
-   4.4. [Testing and Reliability](#44-testing-and-reliability)  
-5. [Project Dependencies and Ecosystem](#5-project-dependencies-and-ecosystem)  
-6. [Future Enhancements and Considerations](#6-future-enhancements-and-considerations)  
-7. [Installation, Configuration & Usage](#7-installation-configuration--usage)  
-   7.1. [Prerequisites](#71-prerequisites)  
-   7.2. [Installation Steps](#72-installation-steps)  
-   7.3. [Configuration](#73-configuration)  
-   7.4. [Usage](#74-usage)  
-   7.5. [Contributing](#75-contributing)  
-   7.6. [License](#76-license)  
-8. [Appendix: Charts and Diagrams](#8-appendix-charts-and-diagrams)
-9. [Disclaimer](#9-disclaimer)
+ON1Builder is a MEV flashloan and arbitrage framework for Ethereum Mainnet and testnets. It integrates on-chain smart contracts, an asynchronous Python backend, and a web-based dashboard to automate strategy deployment, monitoring, and performance analysis.
+
+### Key Capabilities
+- **Aave V3 Flashloans:** Atomic borrowing and repayment within a single transaction.
+- **Automated DEX Routing:** Optimal trade execution via Uniswap and Sushiswap.
+- **Real-Time Market Data & Predictive Models:** Continuous data aggregation and hourly linear regression forecasting.
+- **Robust Safety Mechanisms:** Nonce management, slippage controls, gas adjustment, and fallback routines.
+- **Web Dashboard:** Full visibility into performance metrics, logs, and control functions.
 
 ---
 
-## 1. Executive Summary
+## Prerequisites
 
-ON1Builder is a versatile Maximal Extractable Value (MEV) flashloan arbitrage bot operating on Ethereum's mainnet and testnets. It integrates:
+Before installation, ensure your environment meets the following requirements:
 
-- **Smart‑contract flashloans** via Aave V3  
-- **Automated DEX routing** on Uniswap and Sushiswap  
-- **Real‑time market data aggregation** through multiple free‑tier APIs  
-- **Machine learning price predictions**  
-- **Asynchronous, modular Python core** with robust nonce & safety management  
-- **Web‑based dashboard** for monitoring and control  
-
-This end‑to‑end platform empowers traders to deploy atomic arbitrage and sandwich strategies with maximum reliability and minimum configuration overhead.
-
----
-
-## 2. Project Overview
-
-- **Smart Contracts:**    
-  A Solidity contract ('SimpleFlashloan.sol') that manages flashloan execution, request logging, and fallback safety mechanisms.  
-  
-- **Configuration & Environment:**    
-  A robust environment system using a extensive .env file combined with JSON files (for ABI definitions and token mappings) to provide a centralized and validated configuration.  
-  
-- **Python Application Layer:**    
-  Multiple asynchronous modules handle market data fetching, transaction creation and execution, risk management, and a reinforcement‑learning mechanism for selecting optimal MEV strategies.  
-  
-- **User Interface:**    
-  A responsive HTML/CSS/JavaScript dashboard displays real‑time system status, performance metrics, and provides control actions (start/stop).  
-  
-- **Testing Suite:**    
-  A comprehensive set of tests (unit, integration, and end‑to‑end) ensures each module and function operates correctly.  
-
----
-
-## 3. Architecture and Components
-
-### Environment & Configuration  
-  
-- **.env File & Dependencies:**    
-  The project uses a .env file to set critical parameters such as gas limits, slippage tolerances, API keys, and network endpoints. The requirements.txt provides a list of all dependencies (e.g., Flask, Web3, scikit‑learn, Pandas).  
-  
-- **Configuration Module (configuration.py):**    
-  Responsible for loading and validating environment variables, resolving file paths (for ABI, tokens, etc.), and creating required directories for ML model storage and logs.  
-  
-### Smart Contracts  
-  
-- **SimpleFlashloan.sol:**    
-  Implements Aave‑based flashloan functionality with:  
-    
-  - **fn_RequestFlashLoan:** Iterates over a list of tokens to request a flashloan.  
-  - **executeOperation:** Executes the flashloan logic and handles exceptions.  
-  - **Withdrawal Functions:** Allows the owner to withdraw tokens or ETH.  
-  
-- **ABI Files:**    
-  Various JSON files supply contract ABIs for ERC20 tokens and protocols like Uniswap, Sushiswap, and Aave.  
-  
-### Python Modules  
-  
-#### APIConfig  
-- **apiconfig.py:**    
-  Integrates with multiple market data APIs (Binance, CoinGecko, etc.) to fetch both real‑time and historical data. It manages rate‑limiting and caching to ensure data accuracy.  
-  
-#### MarketMonitor  
-- **marketmonitor.py:**    
-  Gathers market data continuously, uses a linear regression model to predict price movements, and automates model retraining based on new training data.  
-  
-#### TransactionCore  
-- **transactioncore.py:**    
-  Builds, signs, and executes transactions. It supports modern transaction formats (EIP‑1559), simulates transactions to ensure profitability, and implements MEV strategies such as front‑run, back‑run, and sandwich attacks.  
-  
-#### StrategyNet  
-- **strategynet.py:**    
-  Uses reinforcement learning to dynamically select between various MEV strategies based on historical performance metrics. It adjusts strategy weights using a reward function that factors in profit, execution time, and risk.  
-  
-#### NonceCore  
-- **noncecore.py:**    
-  Manages sequential nonce assignment with a caching mechanism to handle rapid transaction submissions.  
-  
-#### SafetyNet  
-- **safetynet.py:**    
-  Validates transaction safety by evaluating gas prices, expected profits (using Decimal calculations), and by adjusting slippage tolerance based on network congestion.  
-  
-#### MainCore  
-- **maincore.py:**    
-  Acts as the central orchestrator by initializing all components, maintaining the event loop, monitoring system health and memory, and handling graceful shutdowns.  
-  
-#### ABIRegistry & LoggingConfig  
-- **abiregistry.py:**    
-  Loads and validates smart contract ABIs, extracting function signatures for seamless contract interactions.  
-- **loggingconfig.py:**    
-  Provides a robust logging configuration with colorized output and optional spinner animations for improved readability and debugging.  
-  
-### User Interface / Dashboard  
-  
-- **Dashboard (ui/index.html):**    
-  A modern web dashboard provides live metrics (transaction success rate, gas usage, account balance, etc.) and real-time logs via Socket.IO, allowing users to monitor and control the bot interactively.  
-  
----  
-## 4. Key Features and Statistics  
-  
-### 4.1 Flashloan and Arbitrage Strategies  
-  
-| **Strategy**                 | **Description**                                                     | **Key Parameters**                                           |  
-|------------------------------|---------------------------------------------------------------------|--------------------------------------------------------------|  
-| Flashloan Execution          | Requests and executes flashloans using Aave’s protocols             | Flashloan amount, asset, referral codes                      |  
-| Front-run                    | Preempts high‑value pending transactions by accelerating gas usage  | Gas price multiplier, risk thresholds, predicted price       |  
-| Aggressive & Predictive FR   | Uses risk scoring and ML forecasts to preemptively execute trades     | Aggressive thresholds; predicted price increase (%)          |  
-| Back-run & Price Dip BR      | Executes trades following target transactions to profit on a price dip | Price dip threshold, volume metrics                          |  
-| Sandwich Attack              | Combines flashloan, front‑run, and back‑run to capture sandwich profits | Integrated multi‑step execution with strict profit margins   |  
-  
-### 4.2 Market Monitoring & Machine Learning  
-  
-- **Live Data Aggregation:**    
-  Collects real‑time prices and volume metrics from multiple APIs with built‑in rate‑limiting and TTL caching.  
-  
-- **ML Model for Price Prediction:**    
-  A linear regression model uses historical price, market cap, and volume data (stored in CSV format) to forecast future price movements.    
-  _Example training data features:_  
-  
-  | Timestamp  | Symbol | Price (USD) | Market Cap      | Volume (24h)   | Volatility | Liquidity Ratio | Price Momentum |  
-  |------------|--------|-------------|-----------------|----------------|------------|-----------------|----------------|  
-  | 1737308400 | BTC    | 106124.00   | 2.10e+12        | 7.09e+10       | 0.045      | 0.88            | 0.60           |  
-  | 1737308400 | ETH    | 3386.52     | 4.08e+11        | 3.23e+10       | 0.038      | 0.82            | 0.65           |  
-  
-- **Automatic Model Retraining:**    
-  The model is retrained every hour (configurable) when sufficient new data becomes available.  
-  
-### 4.3 Transaction Execution and Safety  
-  
-- **Dynamic Transaction Building:**    
-  Transactions are built for both legacy and EIP‑1559 types, with dynamic gas limit estimation and risk-adjusted gas pricing.  
-  
-- **Risk Management:**    
-  SafetyNet evaluates transactions in real‑time, checking for profitability (after gas costs and slippage) and rejecting transactions that do not meet specified thresholds.  
-  
-- **Nonce Management:**    
-  NonceCore ensures that nonces are accurately assigned and updated to prevent collisions in high-frequency transaction scenarios.  
-  
-### 4.4 Testing and Reliability  
-  
-- **Comprehensive Test Suite:**    
-  More than 40 tests cover unit, integration, and end‑to‑end scenarios, ensuring high system reliability.  
-  
-- **Real‑Time Logging & Health Monitoring:**    
-  The system continuously monitors component health and memory usage, with logs streamed to the dashboard for live troubleshooting.
----
-
-## 5. Project Dependencies and Ecosystem
-
-- **Ethereum Connectivity**  
-  - [Web3.py](https://github.com/ethereum/web3.py)  
-  - [Geth](https://geth.ethereum.org/) for execution layer (IPC)  
-  - Prysm for consensus layer (IPC)  
-
-- **Smart Contracts**  
-  - [Aave V3 Core](https://github.com/aave/aave-v3-core)  
-  - [Uniswap & Sushiswap](https://github.com/Uniswap)  
-
-- **Data & ML**  
-  - `scikit-learn`, `pandas`, `numpy`  
-
-- **Web/API**  
-  - Flask, Flask‑SocketIO, Flask‑CORS  
-
-- **Testing**  
-  - Pytest, unittest  
-
----
-
-## 6. Future Enhancements and Considerations
-
-- **Advanced ML**: Upgrade to neural nets / time‑series models.  
-- **Strategy Refinement**: Add new signals (on‑chain, sentiment).  
-- **Scaling**: Parallelize MempoolMonitor & TransactionCore further.  
-- **Security Audits**: Third‑party review of smart contracts & core logic.  
-- **Dashboard Analytics**: Interactive charting with Plotly or Matplotlib.  
-- **Multi‑Chain**: Extend support to other EVM & non‑EVM chains.
-
----
-
-## 7. Installation, Configuration & Usage
-
-> 🐱‍💻 **Security Warning**  
-> Don’t even trust your cats. They're sneaky and *can’t* be trusted.  
->  
-> If you paste your private key in plaintext, congrats — you just gave your wallet the same security as a sticky note on a park bench.  
->  
-> Keep it encrypted, offline, and far away from prying eyes (or “oops” deployments).  
->  
-> Remember: one leak, and your ETH becomes someone else’s exit liquidity.  
->  
-> **Not your opsec, not your coins.** 🔐😼
-
-
-### 7.1 Prerequisites
-
-- **OS**: Linux (Ubuntu 20.04+), Windows 10/11, or macOS 12+  
-- **Python**: ≥ 3.12  
-- **Hardware**: ≥ 4 cores, 32 (min 16) GB RAM, NVMe SSD  
-- **Clients**: Geth & Prysm (IPC mode)
-  (NOTE: Syncing requires minimum 1.3TB Storage and can take up to 24hours) 
-
----
-
-### 7.2 Installation Steps
-
-```bash
-git clone https://github.com/John0n1/ON1Builder.git
-cd ON1Builder
-python3 -m venv venv
-source venv/bin/activate       # Linux/macOS
-# .\venv\Scripts\activate      # Windows
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
----
-
-### 7.3 Configuration
-
-Copy and edit the example `.env`:
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-#### Example `.env`
-
-```ini
-# API Keys & Endpoints
-ETHERSCAN_API_KEY=YOUR_ETHERSCAN_KEY 
-INFURA_PROJECT_ID=YOUR_INFURA_PROJECT_ID # Optional
-COINGECKO_API_KEY=YOUR_COINGECKO_API_KEY 
-COINMARKETCAP_API_KEY=YOUR_CMC_API_KEY 
-CRYPTOCOMPARE_API_KEY=YOUR_CC_API_KEY  
-
-# Provider IPC/HTTP/WS
-IPC_ENDPOINT=~/ON1Builder/geth.ipc
-HTTP_ENDPOINT=http://127.0.0.1:8545
-WEBSOCKET_ENDPOINT=wss://127.0.0.1:8545
-
-# Wallet
-WALLET_ADDRESS=0xYourEthereumAddress
-WALLET_KEY=0xYourPrivateKey 
-```
-
----
-
-### 7.4 Usage
-
-### Running the Bot
-```bash
-# Start clients
-# geth and prysm should already be running as per Section 7.4.1/2
-
-# In project root
-source venv/bin/activate    # or venv\Scripts\activate on Windows
-python python/main.py
-```
-- Monitors mempool for MEV opportunities.
-- Logs streamed to dashboard at `http://localhost:5000`.
-
-#### 7.4.1 Geth (Execution Client) Setup
-
-Install and run Geth in IPC-only mode:
-
-```bash
-# Install Geth on Ubuntu
-sudo apt update && sudo apt install -y software-properties-common
-sudo add-apt-repository -y ppa:ethereum/ethereum
-sudo apt update && sudo apt install -y geth              
-
-# Run with snap sync
-geth \
-  --syncmode snap \                                 
-  --mainnet \
-  --http=false \
-  --ipcpath /ON1Builder/geth.ipc \
-  --cache 12000 \
-  --maxpeers 80                                        
-```
-
-#### 7.4.2 Prysm (Beacon Node) Setup
-
-Install Prysm and run in IPC mode (no JWT):
-
-```bash
-# Install Prysm
-curl https://raw.githubusercontent.com/prysmaticlabs/prysm/master/prysm.sh \
-  --output prysm.sh && chmod +x prysm.sh                 
-
-# Run beacon node, linking to Geth IPC
-./prysm.sh beacon-chain \
-  --execution-endpoint=/ON1Builder/geth.ipc \
-  --mainnet \
-  --checkpoint-sync-url=https://beaconstate.info \
-  --genesis-beacon-api-url=https://beaconstate.info
-```
-
-#### 7.4.3 Free‑Tier API Keys
+- **Operating System:** Ubuntu 20.04+ (preferred), Windows 10/11, or macOS 12+.
+- **Hardware:** Minimum 4 CPU cores, 16 GB RAM (32 GB recommended), NVMe SSD with ≥ 2 TB free space for blockchain data.
+- **Python:** Version ≥ 3.12.
+- **Ethereum Clients:** Geth (Execution Layer) and Prysm (Consensus Layer) configured for IPC communication.
+- **APIs & Keys:** Valid keys for Etherscan, CoinGecko, CoinMarketCap, and CryptoCompare (free-tier suffices).
 
 | Provider         | Free Tier Highlights                                                 |
 |------------------|----------------------------------------------------------------------|
@@ -351,49 +38,164 @@ curl https://raw.githubusercontent.com/prysmaticlabs/prysm/master/prysm.sh \
 | [CoinMarketCap](https://coinmarketcap.com) | Free API key, (trial)          |
 | [Cryptocompare](https://Cryptocompare.com) | Free API key, (trial)          | 
 
-#### 7.4.4 Flashloan Deployment via Remix
+---
 
-1. **Open Remix** and paste `SimpleFlashloan.sol` (importing Aave V3’s base contract).  
-2. **Compile** with Solidity 0.8.10.  
-3. **Connect MetaMask** (inject Web3) using a free RPC from one of your providers.  
-4. **Deploy** to mainnet by providing the correct `PoolAddressesProvider` address for AAVE V3.  
+## Installation and Configuration
 
-See QuickNode’s tutorial for full Remix walkthrough and contract code.
+### 1. Repository Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/John0n1/ON1Builder.git
+cd ON1Builder
+
+# Create and activate a virtual environment
+python3 -m venv venv
+source venv/bin/activate   # Windows: .\venv\Scripts\activate
+
+# Install Python dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+``` 
+
+### 2. Environment Variables
+
+Copy the example environment file and update with your parameters:
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+#### Mandatory Variables
+```
+# Wallet Settings
+WALLET_ADDRESS=0xYourEthereumAddress
+WALLET_KEY=<YOUR_PRIVATE_KEY>         # Keep this secure 
+
+# Node Endpoints (IPC or HTTP/WS) Atleast one must be set
+IPC_ENDPOINT=~/ON1Builder/geth.ipc
+HTTP_ENDPOINT=http://127.0.0.1:8545
+WEBSOCKET_ENDPOINT=wss://127.0.0.1:8545
+
+# API Keys
+IǸFURA_PROJECT_ID=<YOUR_INFURA_PROJECT_ID>
+ETHERSCAN_API_KEY=<YOUR_ETHERSCAN_KEY>
+COINGECKO_API_KEY=<YOUR_COINGECKO_KEY>
+COINMARKETCAP_API_KEY=<YOUR_CMC_KEY>
+CRYPTOCOMPARE_API_KEY=<YOUR_CC_KEY>
+
+# AAVE V3
+AAVE_POOL_ADDRESS=<YOUR_AAVE_POOL_ADDRESS>
+AAVE_FLASHLOAN_ADDRESS=<YOUR_AAVE_FLASHLOAN_CONTRACT_ADDRESS> 
+```
+
+> **Security Note:** Never expose `WALLET_KEY` in public repositories or logs.
+
+### 3. Node Synchronization
+
+Ensure your Execution client (Geth) and Consensus client (Prysm) are fully synchronized before running the bot.
+
+Geth installation guide: [Install Geth](https://geth.ethereum.org/docs/install-and-build/installing-geth)
+Prysm installation guide: [Install Prysm](https://docs.prylabs.network/docs/install-prysm)
+
+#### Geth (Execution Client)
+```bash
+geth \
+  --syncmode "snap" \
+  --mainnet \
+  --ipcpath "$IPC_ENDPOINT" \
+  --cache=12000 \
+  --maxpeers=80
+```
+
+#### Prysm (Consensus Client)
+```bash
+./prysm.sh beacon-chain \
+  --execution-endpoint="$IPC_ENDPOINT" \
+  --mainnet \
+  --checkpoint-sync-url=https://beaconstate.info \
+  --genesis-beacon-api-url=https://beaconstate.info
+```
+
+Monitor logs to confirm `SYNCED` status before proceeding.
 
 ---
 
-### 7.5 Contributing
+## Quick Start
 
-1. Fork & branch  
-2. Adhere to PEP8 & add tests  
-3. Submit a detailed PR
-- (see `CONTRIBUTING`)  
+Once installation and node sync are complete:
+
+1. **Activate environment**
+   ```bash
+   source venv/bin/activate
+   ```
+2. **Launch the bot**
+   ```bash
+   python python/main.py
+   ```
+3. **Access Dashboard**
+   Open your browser at:  
+   `http://localhost:5000`
+
+The dashboard displays live metrics such as transaction success rates, average execution times, profit yields, gas usage, and network congestion.
 
 ---
 
-### 7.6 License
+## Project Structure
 
-- **License**: MIT (see `LICENSE`) 
+```text
+ON1Builder/
+├── abi/                   # ABI files for contracts
+├── linear_regression/       # ML model files
+├── logs/                  # Log files
+├── docs/                 # Documentation & diagrams
+├── utils/                # Utility scripts
+├── python/                # Core Python modules
+│   ├── configuration.py   # Env loader & validation
+│   ├── apiconfig.py       # Market data API wrappers
+│   ├── marketmonitor.py   # Data ingestion & ML forecasting
+│   ├── transactioncore.py # Tx builder, signer, simulator
+│   ├── mempoolmonitor.py  # Mempool monitoring & strategy selection
+│   ├── app.py            # Flask app for dashboard
+│   ├── strategynet.py     # Strategy selection via RL
+│   ├── noncecore.py       # Nonce assignment logic
+│   ├── safetynet.py       # Risk & safety checks
+│   ├── maincore.py        # Event loop & orchestration
+│   ├── abiregistry.py     # ABI loader
+│   └── loggingconfig.py   # Logger setup
+├── ui/                    # Web dashboard assets
+├── contracts/             # Solidity source & ABIs
+├── tests/                 # Unit, integration, E2E tests
+├── .env.example           # Environment template
+├── requirements.txt       # Python dependencies
+├── .gitignore             # Git ignore file
+├── LICENSE                # Project license
+└── README.md              # This file
+```
 
 ---
 
-## 8. Appendix: Charts and Diagrams
+## Testing
 
-**Component Summary**  
+Run the complete test suite to verify integrity:
+```bash
+pytest --maxfail=1 --disable-warnings -q
+```
 
-| Component             | Function                                          | Location/Module              |
-|-----------------------|---------------------------------------------------|------------------------------|
-| Environment Config    | Load & validate `.env`                            | `configuration.py`           |
-| Smart Contracts       | Flashloan & DEX interactions                      | `SimpleFlashloan.sol`, `abi/`|
-| Market Monitor        | Data ingestion & ML forecasting                   | `marketmonitor.py`           |
-| Transaction Engine    | Tx building, signing & execution                  | `transactioncore.py`         |
-| Strategy Selector     | RL‑based MEV strategy selection                   | `strategynet.py`             |
-| Nonce Manager         | High‑throughput nonce tracking                    | `noncecore.py`               |
-| Risk Manager          | Profit & safety checks                            | `safetynet.py`               |
-| Orchestrator          | Main event loop & health checks                   | `maincore.py`                |
-| Dashboard UI          | Live metrics & control                            | `ui/index.html`              |
+---
 
-**Data Flow Diagram**  
+## Contributing
+
+1. Fork the repository and create a feature branch.
+2. Ensure adherence to PEP8 and include appropriate tests.
+3. Submit a pull request with a clear summary of changes.
+
+Refer to `CONTRIBUTING.md` for full guidelines.
+
+---
+
+**Data Flow Diagrams**  
 
 ![Data Flow](docs/mermaid1.svg)
 
@@ -401,22 +203,13 @@ See QuickNode’s tutorial for full Remix walkthrough and contract code.
 
 ---
 
-**Table 2:Performance Metrics (Dynamic Values)**
+## License
 
-| **Metric**                   | **Value**             | **Unit**   |
-|------------------------------|-----------------------|------------|
-| Transaction Success Rate     | 95.6                  | %          |
-| Average Execution Time       | 1.35                  | seconds    |
-| Profitability                | 0.256                 | ETH        |
-| Gas Usage                    | 21000                 | units      |
-| Network Congestion           | 45.2                  | %          |
-| Slippage                     | 0.1                   | fraction   |
-| Account Balance              | 12.5                  | ETH        |
-| Transactions Executed        | 185                   | count      |
+This project is licensed under the MIT License. See `LICENSE` for details.
+
 ---
 
-![ON1Builder Logo](https://github.com/user-attachments/assets/59e03abe-67ee-4195-9030-63f49c48e46f)
+## Disclaimer
 
-## 9. Disclaimer
+Operating MEV strategies involves significant financial risk. Test thoroughly, use small allocations, and maintain secure key management at all times.
 
-**Disclaimer**: Use at your own risk—MEV flashloans incur financial risk.

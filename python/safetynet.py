@@ -5,7 +5,6 @@ from typing import Any, Dict, Tuple, Optional
 from cachetools import TTLCache
 from web3 import AsyncWeb3
 from eth_account import Account
-from web3.exceptions import Web3Exception
 
 from apiconfig import APIConfig
 from configuration import Configuration

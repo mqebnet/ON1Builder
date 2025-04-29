@@ -1,7 +1,5 @@
 import asyncio
 import time
-from typing import Any
-
 from cachetools import TTLCache
 from web3 import AsyncWeb3
 from web3.exceptions import Web3ValueError, TransactionNotFound
@@ -16,18 +14,12 @@ class NonceCore:
     Advanced nonce management system for Ethereum transactions with caching,
     auto-recovery, and comprehensive error handling.
 
-    This module is critical to ensure that nonce assignment remains consistent
-    and avoids transaction collisions.
     """
 
     def __init__(self, web3: AsyncWeb3, address: str, configuration: Configuration) -> None:
         """
         Initialize the NonceCore instance.
 
-        Args:
-            web3 (AsyncWeb3): An asynchronous Web3 instance.
-            address (str): The Ethereum address for nonce management.
-            configuration (Configuration): Configuration data.
         """
         self.web3: AsyncWeb3 = web3
         self.configuration: Configuration = configuration

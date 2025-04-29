@@ -1,8 +1,6 @@
 import asyncio
 import tracemalloc
 import async_timeout
-import time
-import os
 import sys
 import signal
 from typing import Any, Dict, List, Optional
@@ -13,7 +11,6 @@ from web3.middleware import ExtraDataToPOAMiddleware
 from web3 import AsyncIPCProvider, AsyncHTTPProvider, WebSocketProvider
 from eth_account import Account
 
-from abiregistry import ABIRegistry
 from apiconfig import APIConfig
 from configuration import Configuration
 from marketmonitor import MarketMonitor
@@ -30,9 +27,7 @@ logger = setup_logging("MainCore", level=logging.DEBUG)
 
 class MainCore:
     """
-    Orchestrates all components (configuration, blockchain connection, account,
-    noncecore, safetynet, transactioncore, marketmonitor, mempoolmonitor, strategynet)
-    and manages main loop, memory monitoring, and graceful shutdown.
+    Orchestrates all components and manages the main loop, memory monitoring, and graceful shutdown.
     """
     def __init__(self, configuration: Configuration) -> None:
         tracemalloc.start()
@@ -159,19 +154,15 @@ class MainCore:
             self.account = Account.from_key(self.configuration.WALLET_KEY)
             await self._check_account_balance()
 
-            # Initialize API Configuration
             self.components["apiconfig"] = APIConfig(self.configuration)
             await self.components["apiconfig"].initialize()
 
-            # Initialize NonceCore
             self.components["noncecore"] = NonceCore(self.web3, self.account.address, self.configuration)
             await self.components["noncecore"].initialize()
 
-            # Initialize SafetyNet
             self.components["safetynet"] = SafetyNet(self.web3, self.configuration, self.account.address, self.account, self.components["apiconfig"], self.components.get("marketmonitor"))
             await self.components["safetynet"].initialize()
 
-            # Initialize MarketMonitor
             self.components["marketmonitor"] = MarketMonitor(
                 web3=self.web3,
                 configuration=self.configuration,
@@ -180,7 +171,6 @@ class MainCore:
             )
             await self.components["marketmonitor"].initialize()
 
-            # Initialize TransactionCore
             self.components["transactioncore"] = TransactionCore(
                 self.web3,
                 self.account,
@@ -192,7 +182,6 @@ class MainCore:
             )
             await self.components["transactioncore"].initialize()
 
-            # Initialize MempoolMonitor
             token_addresses = await self.configuration.get_token_addresses()
             self.components["mempoolmonitor"] = MempoolMonitor(
                 web3=self.web3,
@@ -205,7 +194,6 @@ class MainCore:
             )
             await self.components["mempoolmonitor"].initialize()
 
-            # Initialize StrategyNet
             self.components["strategynet"] = StrategyNet(
                 self.components["transactioncore"],
                 self.components["marketmonitor"],
