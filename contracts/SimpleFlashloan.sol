@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "https://github.com/aave/aave-v3-core/blob/master/contracts/flashloan/base/FlashLoanReceiverBase.sol";
-import "https://github.com/aave/aave-v3-core/blob/master/contracts/interfaces/IPoolAddressesProvider.sol";
-import "https://github.com/aave/aave-v3-core/blob/master/contracts/dependencies/openzeppelin/contracts/SafeERC20.sol";
-import "https://github.com/aave/aave-v3-core/blob/master/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
+import "@aave/core-v3/contracts/flashloan/base/FlashLoanReceiverBase.sol";
+import "@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol";
+
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IGasPriceOracle {
     function latestAnswer() external view returns (int256);
+    function decimals() external view returns (uint8);
 }
 
 interface IUniswapV2Router {
@@ -18,26 +20,79 @@ interface IUniswapV2Router {
         address to,
         uint deadline
     ) external returns (uint[] memory amounts);
-    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
+
+    function getAmountsOut(uint amountIn, address[] calldata path)
+        external
+        view
+        returns (uint[] memory amounts);
 }
 
 contract SimpleFlashLoan is FlashLoanReceiverBase {
     using SafeERC20 for IERC20;
 
-    address payable public owner;
-    IGasPriceOracle public gasPriceOracle;
-    uint256 public maxGasPrice;
-    address public uniswapRouter;
-    address public sushiswapRouter;
+    // ------------------------------------------------------------------ //
+    //                               STATE                                //
+    // ------------------------------------------------------------------ //
+
+    address payable public immutable owner;
+    IGasPriceOracle public immutable gasPriceOracle;
+
+    uint256 public maxGasPriceWei;
+    address public immutable uniswapRouter;
+    address public immutable sushiswapRouter;
+
     bool private locked;
 
-    enum Strategy { SWAP }
+    enum Strategy {
+        SWAP
+    }
 
-    event FlashLoanRequested(address[] assets, uint256[] amounts);
-    event SwapExecuted(address assetBorrowed, uint256 amountBorrowed, uint256 premium, uint256 amountReturned, uint256 profit);
+    // ------------------------------------------------------------------ //
+    //                                EVENTS                              //
+    // ------------------------------------------------------------------ //
+
+    event FlashLoanRequested(address indexed asset, uint256 amount);
+    event SwapExecuted(
+        address indexed assetBorrowed,
+        uint256 amountBorrowed,
+        uint256 premium,
+        uint256 amountReturned,
+        uint256 profit
+    );
     event OperationFailed(string reason);
-    event MaxGasPriceUpdated(uint256 newMaxGasPrice);
-    event ProfitWithdrawn(address to, uint256 amount);
+    event MaxGasPriceUpdated(uint256 newMaxGasPriceWei);
+    event ProfitWithdrawn(address indexed to, uint256 amount);
+
+    // ------------------------------------------------------------------ //
+    //                               ERRORS                               //
+    // ------------------------------------------------------------------ //
+
+    error NotOwner();
+    error Reentrancy();
+    error GasTooHigh(uint256 currentWei, uint256 capWei);
+    error InvalidAsset();
+    error AmountZero();
+    error UnsupportedStrategy();
+
+    // ------------------------------------------------------------------ //
+    //                              MODIFIERS                             //
+    // ------------------------------------------------------------------ //
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+
+    modifier nonReentrant() {
+        if (locked) revert Reentrancy();
+        locked = true;
+        _;
+        locked = false;
+    }
+
+    // ------------------------------------------------------------------ //
+    //                            CONSTRUCTOR                             //
+    // ------------------------------------------------------------------ //
 
     constructor(
         address _provider,
@@ -47,32 +102,16 @@ contract SimpleFlashLoan is FlashLoanReceiverBase {
     ) FlashLoanReceiverBase(IPoolAddressesProvider(_provider)) {
         owner = payable(msg.sender);
         gasPriceOracle = IGasPriceOracle(_gasPriceOracle);
-        maxGasPrice = type(uint256).max;
+        maxGasPriceWei = type(uint256).max;
         uniswapRouter = _uniswapRouter;
         sushiswapRouter = _sushiswapRouter;
-        locked = false;
     }
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
-        _;
-    }
+    // ------------------------------------------------------------------ //
+    //                       EXTERNAL / PUBLIC API                        //
+    // ------------------------------------------------------------------ //
 
-    modifier nonReentrant() {
-        require(!locked, "Reentrancy");
-        locked = true;
-        _;
-        locked = false;
-    }
-
-    /**
-     * @notice Request a flashloan for a single asset swap strategy
-     * @param asset The token to borrow
-     * @param amount The borrow amount
-     * @param path Swap path including borrowed asset and target token
-     * @param minOut Minimum output amount for swap
-     * @param useUniswap If true use Uniswap, else use SushiSwap
-     */
+    /// @notice Initiate a flash-loan for a token-swap arbitrage.
     function requestFlashLoan(
         address asset,
         uint256 amount,
@@ -80,16 +119,21 @@ contract SimpleFlashLoan is FlashLoanReceiverBase {
         uint256 minOut,
         bool useUniswap
     ) external onlyOwner nonReentrant {
-        require(asset != address(0), "Invalid asset");
-        require(amount > 0, "Amount must be > 0");
+        if (asset == address(0)) revert InvalidAsset();
+        if (amount == 0) revert AmountZero();
+        if (path.length < 2 || path[0] != asset)
+            revert("Invalid swap path");
+
         bytes memory data = abi.encode(Strategy.SWAP, path, minOut, useUniswap);
-        address[] memory assets = new address[](1);
+
+        address;
         assets[0] = asset;
-        uint256[] memory amounts = new uint256[](1);
+        uint256;
         amounts[0] = amount;
-        uint256[] memory modes = new uint256[](1);
-        modes[0] = 0; // no debt, full repay
-        emit FlashLoanRequested(assets, amounts);
+        uint256; // 0 = no debt (full repay)
+
+        emit FlashLoanRequested(asset, amount);
+
         LENDING_POOL.flashLoan(
             address(this),
             assets,
@@ -101,9 +145,7 @@ contract SimpleFlashLoan is FlashLoanReceiverBase {
         );
     }
 
-    /**
-     * @notice Aave callback after flashloan
-     */
+    /// @inheritdoc IFlashLoanReceiver
     function executeOperation(
         address[] calldata assets,
         uint256[] calldata amounts,
@@ -111,24 +153,27 @@ contract SimpleFlashLoan is FlashLoanReceiverBase {
         address,
         bytes calldata params
     ) external override nonReentrant returns (bool) {
-        require(msg.sender == address(LENDING_POOL), "Unauthorized caller");
-        uint256 currentGas = uint256(gasPriceOracle.latestAnswer());
-        require(currentGas <= maxGasPrice, "Gas price too high");
+        if (msg.sender != address(LENDING_POOL))
+            revert("Caller not Aave pool");
 
-        // Only one asset supported
+        // Gas guard
+        uint256 currentWei = _currentGasPriceWei();
+        if (currentWei > maxGasPriceWei)
+            revert GasTooHigh(currentWei, maxGasPriceWei);
+
         address asset = assets[0];
         uint256 amount = amounts[0];
         uint256 premium = premiums[0];
 
-        (Strategy strat, address[] memory path, uint256 minOut, bool useUniswap) = abi.decode(
-            params,
-            (Strategy, address[], uint256, bool)
-        );
+        (Strategy strat, address[] memory path, uint256 minOut, bool useUni) =
+            abi.decode(params, (Strategy, address[], uint256, bool));
 
         if (strat == Strategy.SWAP) {
-            // Approve pool to pull repay
             IERC20(asset).safeApprove(address(LENDING_POOL), amount + premium);
-            try this._executeSwap(asset, amount, premium, path, minOut, useUniswap) returns (uint256 returned, uint256 profit) {
+
+            try
+                this._executeSwap(asset, amount, premium, path, minOut, useUni)
+            returns (uint256 returned, uint256 profit) {
                 emit SwapExecuted(asset, amount, premium, returned, profit);
             } catch Error(string memory reason) {
                 emit OperationFailed(reason);
@@ -138,69 +183,91 @@ contract SimpleFlashLoan is FlashLoanReceiverBase {
                 return false;
             }
         } else {
-            emit OperationFailed("Unsupported strategy");
-            return false;
+            revert UnsupportedStrategy();
         }
+
         return true;
     }
 
-    /**
-     * @notice Internal execution of swap strategy
-     */
+    /// @notice Withdraw any ERC-20 balance (profit) to owner.
+    function withdrawToken(address token) external onlyOwner {
+        uint256 bal = IERC20(token).balanceOf(address(this));
+        if (bal == 0) revert("Zero balance");
+        IERC20(token).safeTransfer(owner, bal);
+        emit ProfitWithdrawn(owner, bal);
+    }
+
+    /// @notice Withdraw native ETH (if any) to owner.
+    function withdrawETH() external onlyOwner {
+        uint256 bal = address(this).balance;
+        if (bal == 0) revert("Zero balance");
+        (bool ok, ) = owner.call{value: bal}("");
+        require(ok, "ETH transfer failed");
+        emit ProfitWithdrawn(owner, bal);
+    }
+
+    /// @notice Owner can tighten / loosen the gas cap.
+    function setMaxGasPriceWei(uint256 newCapWei) external onlyOwner {
+        maxGasPriceWei = newCapWei;
+        emit MaxGasPriceUpdated(newCapWei);
+    }
+
+    // ------------------------------------------------------------------ //
+    //                        INTERNAL FUNCTIONS                           //
+    // ------------------------------------------------------------------ //
+
     function _executeSwap(
         address asset,
         uint256 amount,
         uint256 premium,
         address[] memory path,
         uint256 minOut,
-        bool useUniswap
+        bool useUni
     ) external returns (uint256 returned, uint256 profit) {
-        require(msg.sender == address(this), "Caller must be self");
-        address router = useUniswap ? uniswapRouter : sushiswapRouter;
-        IERC20(asset).safeApprove(router, amount);
-        uint[] memory amountsOut = IUniswapV2Router(router).swapExactTokensForTokens(
+        // Only callable internally through DELEGATECALL protection
+        if (msg.sender != address(this)) revert("Self-call only");
+
+        address router = useUni ? uniswapRouter : sushiswapRouter;
+
+        // Grant allowance only for this tx
+        IERC20(asset).approve(router, amount);
+
+        uint[] memory outs = IUniswapV2Router(router).swapExactTokensForTokens(
             amount,
             minOut,
             path,
             address(this),
             block.timestamp + 300
         );
-        returned = amountsOut[amountsOut.length - 1];
+
+        // Reset allowance to zero for safety
+        IERC20(asset).approve(router, 0);
+
+        returned = outs[outs.length - 1];
         uint256 debt = amount + premium;
-        require(returned >= debt, "Returned < debt");
+        require(returned >= debt, "Not profitable");
+
         profit = returned - debt;
-        // Approve any surplus for owner withdraw
-        IERC20(path[path.length - 1]).safeApprove(owner, profit);
-        return (returned, profit);
+        // leave profit in contract; owner can withdraw later
     }
 
-    /**
-     * @notice Withdraw ERC20 profits
-     */
-    function withdrawToken(address token) external onlyOwner {
-        uint256 bal = IERC20(token).balanceOf(address(this));
-        require(bal > 0, "No token balance");
-        IERC20(token).safeTransfer(owner, bal);
-        emit ProfitWithdrawn(owner, bal);
+    function _currentGasPriceWei() internal view returns (uint256) {
+        int256 answer = gasPriceOracle.latestAnswer();
+        uint8 dec = gasPriceOracle.decimals();
+        require(answer > 0, "Oracle error");
+        // Normalise to Wei (1e9 Gwei)
+        uint256 scaled = uint256(answer);
+        if (dec < 9) {
+            scaled = scaled * (10 ** (9 - dec));
+        } else if (dec > 9) {
+            scaled = scaled / (10 ** (dec - 9));
+        }
+        return scaled;
     }
 
-    /**
-     * @notice Withdraw ETH profits
-     */
-    function withdrawETH() external onlyOwner {
-        uint256 bal = address(this).balance;
-        require(bal > 0, "No ETH balance");
-        owner.transfer(bal);
-        emit ProfitWithdrawn(owner, bal);
-    }
-
-    /**
-     * @notice Set max gas price cap
-     */
-    function setMaxGasPrice(uint256 _maxGasPrice) external onlyOwner {
-        maxGasPrice = _maxGasPrice;
-        emit MaxGasPriceUpdated(_maxGasPrice);
-    }
+    // ------------------------------------------------------------------ //
+    //                              FALLBACKS                             //
+    // ------------------------------------------------------------------ //
 
     receive() external payable {}
     fallback() external payable {}
