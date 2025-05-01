@@ -192,7 +192,7 @@ def stop_bot():
                    return jsonify({"status": "Stop signal sent, acknowledgement timeout."}), 202
              except Exception as e:
                    ui_logger.error("Error occurred while trying to stop the bot: %s", e, exc_info=True)
-                   return jsonify({"status": "Error signaling stop", "error": str(e)}), 500
+                   return jsonify({"status": "Error signaling stop"}), 500
         elif bot_state.is_running:
 
              ui_logger.warning("Stop requested, but bot state is inconsistent (running=True, but core/loop missing). Forcing state update.")
