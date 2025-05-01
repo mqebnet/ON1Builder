@@ -6,9 +6,7 @@ import colorlog
 import json
 from typing import Dict, Any, Optional
 
-# Flag to control JSON output (e.g., via environment variable)
-# USE_JSON_LOGGING = os.getenv("LOG_FORMAT", "color").lower() == "json"
-USE_JSON_LOGGING = False # Default to color logging for console
+USE_JSON_LOGGING = False
 
 class JsonFormatter(logging.Formatter):
     """Formats log records as JSON strings."""
@@ -19,28 +17,26 @@ class JsonFormatter(logging.Formatter):
             "name": record.name,
             "message": record.getMessage(),
         }
-        # Add standard fields if they exist
+
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)
         if record.stack_info:
              log_entry["stack_info"] = self.formatStack(record.stack_info)
 
-        # A16: Include 'extra' dictionary fields automatically
-        # Standard attributes provided by logging.LogRecord
         standard_attrs = logging.LogRecord('', '', '', '', '', '', '', '').__dict__.keys()
         extra_data = {k: v for k, v in record.__dict__.items() if k not in standard_attrs and not k.startswith('_')}
         if extra_data:
-             log_entry.update(extra_data) # Merge extra dict into the main entry
+             log_entry.update(extra_data) 
 
-        # Handle specific 'extra' keys we expect (component, tx_hash) for consistency
+
         log_entry["component"] = getattr(record, 'component', None) or extra_data.get('component', 'N/A')
-        log_entry["tx_hash"] = getattr(record, 'tx_hash', None) or extra_data.get('tx_hash', None) # Keep None if not present
+        log_entry["tx_hash"] = getattr(record, 'tx_hash', None) or extra_data.get('tx_hash', None) 
 
-        # Clean up potential duplicates or None values if needed
+
         if log_entry["component"] == 'N/A' and 'component' in log_entry:
-            del log_entry['component'] # Remove if component wasn't actually set
+            del log_entry['component'] 
         if log_entry["tx_hash"] is None and 'tx_hash' in log_entry:
-             del log_entry['tx_hash'] # Remove if tx_hash wasn't actually set
+             del log_entry['tx_hash'] 
 
         return json.dumps(log_entry)
 
@@ -50,7 +46,7 @@ class TaskSpinner:
         self._message = message
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
-        self._spinner_chars = ['◢', '◣', '◤', '◥'] #'|', '/', '-', '\\'
+        self._spinner_chars = ['◢', '◣', '◤', '◥'] 
         self._idx = 0
 
     def _spin(self) -> None:
@@ -58,19 +54,19 @@ class TaskSpinner:
         while not self._stop_event.is_set():
             try:
                 char = self._spinner_chars[self._idx % len(self._spinner_chars)]
-                # Write to stderr to avoid interfering with stdout logs if needed
+
                 sys.stderr.write(f"\r{self._message}... {char}")
                 sys.stderr.flush()
                 time.sleep(0.15)
                 self._idx += 1
-            except Exception: # Ignore errors during spinning (e.g., IO errors)
+            except Exception: 
                  break
-        # Clear the spinner line
+
         try:
             sys.stderr.write("\r" + " " * (len(self._message) + 5) + "\r")
             sys.stderr.flush()
         except Exception:
-             pass # Ignore errors during cleanup
+             pass 
 
 
     def start(self) -> None:
@@ -84,10 +80,9 @@ class TaskSpinner:
         """Stops the spinner thread."""
         if self._thread and self._thread.is_alive():
             self._stop_event.set()
-            self._thread.join(timeout=0.5) # Wait briefly for thread to clear line
+            self._thread.join(timeout=0.5) 
         self._thread = None
 
-# Global spinner instance (optional)
 _global_spinner: Optional[TaskSpinner] = None
 
 def setup_logging(name: str, level: int = logging.INFO, use_spinner: bool = False, spinner_message: str = "Loading") -> logging.Logger:
@@ -110,22 +105,18 @@ def setup_logging(name: str, level: int = logging.INFO, use_spinner: bool = Fals
         _global_spinner.start()
 
     logger = logging.getLogger(name)
-    # Set level ONLY if the new level is lower than current, avoid raising level implicitly
+
     if not logger.hasHandlers() or level < logger.level:
         logger.setLevel(level)
 
-    # Prevent adding duplicate handlers
     if not logger.handlers:
-        # Choose handler based on global flag or config
+
         if USE_JSON_LOGGING:
-            handler = logging.StreamHandler(sys.stdout) # Or stderr
+            handler = logging.StreamHandler(sys.stdout) 
             formatter = JsonFormatter(datefmt='%Y-%m-%dT%H:%M:%S%z')
         else:
-            # Use Colorlog for console output
+
             handler = colorlog.StreamHandler(sys.stdout)
-            # A16: Ensure formatter can handle extra fields (though colorlog doesn't display them by default)
-            # Example format string including potential extra fields if needed:
-            # '%(log_color)s%(asctime)s [%(levelname)-8s] %(name)s:%(lineno)d: %(message)s %(tx_hash)s%(reset)s'
             formatter = colorlog.ColoredFormatter(
                 '%(log_color)s[%(levelname)-8s] %(name)s: %(message)s%(reset)s',
                 log_colors={
@@ -140,12 +131,11 @@ def setup_logging(name: str, level: int = logging.INFO, use_spinner: bool = Fals
             )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
-        # Propagate logs to root logger ONLY if this is not the root logger itself
-        # logger.propagate = logger.name != "" # Or check against logging.root
 
-    # Stop spinner after initial setup potentially
+
+
     if use_spinner and _global_spinner:
         _global_spinner.stop()
-        _global_spinner = None # Allow spinner again if called later
+        _global_spinner = None 
 
     return logger
