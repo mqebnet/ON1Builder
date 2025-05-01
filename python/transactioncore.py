@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import asyncio
 from web3 import AsyncWeb3
-from web3.exceptions import ContractLogicError, TransactionNotFound, Web3ValueError
+from web3.exceptions import ContractLogicError, TransactionNotFound
 from eth_account import Account
 
 from abiregistry import ABIRegistry
@@ -277,6 +277,136 @@ class TransactionCore:
         """
         sent = await self.execute_transaction(target_tx)
         return bool(sent)
+    
+    async def execute_sandwich_attack(self, target_tx: Dict[str, Any]) -> bool:
+        """
+        Execute a sandwich attack by sending a front-run tx and a back-run tx around the target.
+        """
+        front_tx = target_tx.copy()
+
+        front_tx["gasPrice"] = int(front_tx.get("gasPrice", 0) * 1.15) if front_tx.get("gasPrice") else int(self.web3.to_wei((await self.safetynet.get_dynamic_gas_price()) * self.gas_price_multiplier * 1.15, "gwei"))
+        back_tx = target_tx.copy()
+
+        back_tx["gasPrice"] = int(back_tx.get("gasPrice", 0) * 0.9) if back_tx.get("gasPrice") else int(self.web3.to_wei((await self.safetynet.get_dynamic_gas_price()) * self.gas_price_multiplier * 0.9, "gwei"))
+        res_front = await self.execute_transaction(front_tx)
+
+        await asyncio.sleep(1)
+        res_back = await self.execute_transaction(back_tx)
+        return bool(res_front) and bool(res_back)
+
+    async def aggressive_front_run(self, target_tx: Dict[str, Any]) -> bool:
+        """
+        Aggressively increase gas price by 30%.
+        """
+        if "gasPrice" in target_tx:
+            target_tx["gasPrice"] = int(target_tx["gasPrice"] * 1.3)
+        else:
+            dynamic = await self.safetynet.get_dynamic_gas_price()
+            target_tx["gasPrice"] = int(self.web3.to_wei(dynamic * self.gas_price_multiplier * 1.3, "gwei"))
+        return await self.execute_transaction(target_tx)
+
+    async def predictive_front_run(self, target_tx: Dict[str, Any]) -> bool:
+        """
+        Execute front-run only if simulation indicates success.
+        """
+        simulation_success = await self.simulate_transaction(target_tx)
+        if simulation_success:
+            return await self.front_run(target_tx)
+        return False
+
+    async def volatility_front_run(self, target_tx: Dict[str, Any]) -> bool:
+        """
+        Increase gas price by a volatility multiplier (e.g., 1.5).
+        """
+        volatile_multiplier = 1.5
+        if "gasPrice" in target_tx:
+            target_tx["gasPrice"] = int(target_tx["gasPrice"] * volatile_multiplier)
+        else:
+            dynamic = await self.safetynet.get_dynamic_gas_price()
+            target_tx["gasPrice"] = int(self.web3.to_wei(dynamic * self.gas_price_multiplier * volatile_multiplier, "gwei"))
+        return await self.execute_transaction(target_tx)
+
+    async def price_dip_back_run(self, target_tx: Dict[str, Any]) -> bool:
+        """
+        Execute back-run with reduced gas price due to a price dip (reduce by 20%).
+        """
+        if "gasPrice" in target_tx:
+            target_tx["gasPrice"] = int(target_tx["gasPrice"] * 0.8)
+        else:
+            dynamic = await self.safetynet.get_dynamic_gas_price()
+            target_tx["gasPrice"] = int(self.web3.to_wei(dynamic * self.gas_price_multiplier * 0.8, "gwei"))
+        return await self.execute_transaction(target_tx)
+
+    async def flashloan_back_run(self, target_tx: Dict[str, Any]) -> bool:
+        """
+        Use flashloan logic before executing back-run.
+        """
+        flashloan_success = await self.withdraw_eth()
+        if flashloan_success:
+            return await self.back_run(target_tx)
+        return False
+
+    async def high_volume_back_run(self, target_tx: Dict[str, Any]) -> bool:
+        """
+        In high volume, adjust gas price down slightly (reduce by 15%) to capture back-run opportunities.
+        """
+        if "gasPrice" in target_tx:
+            target_tx["gasPrice"] = int(target_tx["gasPrice"] * 0.85)
+        else:
+            dynamic = await self.safetynet.get_dynamic_gas_price()
+            target_tx["gasPrice"] = int(self.web3.to_wei(dynamic * self.gas_price_multiplier * 0.85, "gwei"))
+        return await self.execute_transaction(target_tx)
+    async def bundle_transactions(self, transactions: List[Dict[str, Any]]) -> List[str]:
+        """
+        Bundle multiple transactions into a single transaction.
+        """
+        bundle_tx = []
+        for tx in transactions:
+            clean_tx = self._clean_tx(tx)
+            bundle_tx.append(clean_tx)
+
+        # Assuming the first transaction is the main one
+        main_tx = bundle_tx[0]
+        main_tx["data"] = self.web3.to_hex(self.web3.to_bytes(text="Bundle Transaction"))
+        signed_bundle = await self.sign_transaction(main_tx)
+        tx_hashes = []
+        for raw in signed_bundle:
+            tx_hash = await self.send_signed(raw)
+            tx_hashes.append(tx_hash)
+        return tx_hashes
+        
+    async def execute_bundle(self, transactions: List[Dict[str, Any]]) -> List[str]:
+        """
+        Execute a bundle of transactions.
+        """
+        tx_hashes = await self.bundle_transactions(transactions)
+        for tx_hash in tx_hashes:
+            try:
+                receipt = await self.web3.eth.wait_for_transaction_receipt(tx_hash)
+                if receipt.status == 1:
+                    logger.info(f"Transaction {tx_hash} executed successfully.")
+                else:
+                    logger.error(f"Transaction {tx_hash} failed.")
+            except Exception as e:
+                logger.error(f"Error waiting for transaction {tx_hash}: {e}")
+        return tx_hashes
+    
+    async def flashloan_front_run(self, target_tx: Dict[str, Any]) -> bool:
+        """
+        Use flashloan logic before executing front-run.
+        """
+        flashloan_success = await self.withdraw_eth()
+        if flashloan_success:
+            return await self.front_run(target_tx)
+        return False
+    async def flashloan_sandwich_attack(self, target_tx: Dict[str, Any]) -> bool:
+        """
+        Use flashloan logic before executing sandwich attack.
+        """
+        flashloan_success = await self.withdraw_eth()
+        if flashloan_success:
+            return await self.execute_sandwich_attack(target_tx)
+        return False
 
     async def stop(self) -> None:
         """
