@@ -3,7 +3,7 @@ import asyncio
 import time
 from cachetools import TTLCache
 from web3 import AsyncWeb3
-from web3.exceptions import Web3ValueError, TransactionNotFound
+from web3.exceptions import Web3ValueError
 from configuration import Configuration
 from loggingconfig import setup_logging
 
