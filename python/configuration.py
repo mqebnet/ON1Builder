@@ -91,6 +91,8 @@ class Configuration:
         self.SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI = int(os.getenv("SANDWICH_ATTACK_GAS_PRICE_THRESHOLD_GWEI", "200"))
         self.PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD = float(os.getenv("PRICE_BOOST_SANDWICH_MOMENTUM_THRESHOLD", "0.02"))
         self.HIGH_VALUE_THRESHOLD = int(os.getenv("HIGH_VALUE_THRESHOLD", "1000000000000000000"))
+        self.WEB3_MAX_RETRIES = int(os.getenv("WEB3_MAX_RETRIES", "3"))
+        self.WEB3_RETRY_DELAY = int(os.getenv("WEB3_RETRY_DELAY", "2"))
 
     def _validate_address(self, addr: str, name: str) -> str:
         if not addr:
@@ -110,10 +112,53 @@ class Configuration:
     async def _load_json(self, path: str) -> Any:
         async with aiofiles.open(path, "r", encoding="utf-8") as f:
             return json.loads(await f.read())
-
+    
+    async def get_token_addresses(self) -> Dict[str, str]:
+        if not hasattr(self, "_token_addresses"):
+            self._token_addresses = await self._load_json(self.TOKEN_ADDRESSES)
+        return self._token_addresses
+    
+    async def get_token_symbols(self) -> Dict[str, str]:
+        if not hasattr(self, "_token_symbols"):
+            self._token_symbols = await self._load_json(self.TOKEN_SYMBOLS)
+        return self._token_symbols
+    
+    async def get_erc20_abi(self) -> Dict[str, Any]:
+        if not hasattr(self, "_erc20_abi"):
+            self._erc20_abi = await self._load_json(self.ERC20_ABI)
+        return self._erc20_abi
+    
+    async def get_erc20_signatures(self) -> Dict[str, str]:
+        if not hasattr(self, "_erc20_signatures"):
+            self._erc20_signatures = await self._load_json(self.ERC20_SIGNATURES)
+        return self._erc20_signatures
+    
+    async def _load_json_safe(self, path: str, name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Safely load a JSON file. Logs errors if the file is missing or invalid.
+        """
+        try:
+            return await self._load_json(path)
+        except FileNotFoundError:
+            logger.error(f"File not found: {path} ({name})" if name else f"File not found: {path}")
+            return None
+        except json.JSONDecodeError:
+            logger.error(f"JSON decode error for file: {path} ({name})" if name else f"JSON decode error for file: {path}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error loading JSON from {path} ({name}): {e}" if name else f"Unexpected error loading JSON from {path}: {e}")
+            return None
+        
     async def load(self) -> None:
         await asyncio.to_thread(lambda: os.makedirs(self.BASE_PATH / "linear_regression", exist_ok=True))
         await self._load_json(self.ERC20_ABI)
         await self._load_json(self.TOKEN_ADDRESSES)
         await self._load_json(self.TOKEN_SYMBOLS)
         await self._load_json(self.ERC20_SIGNATURES)
+
+    def get_config_value(self, key: str, default: Any = None) -> Any:
+        """
+        Retrieve a configuration value by its key.
+        If the key is not found, return the provided default value.
+        """
+        return getattr(self, key, default)
