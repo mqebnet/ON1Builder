@@ -1,10 +1,9 @@
 import asyncio
 import os
 import sys
-# Ensure the main package is importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-#!/usr/bin/env python3
+
 import asyncio
 import logging
 import signal
