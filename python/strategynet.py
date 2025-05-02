@@ -54,6 +54,7 @@ class StrategyNet:
             "eth_transaction": [self.transactioncore.handle_eth_transaction],
             "front_run": [
                 self.transactioncore.front_run,
+                self.transactioncore.flashloan_front_run,
                 self.transactioncore.aggressive_front_run,
                 self.transactioncore.predictive_front_run,
                 self.transactioncore.volatility_front_run
@@ -65,6 +66,7 @@ class StrategyNet:
                 self.transactioncore.high_volume_back_run
             ],
             "sandwich_attack": [
+                self.transactioncore.flashloan_sandwich_attack,
                 self.transactioncore.execute_sandwich_attack
             ]
         }
@@ -103,6 +105,7 @@ class StrategyNet:
         selected = strategies[index]
         logger.debug(f"Selected strategy '{selected.__name__}' with weight {weights[index]:.4f}.")
         return selected
+    
 
     def _calculate_reward(self, success: bool, profit: Decimal, execution_time: float) -> float:
         """Calculates reward for strategy update."""
