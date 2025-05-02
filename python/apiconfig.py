@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Union
 from cachetools import TTLCache
 import joblib
 import pandas as pd
-from sklearn.linear_model import LinearRegression
+
 
 from configuration import Configuration
 from loggingconfig import setup_logging
