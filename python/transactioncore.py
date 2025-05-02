@@ -364,8 +364,6 @@ class TransactionCore:
         for tx in transactions:
             clean_tx = self._clean_tx(tx)
             bundle_tx.append(clean_tx)
-
-        # Assuming the first transaction is the main one
         main_tx = bundle_tx[0]
         main_tx["data"] = self.web3.to_hex(self.web3.to_bytes(text="Bundle Transaction"))
         signed_bundle = await self.sign_transaction(main_tx)
