@@ -1,6 +1,5 @@
 import asyncio
 from typing import List, Dict, Any, Optional
-from cachetools import TTLCache
 from web3 import AsyncWeb3
 from web3.exceptions import TransactionNotFound
 from configuration import Configuration
