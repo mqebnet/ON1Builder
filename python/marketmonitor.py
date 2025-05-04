@@ -8,6 +8,8 @@ import numpy as np
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import GridSearchCV
 from cachetools import TTLCache
 from web3 import AsyncWeb3
 from apiconfig import APIConfig
@@ -148,10 +150,36 @@ class MarketMonitor:
         features = ["price_usd", "volume_24h", "market_cap", "volatility", "liquidity_ratio", "price_momentum"]
         X = df[features].fillna(0)
         y = df["price_usd"].fillna(0)
-        model = LinearRegression()
-        model.fit(X, y)
-        await asyncio.to_thread(joblib.dump, model, self.model_path)
-        self.price_model = model
+        
+        # Experiment with different models
+        models = {
+            "LinearRegression": LinearRegression(),
+            "RandomForest": RandomForestRegressor()
+        }
+        
+        best_model = None
+        best_score = -np.inf
+        
+        for name, model in models.items():
+            model.fit(X, y)
+            score = model.score(X, y)
+            if score > best_score:
+                best_score = score
+                best_model = model
+        
+        # Perform hyperparameter tuning for the best model
+        if isinstance(best_model, RandomForestRegressor):
+            param_grid = {
+                "n_estimators": [50, 100, 200],
+                "max_depth": [None, 10, 20, 30],
+                "min_samples_split": [2, 5, 10]
+            }
+            grid_search = GridSearchCV(best_model, param_grid, cv=5)
+            grid_search.fit(X, y)
+            best_model = grid_search.best_estimator_
+        
+        await asyncio.to_thread(joblib.dump, best_model, self.model_path)
+        self.price_model = best_model
 
     async def stop(self) -> None:
         self.price_cache.clear()

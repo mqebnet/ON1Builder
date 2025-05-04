@@ -59,13 +59,25 @@ class TransactionCore:
         """
         Initialize the transaction engine by loading ABIs and validating contracts.
         """
+        await self._load_abis()
+        await self._initialize_contracts()
+        logger.info("TransactionCore initialized successfully.")
+
+    async def _load_abis(self) -> None:
+        """
+        Load ABIs from the ABI registry.
+        """
         await self.abiregistry.initialize(self.configuration.BASE_PATH)
         self.erc20_abi = self.abiregistry.get_abi("erc20") or []
         self.flashloan_abi = self.abiregistry.get_abi("aave_flashloan") or []
-        aave_pool_abi = self.abiregistry.get_abi("aave") or []
-        uniswap_abi = self.abiregistry.get_abi("uniswap") or []
-        sushiswap_abi = self.abiregistry.get_abi("sushiswap") or []
+        self.aave_pool_abi = self.abiregistry.get_abi("aave") or []
+        self.uniswap_abi = self.abiregistry.get_abi("uniswap") or []
+        self.sushiswap_abi = self.abiregistry.get_abi("sushiswap") or []
 
+    async def _initialize_contracts(self) -> None:
+        """
+        Initialize and validate contracts.
+        """
         self.aave_flashloan = self.web3.eth.contract(
             address=self.web3.to_checksum_address(self.configuration.AAVE_FLASHLOAN_ADDRESS),
             abi=self.flashloan_abi
@@ -74,25 +86,23 @@ class TransactionCore:
 
         self.aave_pool = self.web3.eth.contract(
             address=self.web3.to_checksum_address(self.configuration.AAVE_POOL_ADDRESS),
-            abi=aave_pool_abi
+            abi=self.aave_pool_abi
         )
         await self._validate_contract(self.aave_pool)
 
-        if uniswap_abi and self.configuration.UNISWAP_ADDRESS:
+        if self.uniswap_abi and self.configuration.UNISWAP_ADDRESS:
             self.uniswap_router = self.web3.eth.contract(
                 address=self.web3.to_checksum_address(self.configuration.UNISWAP_ADDRESS),
-                abi=uniswap_abi
+                abi=self.uniswap_abi
             )
             await self._validate_contract(self.uniswap_router)
 
-        if sushiswap_abi and self.configuration.SUSHISWAP_ADDRESS:
+        if self.sushiswap_abi and self.configuration.SUSHISWAP_ADDRESS:
             self.sushiswap_router = self.web3.eth.contract(
                 address=self.web3.to_checksum_address(self.configuration.SUSHISWAP_ADDRESS),
-                abi=sushiswap_abi
+                abi=self.sushiswap_abi
             )
             await self._validate_contract(self.sushiswap_router)
-
-        logger.info("TransactionCore initialized successfully.")
 
     async def _validate_contract(self, contract: Any) -> None:
         """
@@ -136,11 +146,11 @@ class TransactionCore:
 
         tx = function_call.buildTransaction(params)
         tx.update(additional_params)
-        estimated = await self._estimate_gas(tx)
+        estimated = await self.estimate_gas(tx)
         tx["gas"] = int(estimated * 1.1)
         return tx
 
-    async def _estimate_gas(self, tx: Dict[str, Any]) -> int:
+    async def estimate_gas(self, tx: Dict[str, Any]) -> int:
         """
         Estimate gas with fallback.
         """
