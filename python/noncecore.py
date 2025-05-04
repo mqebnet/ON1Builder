@@ -1,6 +1,7 @@
 # noncecore.py
 import asyncio
 import time
+import random
 from cachetools import TTLCache
 from web3 import AsyncWeb3
 from web3.exceptions import Web3ValueError
@@ -29,6 +30,7 @@ class NonceCore:
             return
         await self._init_nonce()
         self._initialized = True
+        asyncio.create_task(self._periodic_sync())
 
     async def _init_nonce(self) -> None:
         """Fetches the highest of on-chain and pending nonces."""
@@ -56,13 +58,13 @@ class NonceCore:
                 logger.error(f"Error refreshing nonce: {e}", exc_info=True)
 
     async def _fetch_current_nonce_with_retries(self) -> int:
-        """Fetches on-chain nonce with exponential backoff."""
+        """Fetches on-chain nonce with exponential backoff and jitter."""
         delay = self.configuration.NONCE_RETRY_DELAY
         for _ in range(self.configuration.NONCE_MAX_RETRIES):
             try:
                 return await self.web3.eth.get_transaction_count(self.address)
             except Exception:
-                await asyncio.sleep(delay)
+                await asyncio.sleep(delay + random.uniform(0, delay))
                 delay *= 2
         raise Web3ValueError("Failed to fetch current nonce")
 
@@ -82,6 +84,7 @@ class NonceCore:
             pass
         finally:
             self.pending_transactions.discard(nonce)
+            await self.refresh_nonce()
 
     async def reset(self) -> None:
         """Clears cache and synchronizes nonce."""
@@ -93,3 +96,9 @@ class NonceCore:
     async def stop(self) -> None:
         """Stops the nonce manager."""
         await self.reset()
+
+    async def _periodic_sync(self) -> None:
+        """Periodically refreshes the nonce cache."""
+        while self._initialized:
+            await asyncio.sleep(self.configuration.NONCE_CACHE_TTL)
+            await self.refresh_nonce()

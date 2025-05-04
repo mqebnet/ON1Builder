@@ -94,16 +94,49 @@ class MainCore:
             raise RuntimeError("Web3 init failed")
         self.account = Account.from_key(self.configuration.WALLET_KEY)
         await self._check_account_balance()
+        apiconfig = await self._initialize_apiconfig()
+        noncecore = await self._initialize_noncecore()
+        safetynet = await self._initialize_safetynet(apiconfig)
+        marketmonitor = await self._initialize_marketmonitor(apiconfig)
+        transactioncore = await self._initialize_transactioncore(apiconfig, marketmonitor, noncecore, safetynet)
+        mempoolmonitor = await self._initialize_mempoolmonitor(apiconfig, noncecore, safetynet, marketmonitor)
+        strategynet = await self._initialize_strategynet(transactioncore, marketmonitor, safetynet, apiconfig)
+        self.components = {
+            "apiconfig": apiconfig,
+            "noncecore": noncecore,
+            "safetynet": safetynet,
+            "marketmonitor": marketmonitor,
+            "transactioncore": transactioncore,
+            "mempoolmonitor": mempoolmonitor,
+            "strategynet": strategynet
+        }
+
+    async def _initialize_apiconfig(self) -> APIConfig:
         apiconfig = APIConfig(self.configuration)
         await apiconfig.initialize()
+        return apiconfig
+
+    async def _initialize_noncecore(self) -> NonceCore:
         noncecore = NonceCore(self.web3, self.account.address, self.configuration)
         await noncecore.initialize()
+        return noncecore
+
+    async def _initialize_safetynet(self, apiconfig: APIConfig) -> SafetyNet:
         safetynet = SafetyNet(self.web3, self.configuration, self.account.address, self.account, apiconfig, None)
         await safetynet.initialize()
+        return safetynet
+
+    async def _initialize_marketmonitor(self, apiconfig: APIConfig) -> MarketMonitor:
         marketmonitor = MarketMonitor(self.web3, self.configuration, apiconfig, None)
         await marketmonitor.initialize()
+        return marketmonitor
+
+    async def _initialize_transactioncore(self, apiconfig: APIConfig, marketmonitor: MarketMonitor, noncecore: NonceCore, safetynet: SafetyNet) -> TransactionCore:
         transactioncore = TransactionCore(self.web3, self.account, self.configuration, apiconfig, marketmonitor, None, noncecore, safetynet)
         await transactioncore.initialize()
+        return transactioncore
+
+    async def _initialize_mempoolmonitor(self, apiconfig: APIConfig, noncecore: NonceCore, safetynet: SafetyNet, marketmonitor: MarketMonitor) -> MempoolMonitor:
         mempoolmonitor = MempoolMonitor(
             self.web3,
             safetynet,
@@ -114,17 +147,12 @@ class MainCore:
             marketmonitor
         )
         await mempoolmonitor.initialize()
+        return mempoolmonitor
+
+    async def _initialize_strategynet(self, transactioncore: TransactionCore, marketmonitor: MarketMonitor, safetynet: SafetyNet, apiconfig: APIConfig) -> StrategyNet:
         strategynet = StrategyNet(transactioncore, marketmonitor, safetynet, apiconfig)
         await strategynet.initialize()
-        self.components = {
-            "apiconfig": apiconfig,
-            "noncecore": noncecore,
-            "safetynet": safetynet,
-            "marketmonitor": marketmonitor,
-            "transactioncore": transactioncore,
-            "mempoolmonitor": mempoolmonitor,
-            "strategynet": strategynet
-        }
+        return strategynet
 
     async def run(self) -> None:
         self.running = True
