@@ -1,7 +1,19 @@
+# mempoolmonitor.py
+"""
+ON1Builder – MempoolMonitor
+
+Monitors the Ethereum mempool trough pending transaction filters or block polling.
+Surfaces profitable transactions for StrategyNet
+"""
+
+from __future__ import annotations
+
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 from web3 import AsyncWeb3
 from web3.exceptions import TransactionNotFound
+
 from configuration import Configuration
 from safetynet import SafetyNet
 from noncecore import NonceCore
@@ -9,10 +21,13 @@ from apiconfig import APIConfig
 from marketmonitor import MarketMonitor
 from loggingconfig import setup_logging
 
-logger = setup_logging("Mempool_Monitor", level="DEBUG")  
+logger = setup_logging("MempoolMonitor", level="DEBUG")
 
 
 class MempoolMonitor:
+    """Watches the mempool (or latest blocks as a fallback) and surfaces
+    profitable transactions for StrategyNet."""
+
     def __init__(
         self,
         web3: AsyncWeb3,
@@ -22,141 +37,236 @@ class MempoolMonitor:
         monitored_tokens: List[str],
         configuration: Configuration,
         marketmonitor: MarketMonitor,
-    ):
+    ) -> None:
         self.web3 = web3
         self.safetynet = safetynet
         self.noncecore = noncecore
         self.apiconfig = apiconfig
         self.marketmonitor = marketmonitor
+        self.configuration = configuration
+
+        # normalise token list to lower-case addresses
         self.monitored_tokens = {
-            apiconfig.get_token_address(t).lower() if not t.startswith("0x") else t.lower()
+            (
+                apiconfig.get_token_address(t).lower()
+                if not t.startswith("0x")
+                else t.lower()
+            )
             for t in monitored_tokens
         }
-        self.configuration = configuration
-        self.pending = asyncio.Queue()
-        self.profitable = asyncio.Queue()
-        self.task_queue = asyncio.PriorityQueue()
-        self.processed = set()
-        self.cache = {}
-        self.running = False
-        self.semaphore = asyncio.Semaphore(self.configuration.MEMPOOL_MAX_PARALLEL_TASKS)
+
+        # queues -------------------------------------------------------------
+        self._tx_hash_queue: asyncio.Queue[str] = asyncio.Queue()
+        self._tx_analysis_queue: asyncio.Queue[str] = asyncio.Queue()
+        self.profitable_transactions: asyncio.Queue[Dict[str, Any]] = asyncio.Queue(
+        )
+
+        # task book-keeping
+        self._tasks: List[asyncio.Task] = []
+        self._running: bool = False
+
+        # misc
+        self._processed_hashes: set[str] = set()
+        self._tx_cache: Dict[str, Dict[str, Any]] = {}
+
+        # concurrency guard
+        self._semaphore = asyncio.Semaphore(
+            self.configuration.MEMPOOL_MAX_PARALLEL_TASKS
+        )
 
     async def initialize(self) -> None:
-        self.pending = asyncio.Queue()
-        self.profitable = asyncio.Queue()
-        self.task_queue = asyncio.PriorityQueue()
-        self.processed.clear()
-        self.cache.clear()
-        self.running = False
+        """Prepare for monitoring; does not start background tasks yet."""
+        # ensure queues clean on hot-reload
+        self._tx_hash_queue = asyncio.Queue()
+        self._tx_analysis_queue = asyncio.Queue()
+        self.profitable_transactions = asyncio.Queue()
+        self._processed_hashes.clear()
+        self._tx_cache.clear()
+        self._running = False
+
+    # ---------- public control ---------------------------------------------
 
     async def start_monitoring(self) -> None:
-        if self.running:
+        if self._running:
             return
-        self.running = True
-        await asyncio.gather(self._run_monitoring(), self._process_task_queue())
+        self._running = True
 
-    async def _run_monitoring(self) -> None:
-        filter_obj = None
+        # spawn background tasks
+        self._tasks = [
+            asyncio.create_task(
+                self._collect_hashes(),
+                name="MM_collect_hashes"),
+            asyncio.create_task(
+                self._analysis_dispatcher(),
+                name="MM_analysis_dispatcher"),
+        ]
+        logger.info(
+            "MempoolMonitor: started %d background tasks", len(
+                self._tasks))
+
+        # allow caller to await until stopped
+        await asyncio.gather(*self._tasks, return_exceptions=True)
+
+    async def stop(self) -> None:
+        if not self._running:
+            return
+        self._running = False
+        logger.info("MempoolMonitor: stopping…")
+
+        for t in self._tasks:
+            t.cancel()
+        await asyncio.gather(*self._tasks, return_exceptions=True)
+        self._tasks.clear()
+        logger.info("MempoolMonitor: stopped")
+
+    # ---------- collectors --------------------------------------------------
+
+    async def _collect_hashes(self) -> None:
+        """Collect tx-hashes either via `eth_newPendingTransactionFilter`
+        or by block-polling fallback."""
         try:
-            filter_obj = await self.web3.eth.filter("pending")
-            await filter_obj.get_new_entries()
-        except Exception:
-            filter_obj = None
-        if filter_obj:
-            while self.running:
-                try:
-                    hashes = await filter_obj.get_new_entries()
-                    if hashes:
-                        await self._handle_hashes([h.hex() for h in hashes])
-                    await asyncio.sleep(1)
-                except Exception:
-                    await asyncio.sleep(1)
-        else:
-            last_block = await self.web3.eth.block_number
-            while self.running:
+            try:
+                filter_obj = await self.web3.eth.filter("pending")
+                logger.debug("Using pending-tx filter for mempool monitoring")
+            except Exception:
+                filter_obj = None
+                logger.warning(
+                    "Node does not support pending filters – falling back to block polling"
+                )
+
+            if filter_obj:
+                await self._collect_from_filter(filter_obj)
+            else:
+                await self._collect_from_blocks()
+        except asyncio.CancelledError:
+            pass
+        except Exception as exc:
+            logger.exception("Fatal error in _collect_hashes: %s", exc)
+            raise
+
+    async def _collect_from_filter(self, filter_obj: Any) -> None:
+        while self._running:
+            try:
+                new_hashes = await filter_obj.get_new_entries()
+                for h in new_hashes:
+                    await self._enqueue_hash(h.hex())
+            except Exception:
+                await asyncio.sleep(1)
+
+    async def _collect_from_blocks(self) -> None:
+        last_block = await self.web3.eth.block_number
+        while self._running:
+            try:
                 current = await self.web3.eth.block_number
                 for n in range(last_block + 1, current + 1):
                     block = await self.web3.eth.get_block(n, full_transactions=True)
-                    for tx in block.transactions:
-                        h = tx.hash.hex() if hasattr(tx, "hash") else tx["hash"].hex()
-                        await self._handle_hashes([h])
+                    for tx in block.transactions:  # type: ignore[attr-defined]
+                        txh = (
+                            tx.hash if hasattr(
+                                tx, "hash") else tx["hash"]).hex()
+                        await self._enqueue_hash(txh)
                 last_block = current
-                await asyncio.sleep(1)
+            except Exception:
+                pass
+            await asyncio.sleep(1)
 
-    async def _handle_hashes(self, hashes: List[str]) -> None:
-        for h in hashes:
-            if h not in self.processed:
-                self.processed.add(h)
-                priority = await self._calculate_priority(h)
-                await self.task_queue.put((priority, h))
+    async def _enqueue_hash(self, tx_hash: str) -> None:
+        if tx_hash in self._processed_hashes:
+            return
+        self._processed_hashes.add(tx_hash)
+        await self._tx_hash_queue.put(tx_hash)
 
-    async def _calculate_priority(self, tx_hash: str) -> int:
-        tx = await self._get_transaction(tx_hash)
-        if not tx:
-            return float("inf")
-        return -tx.get("gasPrice", 0)
+    # ---------- dispatcher / analyser --------------------------------------
 
-    async def _get_transaction(self, tx_hash: str) -> Optional[Dict[str, Any]]:
-        if tx_hash in self.cache:
-            return self.cache[tx_hash]
-        backoff = self.configuration.MEMPOOL_RETRY_DELAY
+    async def _analysis_dispatcher(self) -> None:
+        while self._running:
+            tx_hash = await self._tx_hash_queue.get()
+            await self._semaphore.acquire()
+            asyncio.create_task(self._analyse_transaction(tx_hash))
+
+    async def _analyse_transaction(self, tx_hash: str) -> None:
+        try:
+            tx = await self._fetch_transaction(tx_hash)
+            if not tx:
+                return
+
+            priority = self._calc_priority(tx)
+            # push into analysis queue according to priority
+            await self._tx_analysis_queue.put((priority, tx_hash))
+
+            # actual profitability analysis (single-thread for clarity)
+            profitable = await self._is_profitable(tx_hash, tx)
+            if profitable:
+                await self.profitable_transactions.put(profitable)
+
+        finally:
+            self._semaphore.release()
+
+    # ---------- helpers ----------------------------------------------------
+
+    async def _fetch_transaction(
+            self, tx_hash: str) -> Optional[Dict[str, Any]]:
+        if tx_hash in self._tx_cache:
+            return self._tx_cache[tx_hash]
+
+        delay = self.configuration.MEMPOOL_RETRY_DELAY
         for _ in range(self.configuration.MEMPOOL_MAX_RETRIES):
             try:
                 tx = await self.web3.eth.get_transaction(tx_hash)
-                self.cache[tx_hash] = tx
+                self._tx_cache[tx_hash] = tx
                 return tx
             except TransactionNotFound:
-                await asyncio.sleep(backoff)
-                backoff *= 1.5
+                await asyncio.sleep(delay)
+                delay *= 1.5
             except Exception:
-                return None
+                break
         return None
 
-    async def _process_task_queue(self) -> None:
-        while self.running:
-            priority, tx_hash = await self.task_queue.get()
-            await self.semaphore.acquire()
-            asyncio.create_task(self._process_transaction(tx_hash))
+    # ---------- analysis ---------------------------------------------------
 
-    async def _process_transaction(self, tx_hash: str) -> None:
-        try:
-            tx = await self._get_transaction(tx_hash)
-            if not tx:
-                return
-            analysis = await self._analyze_transaction(tx, tx_hash)
-            if analysis.get("is_profitable"):
-                await self.profitable.put(analysis)
-        finally:
-            self.semaphore.release()
+    def _calc_priority(self, tx: Dict[str, Any]) -> int:
+        """Lower integer == higher priority for PriorityQueue.
+        We negate gas-price so that higher gas = lower integer."""
+        gp_legacy = tx.get("gasPrice", 0) or 0
+        gp_1559 = tx.get("maxFeePerGas", 0) or 0
+        effective_gp = max(gp_legacy, gp_1559)
+        return -int(effective_gp)
 
-    async def _analyze_transaction(self, tx: Dict[str, Any], tx_hash: str) -> Dict[str, Any]:
-        to_addr = tx.get("to", "")
+    async def _is_profitable(
+        self, tx_hash: str, tx: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """Very lightweight profitability heuristic – just enough to
+        surface to StrategyNet.  Heavy simulation lives elsewhere."""
+        to_addr = (tx.get("to") or "").lower()
+        if to_addr not in self.monitored_tokens:
+            return None
+
         value = tx.get("value", 0)
-        gas_price = tx.get("gasPrice", 0)
-        if value <= 0 or gas_price <= 0:
-            return {"is_profitable": False}
-        addr = to_addr.lower()
-        if addr not in self.monitored_tokens:
-            return {"is_profitable": False}
-        gas_used = await self.safetynet.estimate_gas(tx)
+        if value <= 0:
+            return None
+
+        gas_used_est = await self.safetynet.estimate_gas(tx)
+        gas_price_gwei = self.web3.from_wei(
+            tx.get("gasPrice", tx.get("maxFeePerGas", 0)), "gwei"
+        )
+
         tx_data = {
-            "output_token": addr,
+            "output_token": to_addr,
             "amountIn": float(self.web3.from_wei(value, "ether")),
             "amountOut": float(self.web3.from_wei(value, "ether")),
-            "gas_price": float(self.web3.from_wei(gas_price, "gwei")),
-            "gas_used": float(gas_used),
+            "gas_price": float(gas_price_gwei),
+            "gas_used": float(gas_used_est),
         }
-        safe, details = await self.safetynet.check_transaction_safety(tx_data, check_type="profit")
-        if safe and details.get("profit_ok"):
+
+        safe, details = await self.safetynet.check_transaction_safety(
+            tx_data, check_type="profit"
+        )
+        if safe and details.get("profit_ok", False):
             return {
                 "is_profitable": True,
                 "tx_hash": tx_hash,
                 "tx": tx,
                 "analysis": details,
-                "strategy_type": "front_run"
+                "strategy_type": "front_run",
             }
-        return {"is_profitable": False}
-
-    async def stop(self) -> None:
-        self.running = False
-        await asyncio.sleep(0)
+        return None
