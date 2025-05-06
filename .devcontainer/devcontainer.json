@@ -25,5 +25,5 @@
       }
     }
   },
-  "workspaceFolder": "/workspace/ON1Builder" // Set default workspace folder
+  "workspaceFolder": "/workspaces/ON1Builder" // Set default workspace folder
 }
