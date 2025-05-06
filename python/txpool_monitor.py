@@ -1,6 +1,6 @@
-# mempoolmonitor.py
+# txpool_monitor.py
 """
-ON1Builder – MempoolMonitor
+ON1Builder – TxpoolMonitor
 
 Monitors the Ethereum mempool trough pending transaction filters or block polling.
 Surfaces profitable transactions for StrategyNet
@@ -9,46 +9,46 @@ Surfaces profitable transactions for StrategyNet
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from web3 import AsyncWeb3
 from web3.exceptions import TransactionNotFound
 
 from configuration import Configuration
-from safetynet import SafetyNet
-from noncecore import NonceCore
-from apiconfig import APIConfig
-from marketmonitor import MarketMonitor
-from loggingconfig import setup_logging
+from safety_net import SafetyNet
+from nonce_core import NonceCore
+from api_config import APIConfig
+from market_monitor import MarketMonitor
+from logger_on1 import setup_logging
 
-logger = setup_logging("MempoolMonitor", level="DEBUG")
+logger = setup_logging("TxpoolMonitor", level="DEBUG")
 
 
-class MempoolMonitor:
+class TxpoolMonitor:
     """Watches the mempool (or latest blocks as a fallback) and surfaces
     profitable transactions for StrategyNet."""
 
     def __init__(
         self,
         web3: AsyncWeb3,
-        safetynet: SafetyNet,
-        noncecore: NonceCore,
-        apiconfig: APIConfig,
+        safety_net: SafetyNet,
+        nonce_core: NonceCore,
+        api_config: APIConfig,
         monitored_tokens: List[str],
         configuration: Configuration,
-        marketmonitor: MarketMonitor,
+        market_monitor: MarketMonitor,
     ) -> None:
         self.web3 = web3
-        self.safetynet = safetynet
-        self.noncecore = noncecore
-        self.apiconfig = apiconfig
-        self.marketmonitor = marketmonitor
+        self.safety_net = safety_net
+        self.nonce_core = nonce_core
+        self.api_config = api_config
+        self.market_monitor = market_monitor
         self.configuration = configuration
 
         # normalise token list to lower-case addresses
         self.monitored_tokens = {
             (
-                apiconfig.get_token_address(t).lower()
+                api_config.get_token_address(t).lower()
                 if not t.startswith("0x")
                 else t.lower()
             )
@@ -101,7 +101,7 @@ class MempoolMonitor:
                 name="MM_analysis_dispatcher"),
         ]
         logger.info(
-            "MempoolMonitor: started %d background tasks", len(
+            "TxpoolMonitor: started %d background tasks", len(
                 self._tasks))
 
         # allow caller to await until stopped
@@ -111,13 +111,13 @@ class MempoolMonitor:
         if not self._running:
             return
         self._running = False
-        logger.info("MempoolMonitor: stopping…")
+        logger.info("TxpoolMonitor: stopping…")
 
         for t in self._tasks:
             t.cancel()
         await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks.clear()
-        logger.info("MempoolMonitor: stopped")
+        logger.info("TxpoolMonitor: stopped")
 
     # ---------- collectors --------------------------------------------------
 
@@ -245,7 +245,7 @@ class MempoolMonitor:
         if value <= 0:
             return None
 
-        gas_used_est = await self.safetynet.estimate_gas(tx)
+        gas_used_est = await self.safety_net.estimate_gas(tx)
         gas_price_gwei = self.web3.from_wei(
             tx.get("gasPrice", tx.get("maxFeePerGas", 0)), "gwei"
         )
@@ -258,7 +258,7 @@ class MempoolMonitor:
             "gas_used": float(gas_used_est),
         }
 
-        safe, details = await self.safetynet.check_transaction_safety(
+        safe, details = await self.safety_net.check_transaction_safety(
             tx_data, check_type="profit"
         )
         if safe and details.get("profit_ok", False):

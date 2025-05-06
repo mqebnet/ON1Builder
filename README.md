@@ -177,7 +177,7 @@
     - profitability  
     - gas usage & slippage  
     - mempool congestion  
-- **Console Logs**: colored, leveled via `loggingconfig.py`  
+- **Console Logs**: colored, leveled via `logger_on1.py`  
 - **Memory Watchdog**: tracemalloc diffs every `MEMORY_CHECK_INTERVAL`  
 
 ---
@@ -191,7 +191,7 @@
 | **SafetyNet**     | Profit/gas/slippage checks, network congestion monitoring    |
 | **MarketMonitor** | Historical data ingestion, ML model training & prediction    |
 | **NonceCore**     | Nonce caching, locked refresh, pending tx tracking           |
-| **MempoolMonitor**| Pending tx capture, priority queuing, basic profitability   |
+| **TxpoolMonitor**| Pending tx capture, priority queuing, basic profitability   |
 | **StrategyNet**   | Reinforcement learning strategy selection & weight updates   |
 | **TransactionCore**| Build, sign, simulate, send transactions with retries       |
 | **MainCore**      | Orchestrates init, run loop, health & memory monitoring      |
@@ -225,7 +225,7 @@
 
 ## Extending & Custom Strategies
 
-1. **Add new methods** in `transactioncore.py` following existing signatures  
+1. **Add new methods** in `transaction_core.py` following existing signatures  
 2. **Register** them in `StrategyNet._strategy_registry`  
 3. **Tune** hyperparameters in `StrategyConfiguration`  
 4. **Rebuild & redeploy**  

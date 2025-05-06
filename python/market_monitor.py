@@ -1,4 +1,4 @@
-# marketmonitor.py
+# market_monitor.py
 import asyncio
 import os
 import time
@@ -12,9 +12,9 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import GridSearchCV
 from cachetools import TTLCache
 from web3 import AsyncWeb3
-from apiconfig import APIConfig
+from api_config import APIConfig
 from configuration import Configuration
-from loggingconfig import setup_logging
+from logger_on1 import setup_logging
 import logging
 
 logger = setup_logging("MarketMonitor", level=logging.DEBUG)
@@ -28,12 +28,12 @@ class MarketMonitor:
             self,
             web3: AsyncWeb3,
             configuration: Configuration,
-            apiconfig: APIConfig,
-            transactioncore: Optional[Any] = None):
+            api_config: APIConfig,
+            transaction_core: Optional[Any] = None):
         self.web3 = web3
         self.configuration = configuration
-        self.apiconfig = apiconfig
-        self.transactioncore = transactioncore
+        self.api_config = api_config
+        self.transaction_core = transaction_core
         self.model_path = self.configuration.MODEL_PATH
         self.training_data_path = self.configuration.TRAINING_DATA_PATH
         self.price_cache = TTLCache(maxsize=2000, ttl=300)
@@ -74,10 +74,10 @@ class MarketMonitor:
             self, token_address: str) -> Dict[str, bool]:
         conditions = {"high_volatility": False, "bullish_trend": False,
                       "bearish_trend": False, "low_liquidity": False}
-        symbol = self.apiconfig.get_token_symbol(token_address)
+        symbol = self.api_config.get_token_symbol(token_address)
         if not symbol:
             return conditions
-        prices = await self.apiconfig.get_token_price_data(symbol, "historical", timeframe=1, vs="usd")
+        prices = await self.api_config.get_token_price_data(symbol, "historical", timeframe=1, vs="usd")
         if not prices or len(prices) < 2:
             return conditions
         volatility = float(np.std(prices) / np.mean(prices))
@@ -88,7 +88,7 @@ class MarketMonitor:
             conditions["bullish_trend"] = True
         elif prices[-1] < avg:
             conditions["bearish_trend"] = True
-        volume = await self.apiconfig.get_token_volume(symbol)
+        volume = await self.api_config.get_token_volume(symbol)
         if volume < self.LIQUIDITY_THRESHOLD:
             conditions["low_liquidity"] = True
         return conditions
@@ -97,7 +97,7 @@ class MarketMonitor:
         cache_key = f"prediction:{token_symbol}"
         if cache_key in self.price_cache:
             return self.price_cache[cache_key]
-        prediction = await self.apiconfig.predict_price(token_symbol)
+        prediction = await self.api_config.predict_price(token_symbol)
         self.price_cache[cache_key] = prediction
         return prediction
 
@@ -107,7 +107,7 @@ class MarketMonitor:
                                    timeframe: int = 1,
                                    vs: str = "eth") -> Union[float,
                                                              List[float]]:
-        return await self.apiconfig.get_token_price_data(token_symbol, data_type, timeframe, vs)
+        return await self.api_config.get_token_price_data(token_symbol, data_type, timeframe, vs)
 
     async def update_training_data(self) -> None:
         if os.path.exists(self.training_data_path):
@@ -118,9 +118,9 @@ class MarketMonitor:
         else:
             existing = pd.DataFrame()
         rows = []
-        for token in list(self.apiconfig.token_symbol_to_address.keys()):
+        for token in list(self.api_config.token_symbol_to_address.keys()):
             try:
-                prices = await self.apiconfig.get_token_price_data(token, "historical", timeframe=1, vs="usd")
+                prices = await self.api_config.get_token_price_data(token, "historical", timeframe=1, vs="usd")
                 if not prices:
                     continue
                 current_price = float(prices[-1])
@@ -129,7 +129,7 @@ class MarketMonitor:
                     np.std(prices) / avg_price) if avg_price else 0.0
                 percent_change = (
                     (prices[-1] - prices[0]) / prices[0] * 100) if prices[0] else 0.0
-                volume = await self.apiconfig.get_token_volume(token)
+                volume = await self.api_config.get_token_volume(token)
                 row = {
                     "timestamp": int(datetime.utcnow().timestamp()),
                     "symbol": token,

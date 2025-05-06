@@ -1,4 +1,4 @@
-# strategynet.py
+# strategy_net.py
 """
 ON1Builder – StrategyNet
 ========================
@@ -18,11 +18,11 @@ from typing import Any, Callable, Dict, List
 
 import numpy as np
 
-from apiconfig import APIConfig
-from transactioncore import TransactionCore
-from safetynet import SafetyNet
-from marketmonitor import MarketMonitor
-from loggingconfig import setup_logging
+from api_config import APIConfig
+from transaction_core import TransactionCore
+from safety_net import SafetyNet
+from market_monitor import MarketMonitor
+from logger_on1 import setup_logging
 
 logger = setup_logging("Strategy_Net", level="DEBUG")
 
@@ -67,15 +67,15 @@ class StrategyNet:
 
     def __init__(
         self,
-        transactioncore: TransactionCore,
-        marketmonitor: MarketMonitor,
-        safetynet: SafetyNet,
-        apiconfig: APIConfig,
+        transaction_core: TransactionCore,
+        market_monitor: MarketMonitor,
+        safety_net: SafetyNet,
+        api_config: APIConfig,
     ) -> None:
-        self.txc = transactioncore
-        self.marketmonitor = marketmonitor
-        self.safetynet = safetynet
-        self.apiconfig = apiconfig
+        self.txc = transaction_core
+        self.market_monitor = market_monitor
+        self.safety_net = safety_net
+        self.api_config = api_config
 
         self.strategy_types: List[str] = [
             "eth_transaction",

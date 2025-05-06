@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import AsyncMock, patch
-from python.noncecore import NonceCore
+from python.nonce_core import NonceCore
 from python.configuration import Configuration
 from web3 import AsyncWeb3
 
@@ -17,57 +17,57 @@ def configuration():
     return config
 
 @pytest.fixture
-def noncecore(configuration):
+def nonce_core(configuration):
     web3 = AsyncWeb3()
     address = "0xYourEthereumAddress"
     return NonceCore(web3, address, configuration)
 
 @pytest.mark.asyncio
-async def test_initialize(noncecore):
-    with patch.object(noncecore, 'initialize', new_callable=AsyncMock) as mock_initialize:
-        await noncecore.initialize()
+async def test_initialize(nonce_core):
+    with patch.object(nonce_core, 'initialize', new_callable=AsyncMock) as mock_initialize:
+        await nonce_core.initialize()
         mock_initialize.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_get_nonce(noncecore):
-    with patch.object(noncecore, 'get_nonce', new_callable=AsyncMock) as mock_get_nonce:
-        await noncecore.get_nonce()
+async def test_get_nonce(nonce_core):
+    with patch.object(nonce_core, 'get_nonce', new_callable=AsyncMock) as mock_get_nonce:
+        await nonce_core.get_nonce()
         mock_get_nonce.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_refresh_nonce(noncecore):
-    with patch.object(noncecore, 'refresh_nonce', new_callable=AsyncMock) as mock_refresh_nonce:
-        await noncecore.refresh_nonce()
+async def test_refresh_nonce(nonce_core):
+    with patch.object(nonce_core, 'refresh_nonce', new_callable=AsyncMock) as mock_refresh_nonce:
+        await nonce_core.refresh_nonce()
         mock_refresh_nonce.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_track_transaction(noncecore):
+async def test_track_transaction(nonce_core):
     tx_hash = "0xTransactionHash"
     nonce = 1
-    with patch.object(noncecore, 'track_transaction', new_callable=AsyncMock) as mock_track_transaction:
-        await noncecore.track_transaction(tx_hash, nonce)
+    with patch.object(nonce_core, 'track_transaction', new_callable=AsyncMock) as mock_track_transaction:
+        await nonce_core.track_transaction(tx_hash, nonce)
         mock_track_transaction.assert_called_once_with(tx_hash, nonce)
 
 @pytest.mark.asyncio
-async def test_sync_nonce_with_chain(noncecore):
-    with patch.object(noncecore, 'sync_nonce_with_chain', new_callable=AsyncMock) as mock_sync_nonce_with_chain:
-        await noncecore.sync_nonce_with_chain()
+async def test_sync_nonce_with_chain(nonce_core):
+    with patch.object(nonce_core, 'sync_nonce_with_chain', new_callable=AsyncMock) as mock_sync_nonce_with_chain:
+        await nonce_core.sync_nonce_with_chain()
         mock_sync_nonce_with_chain.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_reset(noncecore):
-    with patch.object(noncecore, 'reset', new_callable=AsyncMock) as mock_reset:
-        await noncecore.reset()
+async def test_reset(nonce_core):
+    with patch.object(nonce_core, 'reset', new_callable=AsyncMock) as mock_reset:
+        await nonce_core.reset()
         mock_reset.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_stop(noncecore):
-    with patch.object(noncecore, 'stop', new_callable=AsyncMock) as mock_stop:
-        await noncecore.stop()
+async def test_stop(nonce_core):
+    with patch.object(nonce_core, 'stop', new_callable=AsyncMock) as mock_stop:
+        await nonce_core.stop()
         mock_stop.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_get_next_nonce(noncecore):
-    with patch.object(noncecore, 'get_next_nonce', new_callable=AsyncMock) as mock_get_next_nonce:
-        await noncecore.get_next_nonce()
+async def test_get_next_nonce(nonce_core):
+    with patch.object(nonce_core, 'get_next_nonce', new_callable=AsyncMock) as mock_get_next_nonce:
+        await nonce_core.get_next_nonce()
         mock_get_next_nonce.assert_called_once()

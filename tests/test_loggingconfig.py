@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import patch
 import logging
-from python.loggingconfig import setup_logging
+from python.logger_on1 import setup_logging
 
 @pytest.fixture
 def logger():
@@ -28,9 +28,9 @@ def test_logging_output(logger, capsys):
     assert "Critical message" in captured.out
 
 def test_spinner_task():
-    with patch('python.loggingconfig.sys.stdout.write') as mock_write, \
-         patch('python.loggingconfig.sys.stdout.flush') as mock_flush, \
-         patch('python.loggingconfig.time.sleep', side_effect=Exception("Stop")):
+    with patch('python.logger_on1.sys.stdout.write') as mock_write, \
+         patch('python.logger_on1.sys.stdout.flush') as mock_flush, \
+         patch('python.logger_on1.time.sleep', side_effect=Exception("Stop")):
         stop_event = patch('threading.Event').start()
         stop_event.is_set.side_effect = [False, False, True]
         try:

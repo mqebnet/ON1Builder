@@ -1,26 +1,24 @@
 from eth_account.signers.local import LocalAccount
-from noncecore import NonceCore
-from safetynet import SafetyNet
-from strategynet import StrategyNet
-from mempoolmonitor import MempoolMonitor
-from loggingconfig import setup_logging
+from nonce_core import NonceCore
+from safety_net import SafetyNet
+from strategy_net import StrategyNet
+from txpool_monitor import TxpoolMonitor
+from logger_on1 import setup_logging
 from configuration import Configuration
-from maincore import MainCore
+from main_core import MainCore
 from collections import deque
 from typing import Any, Dict, List, Optional
 from cachetools import TTLCache
-from flask import Flask, jsonify, request, send_from_directory, Response
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 import threading
 import asyncio
 import time
-import queue
 import logging
 import sys
 import os
 from decimal import Decimal
-import json
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
@@ -335,15 +333,15 @@ def get_live_metrics() -> Dict[str, Any]:
 
     try:
 
-        safetynet: Optional[SafetyNet] = core.components.get("safetynet")
-        strategynet: Optional[StrategyNet] = core.components.get("strategynet")
-        mempoolmon: Optional[MempoolMonitor] = core.components.get(
-            "mempoolmonitor")
-        noncecore: Optional[NonceCore] = core.components.get("noncecore")
+        safety_net: Optional[SafetyNet] = core.components.get("safety_net")
+        strategy_net: Optional[StrategyNet] = core.components.get("strategy_net")
+        mempoolmon: Optional[TxpoolMonitor] = core.components.get(
+            "txpool_monitor")
+        nonce_core: Optional[NonceCore] = core.components.get("nonce_core")
 
         # --- Account Balance (Async) ---
-        if safetynet and isinstance(safetynet.account, LocalAccount):
-            balance = run_async_from_sync(safetynet.get_balance())
+        if safety_net and isinstance(safety_net.account, LocalAccount):
+            balance = run_async_from_sync(safety_net.get_balance())
             metrics["account_balance_eth"] = (
                 f"{balance:.8f}" if isinstance(balance, Decimal) else "Error"
             )
@@ -351,10 +349,10 @@ def get_live_metrics() -> Dict[str, Any]:
             metrics["account_balance_eth"] = "N/A (SafetyNet Error)"
 
         # --- Strategy Performance ---
-        if strategynet:
+        if strategy_net:
             overall_profit = Decimal("0")
             perf_data = {}
-            for stype, perf_metrics in strategynet.strategy_performance.items():
+            for stype, perf_metrics in strategy_net.strategy_performance.items():
 
                 perf_data[stype] = {
                     "executions": _safe_get(
@@ -383,14 +381,14 @@ def get_live_metrics() -> Dict[str, Any]:
             metrics["overall_profit_eth"] = f"{overall_profit:.8f}"
 
         # --- Network & Gas (Async) ---
-        if safetynet:
+        if safety_net:
             congestion = run_async_from_sync(
-                safetynet.get_network_congestion())
+                safety_net.get_network_congestion())
             metrics["network_congestion_pct"] = (
                 f"{congestion * 100:.2f}%" if isinstance(congestion, float) else "Error"
             )
 
-            gas_price = run_async_from_sync(safetynet.get_dynamic_gas_price())
+            gas_price = run_async_from_sync(safety_net.get_dynamic_gas_price())
             metrics["avg_gas_price_gwei"] = (
                 f"{gas_price:.2f}" if isinstance(gas_price, Decimal) else "Error"
             )
@@ -422,11 +420,11 @@ def get_live_metrics() -> Dict[str, Any]:
                 }
 
         # --- Nonce ---
-        if noncecore:
-            current_nonce = run_async_from_sync(noncecore.get_nonce())
+        if nonce_core:
+            current_nonce = run_async_from_sync(nonce_core.get_nonce())
             pending_tx_count = len(
                 _safe_get(
-                    noncecore,
+                    nonce_core,
                     "pending_transactions",
                     set()))
             metrics["nonce_info"] = {
@@ -435,7 +433,7 @@ def get_live_metrics() -> Dict[str, Any]:
                 ),
                 "pending_tracked_tx": pending_tx_count,
                 "cache_ttl": _safe_get_nested(
-                    noncecore, ["configuration", "NONCE_CACHE_TTL"]
+                    nonce_core, ["configuration", "NONCE_CACHE_TTL"]
                 ),
             }
 

@@ -1,4 +1,4 @@
-# safetynet.py
+# safety_net.py
 """
 ON1Builder – SafetyNet
 ======================
@@ -17,9 +17,9 @@ from eth_account import Account
 from web3 import AsyncWeb3
 from web3.exceptions import ContractLogicError
 
-from apiconfig import APIConfig
+from api_config import APIConfig
 from configuration import Configuration
-from loggingconfig import setup_logging
+from logger_on1 import setup_logging
 
 logger = setup_logging("Safety_Net", level="DEBUG")
 
@@ -35,15 +35,15 @@ class SafetyNet:
         configuration: Configuration,
         address: Optional[str] = None,
         account: Optional[Account] = None,
-        apiconfig: Optional[APIConfig] = None,
-        marketmonitor: Optional[Any] = None,
+        api_config: Optional[APIConfig] = None,
+        market_monitor: Optional[Any] = None,
     ) -> None:
         self.web3 = web3
         self.cfg = configuration
         self.address = address
         self.account = account
-        self.apiconfig = apiconfig
-        self.marketmonitor = marketmonitor
+        self.api_config = api_config
+        self.market_monitor = market_monitor
 
         self._price_cache = TTLCache(maxsize=2_000, ttl=self.cfg.SAFETYNET_CACHE_TTL)
         self._gas_cache = TTLCache(maxsize=1, ttl=self.cfg.SAFETYNET_GAS_PRICE_TTL)
@@ -81,9 +81,9 @@ class SafetyNet:
         Very cheap because it's pure eth_call.
         """
         try:
-            if not self.marketmonitor or not self.marketmonitor.transactioncore.uniswap_router:
+            if not self.market_monitor or not self.market_monitor.transaction_core.uniswap_router:
                 return None
-            router = self.marketmonitor.transactioncore.uniswap_router
+            router = self.market_monitor.transaction_core.uniswap_router
             weth = self.cfg.WETH_ADDRESS
             path = [self.web3.to_checksum_address(token_addr), self.web3.to_checksum_address(weth)]
             amounts = await router.functions.getAmountsOut(10**18, path).call()
@@ -104,8 +104,8 @@ class SafetyNet:
             return self._price_cache[key]
 
         price = None
-        if self.apiconfig:
-            price = await self.apiconfig.get_real_time_price(token_or_addr, vs)
+        if self.api_config:
+            price = await self.api_config.get_real_time_price(token_or_addr, vs)
 
         if price is None:
             # Fallback to on-chain quote (vs ETH only)

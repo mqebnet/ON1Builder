@@ -76,14 +76,44 @@ development:
 
 # -----------------------------------------------------------------------------
 staging:
-  <<: *development              # inherit everything then override ↓
-  HTTP_ENDPOINT:  "168.123.123:8545"  # your staging node
-  WEBSOCKET_ENDPOINT: "168.123.123:8545"  # your staging node
-  IPC_ENDPOINT:        "/path/to/geth.ipc"  # your staging node
-  WALLET_ADDRESS: "0xblaBlaBlaBlaBlaBlaBlaBlaBlaBlaBla"  # staging wallet
-  MIN_BALANCE:    0.02
+  # Explicitly copy values from the `development` section instead of using the alias
+  WEBSOCKET_ENDPOINT: "168.123.123:8545"
+  HTTP_ENDPOINT:      "168.123.123:8545"
+  IPC_ENDPOINT:       "/path/to/geth.ipc"
+  WALLET_ADDRESS:     "0xblaBlaBlaBlaBlaBlaBlaBlaBlaBlaBla"
+  MIN_BALANCE:        0.02
   MAX_GAS_PRICE_GWEI: 300
-  SLIPPAGE_DEFAULT: 0.10
+  SLIPPAGE_DEFAULT:   0.10
+  INFURA_PROJECT_ID:   "ProjectID"   
+  WEB3_MAX_RETRIES:    5
+  WEB3_RETRY_DELAY:    2
+  WETH_ADDRESS:             "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6"
+  USDC_ADDRESS:             "0x07865c6e87b9f70255377e024ace6630c1eaa37f"
+  USDT_ADDRESS:             "0x0000000000000000000000000000000000000000"  # none on goerli
+  UNISWAP_ADDRESS:          "0x9A2BB41Bb4231F6505cA37C59b4dc0c0E1d2bFa8"
+  SUSHISWAP_ADDRESS:        ""
+  AAVE_POOL_ADDRESS:        "0x4F01AeD16D97E3aB5ab2B501154DC9bb0F1A5A2C"
+  AAVE_FLASHLOAN_ADDRESS:   "0xDfE521292EcE2A4f44242EfBb1dD6E1C354937ef"
+  GAS_PRICE_ORACLE_ADDRESS: ""
+  ERC20_ABI:            "abi/erc20_abi.json"
+  AAVE_FLASHLOAN_ABI:   "abi/aave_flashloan_abi.json"
+  AAVE_POOL_ABI:        "abi/aave_pool_abi.json"
+  UNISWAP_ABI:          "abi/uniswap_abi.json"
+  SUSHISWAP_ABI:        "abi/sushiswap_abi.json"
+  ERC20_SIGNATURES:     "abi/erc20_signatures.json"
+  TOKEN_ADDRESSES:      "data/token_addresses.json"
+  TOKEN_SYMBOLS:        "data/token_symbols.json"
+  GAS_PRICE_ORACLE_ABI: "abi/gas_oracle_abi.json"
+  ETHERSCAN_API_KEY:    "API_KEY"
+  COINGECKO_API_KEY:    "API_KEY"
+  COINMARKETCAP_API_KEY: "API_KEY"
+  CRYPTOCOMPARE_API_KEY: "API_KEY"
+  GRAPH_API_KEY:        "API_KEY"
+  UNISWAP_V2_SUBGRAPH_ID: "API_KEY"
+  MIN_PROFIT:           0.0005
+  AGGRESSIVE_FRONT_RUN_MIN_VALUE_ETH: 0.02
+  VOLATILITY_THRESHOLD: 0.04
+  LIQUIDITY_THRESHOLD:  50000
 
 
 # -----------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-# maincore.py
+# main_core.py
 """
 ON1Builder – MainCore
 =====================
@@ -12,7 +12,6 @@ keeps a minimal heartbeat to verify health.
 from __future__ import annotations
 
 import asyncio
-import signal
 import tracemalloc
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -22,15 +21,15 @@ from web3 import AsyncHTTPProvider, AsyncIPCProvider, AsyncWeb3, WebSocketProvid
 from web3.eth import AsyncEth
 from web3.middleware import ExtraDataToPOAMiddleware
 
-from apiconfig import APIConfig
+from api_config import APIConfig
 from configuration import Configuration
-from loggingconfig import setup_logging
-from marketmonitor import MarketMonitor
-from mempoolmonitor import MempoolMonitor
-from noncecore import NonceCore
-from safetynet import SafetyNet
-from strategynet import StrategyNet
-from transactioncore import TransactionCore
+from logger_on1 import setup_logging
+from market_monitor import MarketMonitor
+from txpool_monitor import TxpoolMonitor
+from nonce_core import NonceCore
+from safety_net import SafetyNet
+from strategy_net import StrategyNet
+from transaction_core import TransactionCore
 
 logger = setup_logging("MainCore", level="DEBUG")
 
@@ -74,7 +73,7 @@ class MainCore:
 
         # ── background tasks
         self._bg = [
-            asyncio.create_task(self.components["mempoolmonitor"].start_monitoring(), name="MM_run"),
+            asyncio.create_task(self.components["txpool_monitor"].start_monitoring(), name="MM_run"),
             asyncio.create_task(self._tx_processor(),                                   name="TX_proc"),
             asyncio.create_task(self._heartbeat(),                                      name="Heartbeat"),
         ]
@@ -138,22 +137,22 @@ class MainCore:
             logger.warning("Wallet %s has zero ETH!", self.account.address)
 
         # ── create components --------------------------------------------
-        apiconfig   = await self._mk_apiconfig()
-        noncecore   = await self._mk_noncecore()
-        safetynet   = await self._mk_safetynet(apiconfig)
-        marketmon   = await self._mk_marketmonitor(apiconfig)
-        txcore      = await self._mk_txcore(apiconfig, marketmon, noncecore, safetynet)
-        mempoolmon  = await self._mk_mempoolmonitor(apiconfig, noncecore, safetynet, marketmon)
-        strategynet = await self._mk_strategynet(txcore, marketmon, safetynet, apiconfig)
+        api_config   = await self._mk_api_config()
+        nonce_core   = await self._mk_nonce_core()
+        safety_net   = await self._mk_safety_net(api_config)
+        marketmon   = await self._mk_market_monitor(api_config)
+        txcore      = await self._mk_txcore(api_config, marketmon, nonce_core, safety_net)
+        mempoolmon  = await self._mk_txpool_monitor(api_config, nonce_core, safety_net, marketmon)
+        strategy_net = await self._mk_strategy_net(txcore, marketmon, safety_net, api_config)
 
         self.components = {
-            "apiconfig": apiconfig,
-            "noncecore": noncecore,
-            "safetynet": safetynet,
-            "marketmonitor": marketmon,
-            "transactioncore": txcore,
-            "mempoolmonitor": mempoolmon,
-            "strategynet": strategynet,
+            "api_config": api_config,
+            "nonce_core": nonce_core,
+            "safety_net": safety_net,
+            "market_monitor": marketmon,
+            "transaction_core": txcore,
+            "txpool_monitor": mempoolmon,
+            "strategy_net": strategy_net,
         }
 
         self.component_health = {k: True for k in self.components}
@@ -197,22 +196,22 @@ class MainCore:
 
     # --- component builders ----------------------------------------------
 
-    async def _mk_apiconfig(self) -> APIConfig:
+    async def _mk_api_config(self) -> APIConfig:
         api = APIConfig(self.cfg)
         await api.initialize()
         return api
 
-    async def _mk_noncecore(self) -> NonceCore:
+    async def _mk_nonce_core(self) -> NonceCore:
         nc = NonceCore(self.web3, self.account.address, self.cfg)
         await nc.initialize()
         return nc
 
-    async def _mk_safetynet(self, apicfg: APIConfig) -> SafetyNet:
+    async def _mk_safety_net(self, apicfg: APIConfig) -> SafetyNet:
         sn = SafetyNet(self.web3, self.cfg, self.account.address, self.account, apicfg)
         await sn.initialize()
         return sn
 
-    async def _mk_marketmonitor(self, apicfg: APIConfig) -> MarketMonitor:
+    async def _mk_market_monitor(self, apicfg: APIConfig) -> MarketMonitor:
         mm = MarketMonitor(self.web3, self.cfg, apicfg)
         await mm.initialize()
         return mm
@@ -228,19 +227,19 @@ class MainCore:
         await tc.initialize()
         return tc
 
-    async def _mk_mempoolmonitor(
+    async def _mk_txpool_monitor(
         self,
         apicfg: APIConfig,
         nc: NonceCore,
         sn: SafetyNet,
         mm: MarketMonitor,
-    ) -> MempoolMonitor:
+    ) -> TxpoolMonitor:
         token_map = await self.cfg._load_json_safe(self.cfg.TOKEN_ADDRESSES, "TOKEN_ADDRESSES") or {}
-        mp = MempoolMonitor(self.web3, sn, nc, apicfg, list(token_map.values()), self.cfg, mm)
+        mp = TxpoolMonitor(self.web3, sn, nc, apicfg, list(token_map.values()), self.cfg, mm)
         await mp.initialize()
         return mp
 
-    async def _mk_strategynet(
+    async def _mk_strategy_net(
         self,
         tc: TransactionCore,
         mm: MarketMonitor,
@@ -257,8 +256,8 @@ class MainCore:
 
     async def _tx_processor(self) -> None:
         """Drains profitable queue → StrategyNet."""
-        mp: MempoolMonitor = self.components["mempoolmonitor"]
-        st: StrategyNet = self.components["strategynet"]
+        mp: TxpoolMonitor = self.components["txpool_monitor"]
+        st: StrategyNet = self.components["strategy_net"]
 
         while not self._stop_evt.is_set():
             try:

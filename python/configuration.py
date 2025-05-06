@@ -12,13 +12,13 @@ import json
 import os
 import types
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import dotenv
 import yaml
 from eth_utils import is_checksum_address, to_checksum_address
 
-from loggingconfig import setup_logging
+from logger_on1 import setup_logging
 
 logger = setup_logging("Configuration", level="DEBUG")
 
@@ -99,8 +99,8 @@ def _checksum(addr: str, key_name: str) -> str:
 
 class Configuration(types.SimpleNamespace):  # noqa: D101 – docstring above
     BASE_PATH: Path = Path(__file__).parent.parent  # project root
+    ML_PATH: str = "/ml/training_data.csv"  # Initialize here
 
-    # NB: kwargs allow tests to override env/file easily
     def __init__(
         self,
         env_path: str | Path = ".env",
@@ -124,7 +124,7 @@ class Configuration(types.SimpleNamespace):  # noqa: D101 – docstring above
         return None
 
     async def reload(self) -> None:
-        """Hot reload from YAML/env; keeps existing object identity."""
+        """Hot reload from YAml/env; keeps existing object identity."""
         self._load()
         logger.info("Configuration reloaded successfully")
 
@@ -139,13 +139,13 @@ class Configuration(types.SimpleNamespace):  # noqa: D101 – docstring above
         # 1) defaults
         data: Dict[str, Any] = dict(_DEFAULTS)
 
-        # 2) YAML
+        # 2) YAml
         if self._yaml_file.exists():
             try:
                 yaml_data = yaml.safe_load(self._yaml_file.read_text()) or {}
                 data.update(yaml_data.get(self._environment, {}))
             except Exception as exc:
-                logger.error("Config YAML parse error: %s", exc)
+                logger.error("Config YAml parse error: %s", exc)
 
         # 3) .env
         for k in set(os.environ):  # env vars are *uppercase* already
@@ -177,7 +177,7 @@ class Configuration(types.SimpleNamespace):  # noqa: D101 – docstring above
         self._raw = data  # keep original mapping for debug
 
         # make sure linear-regression folder exists
-        lr_dir = Path(self.LINEAR_REGRESSION_PATH)
+        lr_dir = Path(self.ML_PATH)
         lr_dir.mkdir(parents=True, exist_ok=True)
 
         logger.debug("Configuration loaded (%d keys)", len(data))

@@ -1,4 +1,4 @@
-# abiregistry.py
+# abi_registry.py
 """
 ON1Builder – ABIRegistry
 ========================
@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from eth_utils import function_signature_to_4byte_selector
 
-from loggingconfig import setup_logging
+from logger_on1 import setup_logging
 
 logger = setup_logging("ABIRegistry", level="DEBUG")
 
@@ -208,7 +208,7 @@ async def get_registry(base_path: Optional[Path] = None) -> ABIRegistry:
     Convenience accessor for ad-hoc scripts:
 
     ```python
-    reg = await abiregistry.get_registry(Path.cwd())
+    reg = await abi_registry.get_registry(Path.cwd())
     erc20 = reg.get_abi("erc20")
     ```
     """

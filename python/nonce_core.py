@@ -1,4 +1,4 @@
-# noncecore.py
+# nonce_core.py
 """
 ON1Builder – NonceCore
 ======================
@@ -19,7 +19,7 @@ from web3 import AsyncWeb3
 from web3.exceptions import Web3ValueError
 
 from configuration import Configuration
-from loggingconfig import setup_logging
+from logger_on1 import setup_logging
 
 logger = setup_logging("Nonce_Core", level="DEBUG")
 

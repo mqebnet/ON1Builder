@@ -1,11 +1,12 @@
-from loggingconfig import setup_logging
-from maincore import MainCore
+from logger_on1 import setup_logging
+from main_core import MainCore
 from configuration import Configuration
 import signal
 import logging
 import asyncio
 import os
 import sys
+import traceback
 
 sys.path.insert(
     0,
@@ -42,3 +43,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as e:
         logger.critical(f"Fatal error: {e}")
+        logger.debug(traceback.format_exc())  

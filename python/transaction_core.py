@@ -1,4 +1,4 @@
-# transactioncore.py
+# transaction_core.py
 """
 ON1Builder – TransactionCore
 ============================
@@ -17,14 +17,14 @@ from web3 import AsyncWeb3
 from web3.exceptions import ContractLogicError, TransactionNotFound
 from eth_account import Account
 
-from abiregistry import ABIRegistry
-from apiconfig import APIConfig
+from abi_registry import ABIRegistry
+from api_config import APIConfig
 from configuration import Configuration
-from marketmonitor import MarketMonitor
-from mempoolmonitor import MempoolMonitor
-from noncecore import NonceCore
-from safetynet import SafetyNet
-from loggingconfig import setup_logging
+from market_monitor import MarketMonitor
+from txpool_monitor import TxpoolMonitor
+from nonce_core import NonceCore
+from safety_net import SafetyNet
+from logger_on1 import setup_logging
 
 logger = setup_logging("TransactionCore", level="DEBUG")
 
@@ -46,27 +46,27 @@ class TransactionCore:
         web3: AsyncWeb3,
         account: Account,
         configuration: Configuration,
-        apiconfig: Optional[APIConfig] = None,
-        marketmonitor: Optional[MarketMonitor] = None,
-        mempoolmonitor: Optional[MempoolMonitor] = None,
-        noncecore: Optional[NonceCore] = None,
-        safetynet: Optional[SafetyNet] = None,
+        api_config: Optional[APIConfig] = None,
+        market_monitor: Optional[MarketMonitor] = None,
+        txpool_monitor: Optional[TxpoolMonitor] = None,
+        nonce_core: Optional[NonceCore] = None,
+        safety_net: Optional[SafetyNet] = None,
         gas_price_multiplier: float = 1.10,
     ) -> None:
         self.web3 = web3
         self.account = account
         self.configuration = configuration
 
-        self.apiconfig = apiconfig
-        self.marketmonitor = marketmonitor
-        self.mempoolmonitor = mempoolmonitor
-        self.noncecore = noncecore
-        self.safetynet = safetynet
+        self.api_config = api_config
+        self.market_monitor = market_monitor
+        self.txpool_monitor = txpool_monitor
+        self.nonce_core = nonce_core
+        self.safety_net = safety_net
 
         self.gas_price_multiplier = gas_price_multiplier
 
         # runtime state -----------------------------------------------------
-        self.abiregistry = ABIRegistry()
+        self.abi_registry = ABIRegistry()
         self.aave_flashloan = None
         self.aave_pool = None
         self.uniswap_router = None
@@ -88,12 +88,12 @@ class TransactionCore:
         logger.info("TransactionCore initialised.")
 
     async def _load_abis(self) -> None:
-        await self.abiregistry.initialize(self.configuration.BASE_PATH)
-        self.erc20_abi = self.abiregistry.get_abi("erc20") or []
-        self.flashloan_abi = self.abiregistry.get_abi("aave_flashloan") or []
-        self.aave_pool_abi = self.abiregistry.get_abi("aave") or []
-        self.uniswap_abi = self.abiregistry.get_abi("uniswap") or []
-        self.sushiswap_abi = self.abiregistry.get_abi("sushiswap") or []
+        await self.abi_registry.initialize(self.configuration.BASE_PATH)
+        self.erc20_abi = self.abi_registry.get_abi("erc20") or []
+        self.flashloan_abi = self.abi_registry.get_abi("aave_flashloan") or []
+        self.aave_pool_abi = self.abi_registry.get_abi("aave") or []
+        self.uniswap_abi = self.abi_registry.get_abi("uniswap") or []
+        self.sushiswap_abi = self.abi_registry.get_abi("sushiswap") or []
 
     async def _initialize_contracts(self) -> None:
         self.aave_flashloan = self.web3.eth.contract(
@@ -143,7 +143,7 @@ class TransactionCore:
         latest = await self.web3.eth.get_block("latest")
         supports_1559 = "baseFeePerGas" in latest
 
-        nonce = await self.noncecore.get_nonce()
+        nonce = await self.nonce_core.get_nonce()
 
         params: Dict[str, Any] = {
             "chainId": chain_id,
@@ -162,7 +162,7 @@ class TransactionCore:
                 }
             )
         else:
-            dyn_gas_gwei = await self.safetynet.get_dynamic_gas_price()
+            dyn_gas_gwei = await self.safety_net.get_dynamic_gas_price()
             params["gasPrice"] = int(
                 self.web3.to_wei(dyn_gas_gwei * self.gas_price_multiplier, "gwei")
             )
@@ -208,7 +208,7 @@ class TransactionCore:
         tx_hash = await self.web3.eth.send_raw_transaction(raw)
         # update nonce-cache immediately; keep tracker alive in the background
         asyncio.create_task(
-            self.noncecore.track_transaction(tx_hash.hex(), nonce_used or await self.noncecore.get_nonce())
+            self.nonce_core.track_transaction(tx_hash.hex(), nonce_used or await self.nonce_core.get_nonce())
         )
         return tx_hash.hex()
 
@@ -241,7 +241,7 @@ class TransactionCore:
 
         # ensure nonce
         if "nonce" not in tx:
-            tx["nonce"] = await self.noncecore.get_nonce()
+            tx["nonce"] = await self.nonce_core.get_nonce()
         if "gas" not in tx:
             tx["gas"] = self.DEFAULT_GAS_LIMIT
 
@@ -310,7 +310,7 @@ class TransactionCore:
         if value <= 0:
             return False
 
-        nonce = await self.noncecore.get_nonce()
+        nonce = await self.nonce_core.get_nonce()
         chain_id = await self.web3.eth.chain_id
 
         tx = {
@@ -330,13 +330,13 @@ class TransactionCore:
 
         if gas_price_field == "gasPrice":
             price = target_tx.get("gasPrice") or self.web3.to_wei(
-                (await self.safetynet.get_dynamic_gas_price()) * self.gas_price_multiplier,
+                (await self.safety_net.get_dynamic_gas_price()) * self.gas_price_multiplier,
                 "gwei",
             )
             tx["gasPrice"] = int(price * self.GAS_RETRY_BUMP)
         else:
             price = target_tx.get("maxFeePerGas") or self.web3.to_wei(
-                (await self.safetynet.get_dynamic_gas_price()) * self.gas_price_multiplier,
+                (await self.safety_net.get_dynamic_gas_price()) * self.gas_price_multiplier,
                 "gwei",
             )
             tx["maxFeePerGas"] = int(price * self.GAS_RETRY_BUMP)
@@ -378,7 +378,7 @@ class TransactionCore:
         if "gasPrice" in target_tx:
             target_tx["gasPrice"] = int(target_tx["gasPrice"] * 1.30)
         else:
-            dyn = await self.safetynet.get_dynamic_gas_price()
+            dyn = await self.safety_net.get_dynamic_gas_price()
             target_tx["gasPrice"] = int(
                 self.web3.to_wei(dyn * self.gas_price_multiplier * 1.30, "gwei")
             )
@@ -394,7 +394,7 @@ class TransactionCore:
         if "gasPrice" in target_tx:
             target_tx["gasPrice"] = int(target_tx["gasPrice"] * mult)
         else:
-            dyn = await self.safetynet.get_dynamic_gas_price()
+            dyn = await self.safety_net.get_dynamic_gas_price()
             target_tx["gasPrice"] = int(
                 self.web3.to_wei(dyn * self.gas_price_multiplier * mult, "gwei")
             )
@@ -406,7 +406,7 @@ class TransactionCore:
         if "gasPrice" in target_tx:
             target_tx["gasPrice"] = int(target_tx["gasPrice"] * 0.80)
         else:
-            dyn = await self.safetynet.get_dynamic_gas_price()
+            dyn = await self.safety_net.get_dynamic_gas_price()
             target_tx["gasPrice"] = int(
                 self.web3.to_wei(dyn * self.gas_price_multiplier * 0.80, "gwei")
             )
@@ -421,7 +421,7 @@ class TransactionCore:
         if "gasPrice" in target_tx:
             target_tx["gasPrice"] = int(target_tx["gasPrice"] * 0.85)
         else:
-            dyn = await self.safetynet.get_dynamic_gas_price()
+            dyn = await self.safety_net.get_dynamic_gas_price()
             target_tx["gasPrice"] = int(
                 self.web3.to_wei(dyn * self.gas_price_multiplier * 0.85, "gwei")
             )
