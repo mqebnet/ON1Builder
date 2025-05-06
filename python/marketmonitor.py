@@ -19,11 +19,17 @@ import logging
 
 logger = setup_logging("MarketMonitor", level=logging.DEBUG)
 
+
 class MarketMonitor:
     VOLATILITY_THRESHOLD = 0.05
     LIQUIDITY_THRESHOLD = 100_000
 
-    def __init__(self, web3: AsyncWeb3, configuration: Configuration, apiconfig: APIConfig, transactioncore: Optional[Any] = None):
+    def __init__(
+            self,
+            web3: AsyncWeb3,
+            configuration: Configuration,
+            apiconfig: APIConfig,
+            transactioncore: Optional[Any] = None):
         self.web3 = web3
         self.configuration = configuration
         self.apiconfig = apiconfig
@@ -64,8 +70,10 @@ class MarketMonitor:
                 self._last_update = now
             await asyncio.sleep(60)
 
-    async def check_market_conditions(self, token_address: str) -> Dict[str, bool]:
-        conditions = {"high_volatility": False, "bullish_trend": False, "bearish_trend": False, "low_liquidity": False}
+    async def check_market_conditions(
+            self, token_address: str) -> Dict[str, bool]:
+        conditions = {"high_volatility": False, "bullish_trend": False,
+                      "bearish_trend": False, "low_liquidity": False}
         symbol = self.apiconfig.get_token_symbol(token_address)
         if not symbol:
             return conditions
@@ -93,7 +101,12 @@ class MarketMonitor:
         self.price_cache[cache_key] = prediction
         return prediction
 
-    async def get_token_price_data(self, token_symbol: str, data_type: str = "current", timeframe: int = 1, vs: str = "eth") -> Union[float, List[float]]:
+    async def get_token_price_data(self,
+                                   token_symbol: str,
+                                   data_type: str = "current",
+                                   timeframe: int = 1,
+                                   vs: str = "eth") -> Union[float,
+                                                             List[float]]:
         return await self.apiconfig.get_token_price_data(token_symbol, data_type, timeframe, vs)
 
     async def update_training_data(self) -> None:
@@ -112,8 +125,10 @@ class MarketMonitor:
                     continue
                 current_price = float(prices[-1])
                 avg_price = float(np.mean(prices))
-                volatility = float(np.std(prices) / avg_price) if avg_price else 0.0
-                percent_change = ((prices[-1] - prices[0]) / prices[0] * 100) if prices[0] else 0.0
+                volatility = float(
+                    np.std(prices) / avg_price) if avg_price else 0.0
+                percent_change = (
+                    (prices[-1] - prices[0]) / prices[0] * 100) if prices[0] else 0.0
                 volume = await self.apiconfig.get_token_volume(token)
                 row = {
                     "timestamp": int(datetime.utcnow().timestamp()),
@@ -136,7 +151,8 @@ class MarketMonitor:
         new_df = pd.DataFrame(rows)
         if not existing.empty:
             combined = pd.concat([existing, new_df], ignore_index=True)
-            combined.drop_duplicates(subset=["timestamp", "symbol"], inplace=True)
+            combined.drop_duplicates(
+                subset=["timestamp", "symbol"], inplace=True)
         else:
             combined = new_df
         await asyncio.to_thread(combined.to_csv, self.training_data_path, index=False)
@@ -147,26 +163,27 @@ class MarketMonitor:
         df = await asyncio.to_thread(pd.read_csv, self.training_data_path)
         if len(df) < self.configuration.MIN_TRAINING_SAMPLES:
             return
-        features = ["price_usd", "volume_24h", "market_cap", "volatility", "liquidity_ratio", "price_momentum"]
+        features = ["price_usd", "volume_24h", "market_cap",
+                    "volatility", "liquidity_ratio", "price_momentum"]
         X = df[features].fillna(0)
         y = df["price_usd"].fillna(0)
-        
+
         # Experiment with different models
         models = {
             "LinearRegression": LinearRegression(),
             "RandomForest": RandomForestRegressor()
         }
-        
+
         best_model = None
         best_score = -np.inf
-        
+
         for name, model in models.items():
             model.fit(X, y)
             score = model.score(X, y)
             if score > best_score:
                 best_score = score
                 best_model = model
-        
+
         # Perform hyperparameter tuning for the best model
         if isinstance(best_model, RandomForestRegressor):
             param_grid = {
@@ -177,7 +194,7 @@ class MarketMonitor:
             grid_search = GridSearchCV(best_model, param_grid, cv=5)
             grid_search.fit(X, y)
             best_model = grid_search.best_estimator_
-        
+
         await asyncio.to_thread(joblib.dump, best_model, self.model_path)
         self.price_model = best_model
 
