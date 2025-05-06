@@ -1,10 +1,22 @@
 # strategynet.py
+"""
+ON1Builder – StrategyNet
+========================
+A lightweight reinforcement learning agent that selects and executes the best strategy
+for a given transaction type. It uses a simple ε-greedy approach to explore and exploit.
+"""
+
+from __future__ import annotations
+
 import asyncio
-import time
-import numpy as np
+import json
 import random
-from typing import Any, Dict, List, Callable
+import time
 from decimal import Decimal
+from pathlib import Path
+from typing import Any, Callable, Dict, List
+
+import numpy as np
 
 from apiconfig import APIConfig
 from transactioncore import TransactionCore
@@ -12,159 +24,245 @@ from safetynet import SafetyNet
 from marketmonitor import MarketMonitor
 from loggingconfig import setup_logging
 
-logger = setup_logging("Strategy_Net", level="DEBUG")  
+logger = setup_logging("Strategy_Net", level="DEBUG")
+
 
 class StrategyPerformanceMetrics:
-    """Tracks performance metrics for a strategy."""
+    """Mutable container for per-strategy stats."""
+
     def __init__(self) -> None:
         self.successes: int = 0
         self.failures: int = 0
         self.profit: Decimal = Decimal("0")
-        self.avg_execution_time: float = 0.0
-        self.success_rate: float = 0.0
         self.total_executions: int = 0
+        self.avg_execution_time: float = 0.0
+
+    @property
+    def success_rate(self) -> float:
+        if self.total_executions == 0:
+            return 0.0
+        return self.successes / self.total_executions
+
 
 class StrategyConfiguration:
-    """Holds configurable parameters for strategy selection."""
-    def __init__(self) -> None:
-        self.decay_factor: float = 0.95
-        self.learning_rate: float = 0.01
-        self.exploration_rate: float = 0.1
-        self.FRONT_RUN_OPPORTUNITY_SCORE_THRESHOLD: int = 75
-        self.VOLATILITY_FRONT_RUN_SCORE_THRESHOLD: int = 75
-        self.AGGRESSIVE_FRONT_RUN_RISK_SCORE_THRESHOLD: float = 0.7
+    """Tunable hyper-parameters."""
+
+    decay_factor: float = 0.95
+    base_learning_rate: float = 0.01
+    exploration_rate: float = 0.10
+    min_weight: float = 0.10
+    max_weight: float = 10.0
+
+    # thresholds (copied from Configuration but kept here for quick access)
+    FRONT_RUN_OPPORTUNITY_SCORE_THRESHOLD: int = 75
+    VOLATILITY_FRONT_RUN_SCORE_THRESHOLD: int = 75
+    AGGRESSIVE_FRONT_RUN_RISK_SCORE_THRESHOLD: float = 0.7
+
 
 class StrategyNet:
-    """
-    Orchestrates strategy selection and execution via reinforcement learning.
-    """
+    """Chooses & executes the best strategy via lightweight reinforcement learning."""
+
+    _WEIGHT_FILE = Path("strategy_weights.json")
+    _SAVE_EVERY = 25  # save to disk every N updates to limit IO
+
     def __init__(
         self,
         transactioncore: TransactionCore,
         marketmonitor: MarketMonitor,
         safetynet: SafetyNet,
-        apiconfig: APIConfig
+        apiconfig: APIConfig,
     ) -> None:
-        self.transactioncore = transactioncore
+        self.txc = transactioncore
         self.marketmonitor = marketmonitor
         self.safetynet = safetynet
         self.apiconfig = apiconfig
-        self.strategy_types: List[str] = ["eth_transaction", "front_run", "back_run", "sandwich_attack"]
-        self._strategy_registry: Dict[str, List[Callable[[Dict[str, Any]], asyncio.Future]]] = {
-            "eth_transaction": [self.transactioncore.handle_eth_transaction],
+
+        self.strategy_types: List[str] = [
+            "eth_transaction",
+            "front_run",
+            "back_run",
+            "sandwich_attack",
+        ]
+
+        self._registry: Dict[str, List[Callable[[Dict[str, Any]], asyncio.Future]]] = {
+            "eth_transaction": [self.txc.handle_eth_transaction],
             "front_run": [
-                self.transactioncore.front_run,
-                self.transactioncore.flashloan_front_run,
-                self.transactioncore.aggressive_front_run,
-                self.transactioncore.predictive_front_run,
-                self.transactioncore.volatility_front_run
+                self.txc.front_run,
+                self.txc.flashloan_front_run,
+                self.txc.aggressive_front_run,
+                self.txc.predictive_front_run,
+                self.txc.volatility_front_run,
             ],
             "back_run": [
-                self.transactioncore.back_run,
-                self.transactioncore.price_dip_back_run,
-                self.transactioncore.flashloan_back_run,
-                self.transactioncore.high_volume_back_run
+                self.txc.back_run,
+                self.txc.price_dip_back_run,
+                self.txc.flashloan_back_run,
+                self.txc.high_volume_back_run,
             ],
             "sandwich_attack": [
-                self.transactioncore.flashloan_sandwich_attack,
-                self.transactioncore.execute_sandwich_attack
-            ]
+                self.txc.flashloan_sandwich_attack,
+                self.txc.execute_sandwich_attack,
+            ],
         }
-        self.strategy_performance: Dict[str, StrategyPerformanceMetrics] = {
+
+        # metrics + weights --------------------------------------------------
+        self.metrics: Dict[str, StrategyPerformanceMetrics] = {
             stype: StrategyPerformanceMetrics() for stype in self.strategy_types
         }
-        self.reinforcement_weights: Dict[str, np.ndarray] = {
-            stype: np.ones(len(self._strategy_registry[stype]))
-            for stype in self.strategy_types
+        self.weights: Dict[str, np.ndarray] = {
+            stype: np.ones(len(funcs), dtype=float) for stype, funcs in self._registry.items()
         }
-        self.configuration: StrategyConfiguration = StrategyConfiguration()
-        logger.debug("StrategyNet initialized.")
+
+        self.cfg = StrategyConfiguration()
+        self._update_counter = 0  # for lazy disk-save throttle
+
+    # ------------------------------------------------------------------ #
+    # initialisation / shutdown                                          #
+    # ------------------------------------------------------------------ #
 
     async def initialize(self) -> None:
-        """Performs any asynchronous initialization required."""
-        logger.info("StrategyNet initialization complete.")
+        self._load_weights()
+        logger.info("StrategyNet initialised – weights loaded.")
 
-    def get_strategies(self, strategy_type: str) -> List[Callable[[Dict[str, Any]], asyncio.Future]]:
-        """Returns available strategies for a given type."""
-        return self._strategy_registry.get(strategy_type, [])
+    async def stop(self) -> None:
+        self._save_weights()
+        logger.info("StrategyNet state saved on shutdown.")
 
-    async def _select_best_strategy(
-        self,
-        strategies: List[Callable[[Dict[str, Any]], asyncio.Future]],
-        strategy_type: str
-    ) -> Callable[[Dict[str, Any]], asyncio.Future]:
-        """Selects a strategy based on reinforcement learning probabilities."""
-        weights = self.reinforcement_weights[strategy_type]
-        if random.random() < self.configuration.exploration_rate:
-            logger.debug("Exploration: randomly selecting a strategy.")
-            return random.choice(strategies)
-        max_weight = np.max(weights)
-        exp_weights = np.exp(weights - max_weight)
-        probabilities = exp_weights / exp_weights.sum()
-        index = np.random.choice(len(strategies), p=probabilities)
-        selected = strategies[index]
-        logger.debug(f"Selected strategy '{selected.__name__}' with weight {weights[index]:.4f}.")
-        return selected
-    
+    # ------------------------------------------------------------------ #
+    # weight persistence                                                 #
+    # ------------------------------------------------------------------ #
 
-    def _calculate_reward(self, success: bool, profit: Decimal, execution_time: float) -> float:
-        """Calculates reward for strategy update."""
-        base_reward = float(profit) if success else -0.1
-        time_penalty = 0.01 * execution_time
-        risk_penalty = 0.05
-        worst_case_penalty = 0.05 * max(0.0, execution_time - 2.0)
-        total = base_reward - time_penalty - risk_penalty - worst_case_penalty
-        logger.debug(f"Reward computed: {total:.4f}")
-        return total
+    def _load_weights(self) -> None:
+        if self._WEIGHT_FILE.exists():
+            try:
+                data = json.loads(self._WEIGHT_FILE.read_text())
+                for stype, arr in data.items():
+                    if stype in self.weights and len(arr) == len(self.weights[stype]):
+                        self.weights[stype] = np.array(arr, dtype=float)
+            except Exception as exc:
+                logger.warning("Failed to load strategy weights: %s", exc)
 
-    async def _update_strategy_metrics(
-        self,
-        strategy_name: str,
-        strategy_type: str,
-        success: bool,
-        profit: Decimal,
-        execution_time: float
-    ) -> None:
-        """Updates performance metrics and reinforcement weights."""
-        metrics = self.strategy_performance[strategy_type]
-        metrics.total_executions += 1
-        if success:
-            metrics.successes += 1
-            metrics.profit += profit
-        else:
-            metrics.failures += 1
-        df = self.configuration.decay_factor
-        metrics.avg_execution_time = metrics.avg_execution_time * df + execution_time * (1 - df)
-        metrics.success_rate = metrics.successes / metrics.total_executions
-        idx = self.get_strategy_index(strategy_name, strategy_type)
-        if idx >= 0:
-            current = self.reinforcement_weights[strategy_type][idx]
-            reward = self._calculate_reward(success, profit, execution_time)
-            gamma = 0.9
-            updated = current + self.configuration.learning_rate * (reward + gamma * current - current)
-            self.reinforcement_weights[strategy_type][idx] = max(0.1, updated)
-            logger.debug(f"Updated weight for {strategy_name} from {current:.4f} to {updated:.4f}.")
+    def _save_weights(self) -> None:
+        try:
+            payload = {k: v.tolist() for k, v in self.weights.items()}
+            self._WEIGHT_FILE.write_text(json.dumps(payload, indent=2))
+        except Exception as exc:
+            logger.error("Saving strategy weights failed: %s", exc)
 
-    def get_strategy_index(self, strategy_name: str, strategy_type: str) -> int:
-        """Finds the index of a strategy in the registry."""
-        for idx, strat in enumerate(self.get_strategies(strategy_type)):
-            if strat.__name__ == strategy_name:
-                return idx
-        logger.warning(f"Strategy {strategy_name} not found in type {strategy_type}.")
-        return -1
+    # ------------------------------------------------------------------ #
+    # public helpers                                                     #
+    # ------------------------------------------------------------------ #
+
+    def get_strategies(
+        self, strategy_type: str
+    ) -> List[Callable[[Dict[str, Any]], asyncio.Future]]:
+        return self._registry.get(strategy_type, [])
 
     async def execute_best_strategy(self, target_tx: Dict[str, Any], strategy_type: str) -> bool:
-        """Executes the best strategy for a profitable transaction."""
         strategies = self.get_strategies(strategy_type)
         if not strategies:
-            logger.debug(f"No strategies for type {strategy_type}.")
+            logger.debug("No strategies registered for type %s", strategy_type)
             return False
-        start = time.time()
-        strategy = await self._select_best_strategy(strategies, strategy_type)
-        before = Decimal(self.transactioncore.current_profit)
-        success = await strategy(target_tx)
-        after = Decimal(self.transactioncore.current_profit)
-        exec_time = time.time() - start
-        profit = after - before
-        await self._update_strategy_metrics(strategy.__name__, strategy_type, success, profit, exec_time)
+
+        strategy = await self._select_strategy(strategies, strategy_type)
+        before_profit = self.txc.current_profit
+        start_ts = time.perf_counter()
+
+        success: bool = await strategy(target_tx)
+
+        exec_time = time.perf_counter() - start_ts
+        profit = self.txc.current_profit - before_profit
+
+        await self._update_after_run(strategy_type, strategy.__name__, success, profit, exec_time)
         return success
+
+    # ------------------------------------------------------------------ #
+    # strategy selection & learning                                      #
+    # ------------------------------------------------------------------ #
+
+    async def _select_strategy(
+        self,
+        strategies: List[Callable[[Dict[str, Any]], asyncio.Future]],
+        strategy_type: str,
+    ) -> Callable[[Dict[str, Any]], asyncio.Future]:
+        """ε-greedy selection over soft-maxed weights."""
+        if random.random() < self.cfg.exploration_rate:
+            choice = random.choice(strategies)
+            logger.debug("Exploration chose %s (%s)", choice.__name__, strategy_type)
+            return choice
+
+        w = self.weights[strategy_type]
+        p = np.exp(w - w.max())
+        p = p / p.sum()
+        idx = np.random.choice(len(strategies), p=p)
+        selected = strategies[idx]
+        logger.debug(
+            "Exploitation chose %s (weight %.3f, p=%.3f)",
+            selected.__name__,
+            w[idx],
+            p[idx],
+        )
+        return selected
+
+    async def _update_after_run(
+        self,
+        stype: str,
+        sname: str,
+        success: bool,
+        profit: Decimal,
+        exec_time: float,
+    ) -> None:
+        """Update metrics & reinforcement weight."""
+        m = self.metrics[stype]
+        m.total_executions += 1
+        m.avg_execution_time = (
+            m.avg_execution_time * self.cfg.decay_factor + exec_time * (1 - self.cfg.decay_factor)
+        )
+
+        if success:
+            m.successes += 1
+            m.profit += profit
+        else:
+            m.failures += 1
+
+        idx = self._strategy_index(stype, sname)
+        if idx >= 0:
+            reward = self._calc_reward(success, profit, exec_time)
+            lr = self.cfg.base_learning_rate / (1 + 0.001 * m.total_executions)
+            new_val = self.weights[stype][idx] + lr * reward
+            self.weights[stype][idx] = float(
+                np.clip(new_val, self.cfg.min_weight, self.cfg.max_weight)
+            )
+            logger.debug(
+                "Updated weight of %s/%s: %.3f (reward %.3f)",
+                stype,
+                sname,
+                self.weights[stype][idx],
+                reward,
+            )
+
+        # disk save throttle
+        self._update_counter += 1
+        if self._update_counter % self._SAVE_EVERY == 0:
+            self._save_weights()
+
+    # ------------------------------------------------------------------ #
+    # internals                                                          #
+    # ------------------------------------------------------------------ #
+
+    def _calc_reward(self, success: bool, profit: Decimal, exec_time: float) -> float:
+        """
+        A simple reward:
+          +profit (ETH) if success
+          −0.05 if fail
+          −time_penalty (0.01 * seconds) always
+        """
+        reward = float(profit) if success else -0.05
+        reward -= 0.01 * exec_time
+        return reward
+
+    def _strategy_index(self, stype: str, name: str) -> int:
+        for i, fn in enumerate(self.get_strategies(stype)):
+            if fn.__name__ == name:
+                return i
+        return -1
