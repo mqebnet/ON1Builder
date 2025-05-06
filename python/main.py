@@ -1,17 +1,22 @@
+from loggingconfig import setup_logging
+from maincore import MainCore
+from configuration import Configuration
+import signal
+import logging
 import asyncio
 import os
 import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+sys.path.insert(
+    0,
+    os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            "..")))
 
-import asyncio
-import logging
-import signal
-from configuration import Configuration
-from maincore import MainCore
-from loggingconfig import setup_logging
 
 logger = setup_logging("Main", level=logging.INFO)
+
 
 async def main():
     config = Configuration()
@@ -30,6 +35,7 @@ async def main():
     await stop_event.wait()
     await core.stop()
     await runner
+
 
 if __name__ == "__main__":
     try:
