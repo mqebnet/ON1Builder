@@ -5,7 +5,6 @@
 [![Built with Python 3.12](https://img.shields.io/badge/Built%20with-Python%203.12-blue?logo=python)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-[![ON1Builder Wiki](https://img.shields.io/badge/ON1Builder-Wiki-blue?logo=GitHub&logoColor=white)](https://github.com/John0n1/ON1Builder/wiki)
 [![Last Commit](https://img.shields.io/github/last-commit/John0n1/ON1Builder?display_timestamp=committer&logo=GitHub&color=white)](https://github.com/John0n1/ON1Builder/commits/main)
 
 
@@ -16,25 +15,27 @@
 ## Table of Contents
 
 1. [Key Features](#key-features)  
-2. [Architecture Overview](#architecture-overview)  
-3. [Prerequisites](#prerequisites)  
-4. [Geth & Prysm Setup](#geth--prysm-setup)  
-5. [Installation](#installation)  
-6. [Configuration](#configuration)  
-7. [Running ON1Builder](#running-on1builder)  
-8. [Monitoring & Metrics](#monitoring--metrics)  
-9. [Component Reference](#component-reference)  
-10. [Security Best Practices](#security-best-practices)  
-11. [Troubleshooting](#troubleshooting)  
-12. [Extending & Custom Strategies](#extending--custom-strategies)  
-13. [Roadmap](#roadmap)  
-14. [License](#license)  
+2. [Prerequisites](#prerequisites)  
+3. [Geth & Prysm Setup](#geth--prysm-setup)  
+4. [Installation](#installation)  
+5. [Configuration](#configuration)  
+6. [Running ON1Builder](#running-on1builder)  
+7. [Monitoring & Metrics](#monitoring--metrics)  
+8. [Component Reference](#component-reference)  
+9. [Security Best Practices](#security-best-practices)  
+10. [Troubleshooting](#troubleshooting)  
+11. [Extending & Custom Strategies](#extending--custom-strategies)  
+12. [Roadmap](#roadmap)  
+13. [License](#license)  
 
 ---
 
+[![](https://mermaid.ink/img/pako:eNqNVttu4zYQ_RWCwC52ldi5OIljtw2Q9WZbA_Y2SBws2roIaGkscy2RKkmlceMA-ZD2tR-WL-mQukSylbZ6sEXyzMzhmYv9QH0ZAO3TeSR_9xdMGTL5OBUke3Q6CxVLFmQ8uh2xFSjyy5SSKf21RJC9iAtg6lZBqEBrLgVCPG_M_AUekBGeCS5Cz_t2pvbO3rW9RHEfbmOMGrW_ylnEZ96OZxTjFnYbMMPavr7z3pdRQARTkb1mn2_ekO-Kh9wMyR4ZSGGUjF62M2BJ_2b4Gv1PEdPLm6Hj7N7fiplOvtlBtmfX0l-CaQ9_RHvPa-JTY4Ik5jxMFTMowqtUMtRrdGo-HKnaTqkiiLucKPnpfDx6_z_IKSBXqTA8hn_hpuC2AG1xG2OKLCLPb7bIGWmDlZMmZIdI5S9Am4yvs3_xgIwwll5pA7GuOIY4kTIaS8GNVJn72lYeJMHLYY20zD2ZAwQ1ctc2IoSrz2Ccg8o6t1bAxRzZQQzCkMjWJaiaj4liQjPfEi_vubGX-5qlPAqw7jQPhf2yqlc9fZbCh9JHucqthV0THzsE6ndgczAvNyhWBX-ulyTES20kRWGN1qSr7hTK2Z5DouNRzfj8w_AKQo7ZWjnTyjo3xB2i0U896PnlMCvLzKpY5TZxGhneukNNpLJQt7lDbD5aEY-50f9ZrRf3BpRgWw39BWadq8uBC3thFqAgjQlueF4-Gt55IZgFlmGiVjquDJFLqwCS0Wj7gQsmnB4DycX34C-lfR8PyPPT3y81P1hgjddD2aoXNiMZwvMthAfkwKtUev0mQQh68xr50CGtFka7urieYPgv19hvrdZZ2WaFu_pYabVbZ2sNxmAjaCJnX8E364rNKxYJMwuNsvhSYKsKo9fV5L9qhoKRJawsukhyQasImXGutWsDoNKODacbTdaAKFuoyXfRKE3Eqs3QcF651vZZVaAytSofj1xgiWac81FWF8G6WD8__ZkoOeeGzSIg5v756S_yWwoprLcVqWw4W7gHPzWIbFRnY9NZuLmy3tSqCelmCY4ff4mp3dCvCR87GYn9cV43adpkg_I1VVkDtGjrQuWSkPMTrASLuY-jT5O3xE2y9XbeKpSclcNp7Ks7GaXxtkW5dOgfJpNLHMhRhIzLSVHQKfWsc21Oef08X7gDN06mgu7SUPGA9ucs0rBLY1Axs2v6YG2mFGdNjOO2j68BXmtKp-IRjRImfpYypn2jUjRTMg0XpZM0wdTAR87wd_wFgtMV1EBiwdJ-p3Pac05o_4He0_5hp9M-Oe0e7Z8eHXUPT45PDnfpivZbB732wcl-t3fQ6XX3e3jUfdylf7jA-23E9_A52u-ddo6Pe51dCoG9-Dj7C-k7QenjP4JCRs4?type=png)](https://mermaid.live/edit#pako:eNqNVttu4zYQ_RWCwC52ldi5OIljtw2Q9WZbA_Y2SBws2roIaGkscy2RKkmlceMA-ZD2tR-WL-mQukSylbZ6sEXyzMzhmYv9QH0ZAO3TeSR_9xdMGTL5OBUke3Q6CxVLFmQ8uh2xFSjyy5SSKf21RJC9iAtg6lZBqEBrLgVCPG_M_AUekBGeCS5Cz_t2pvbO3rW9RHEfbmOMGrW_ylnEZ96OZxTjFnYbMMPavr7z3pdRQARTkb1mn2_ekO-Kh9wMyR4ZSGGUjF62M2BJ_2b4Gv1PEdPLm6Hj7N7fiplOvtlBtmfX0l-CaQ9_RHvPa-JTY4Ik5jxMFTMowqtUMtRrdGo-HKnaTqkiiLucKPnpfDx6_z_IKSBXqTA8hn_hpuC2AG1xG2OKLCLPb7bIGWmDlZMmZIdI5S9Am4yvs3_xgIwwll5pA7GuOIY4kTIaS8GNVJn72lYeJMHLYY20zD2ZAwQ1ctc2IoSrz2Ccg8o6t1bAxRzZQQzCkMjWJaiaj4liQjPfEi_vubGX-5qlPAqw7jQPhf2yqlc9fZbCh9JHucqthV0THzsE6ndgczAvNyhWBX-ulyTES20kRWGN1qSr7hTK2Z5DouNRzfj8w_AKQo7ZWjnTyjo3xB2i0U896PnlMCvLzKpY5TZxGhneukNNpLJQt7lDbD5aEY-50f9ZrRf3BpRgWw39BWadq8uBC3thFqAgjQlueF4-Gt55IZgFlmGiVjquDJFLqwCS0Wj7gQsmnB4DycX34C-lfR8PyPPT3y81P1hgjddD2aoXNiMZwvMthAfkwKtUev0mQQh68xr50CGtFka7urieYPgv19hvrdZZ2WaFu_pYabVbZ2sNxmAjaCJnX8E364rNKxYJMwuNsvhSYKsKo9fV5L9qhoKRJawsukhyQasImXGutWsDoNKODacbTdaAKFuoyXfRKE3Eqs3QcF651vZZVaAytSofj1xgiWac81FWF8G6WD8__ZkoOeeGzSIg5v756S_yWwoprLcVqWw4W7gHPzWIbFRnY9NZuLmy3tSqCelmCY4ff4mp3dCvCR87GYn9cV43adpkg_I1VVkDtGjrQuWSkPMTrASLuY-jT5O3xE2y9XbeKpSclcNp7Ks7GaXxtkW5dOgfJpNLHMhRhIzLSVHQKfWsc21Oef08X7gDN06mgu7SUPGA9ucs0rBLY1Axs2v6YG2mFGdNjOO2j68BXmtKp-IRjRImfpYypn2jUjRTMg0XpZM0wdTAR87wd_wFgtMV1EBiwdJ-p3Pac05o_4He0_5hp9M-Oe0e7Z8eHXUPT45PDnfpivZbB732wcl-t3fQ6XX3e3jUfdylf7jA-23E9_A52u-ddo6Pe51dCoG9-Dj7C-k7QenjP4JCRs4)
+
+
 ## Key Features
 
-- **Mempool Surveillance**  
+- **Mempool Monitoring**  
   - Filter- or poll-based detection of pending transactions  
   - Priority queuing based on gas price and custom heuristics  
 - **MEV Strategy Suite**  
@@ -56,20 +57,6 @@
   - Async TaskGroup orchestration, memory leak detection, component health checks  
 
 ---
-
-## Architecture Overview
-
-```
-+-----------------+     +-----------------+     +----------------------+     +----------------------+
-|  MempoolMonitor | --> |  StrategyNet    | --> |  TransactionCore     | --> |      Ethereum        |
-| (filter/poll)   |     | (RL selection)  |     | (build & execute tx) |     |    (nodes & DeXs)    |
-+-----------------+     +-----------------+     +----------------------+     +----------------------+
-       ↓                        ↑                          ↑                            ↑
-+--------------+          +------------+             +-------------+             +-------------+
-| SafetyNet    |          | MarketMon. |             | NonceCore   |             | APIConfig   |
-| (gas/slip)   |          | (prices)   |             | (nonce mgmt)|             | (data fetch)|
-+--------------+          +------------+             +-------------+             +-------------+
-```
 
 - **MainCore** bootstraps config, providers, components, and supervises tasks.  
 - Components communicate via typed async queues and share configuration objects.  
@@ -101,7 +88,7 @@
    - `geth --http --http.addr 0.0.0.0 --http.api eth,net,web3 --datadir ~/ethereum/mainnet`
 3. **Sync**  
    ```bash
-   geth --syncmode "snap" --http --http.corsdomain "*" --http.api eth,net,web3,txpool,debug --datadir ~/ethereum/mainnet
+   geth --syncmode "snap" --http --http.corsdomain "*" --http.api engine, admin, web3,txpool --datadir ~/ethereum/mainnet --ipcpath on1builder/geth.ipc
    ```
 
 ### Prysm (Consensus Client)
