@@ -7,7 +7,8 @@ ON1Builder package initialization.
 
 from strategyexecutionerror import StrategyExecutionError
 
-__all__: list[str] = ['StrategyExecutionError'] 
+__all__: list[str] = ["StrategyExecutionError"]
+
 
 def initialize_package() -> None:
     """
@@ -18,6 +19,7 @@ def initialize_package() -> None:
         pass
     except Exception as e:
         raise RuntimeError(f"Failed to initialize ON1Builder package: {e}")
+
 
 def cleanup_package() -> None:
     """
