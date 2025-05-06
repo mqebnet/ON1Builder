@@ -6,7 +6,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 [![ON1Builder Wiki](https://img.shields.io/badge/ON1Builder-Wiki-blue?logo=GitHub&logoColor=white)](https://github.com/John0n1/ON1Builder/wiki)
-
 [![Last Commit](https://img.shields.io/github/last-commit/John0n1/ON1Builder?display_timestamp=committer&logo=GitHub&color=white)](https://github.com/John0n1/ON1Builder/commits/main)
 
 
