@@ -6,7 +6,7 @@ annotated-types==0.7.0
 async-timeout==5.0.1
 attrs==25.3.0
 bidict==0.23.1
-bitarray==3.3.2
+bitarray==3.4.0
 blinker==1.9.0
 cachetools==5.5.2
 certifi==2025.4.26
