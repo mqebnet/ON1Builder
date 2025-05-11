@@ -1,294 +1,144 @@
-# ON1Builder Deployment Guide
+# ON1Builder Production Deployment Guide
 
-This document provides detailed instructions for deploying ON1Builder to production environments.
+This guide outlines the steps to deploy ON1Builder in a production environment with multi-chain support.
 
-## Prerequisites
+## 1. System Prerequisites
 
-Before deploying ON1Builder, ensure you have the following:
-
-- Docker and Docker Compose installed
-- Access to a Docker registry (Docker Hub or private registry)
-- HashiCorp Vault instance or access to deploy one
-- Ethereum wallet with sufficient funds for mainnet transactions
-- Infura or Alchemy API key for Ethereum RPC access
-- SMTP server for email alerts
-- Slack webhook URL for Slack alerts
-- Domain name (optional, but recommended for production)
-- SSL certificate (optional, but recommended for production)
-
-## Step-by-Step Deployment
-
-### 1. Install Prerequisites (macOS)
+Install the required prerequisites:
 
 ```bash
-brew install --cask docker
-brew install docker-compose
-brew tap hashicorp/tap
-brew install hashicorp/tap/vault
+./scripts/install_prereqs.sh
 ```
 
-For Linux (Ubuntu/Debian):
+This script installs:
+- Docker and Docker Compose
+- HashiCorp Vault
+- Other required dependencies
+
+## 2. Vault Production Hardening
+
+Set up HashiCorp Vault in production mode:
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y docker.io docker-compose
-curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-sudo apt-get update
-sudo apt-get install -y vault
+sudo cp deploy/vault.hcl /etc/vault.d/vault.hcl
+sudo cp deploy/vault.service /etc/systemd/system/vault.service
+sudo systemctl daemon-reload
+sudo systemctl start vault
+sudo systemctl enable vault
 ```
 
-### 2. Start Vault in Dev Mode
+Initialize and configure Vault:
 
 ```bash
-vault server -dev -dev-root-token-id="root-token" &
-export VAULT_ADDR="http://127.0.0.1:8200"
-export VAULT_TOKEN="root-token"
+./scripts/vault_prod_init.sh
 ```
 
-This will start Vault in development mode with a known root token. In a real production environment, you should use a proper Vault deployment with high availability and proper security measures.
+This script:
+- Initializes Vault
+- Unseals Vault
+- Sets up a KV-v2 engine at secret/
+- Creates policies and AppRoles
+- Stores sensitive information securely
 
-### 3. Initialize Vault and Store Secrets
+## 3. Environment Management
+
+Generate the environment file:
 
 ```bash
-cd /path/to/ON1Builder
-chmod +x scripts/vault_init.sh
-./scripts/vault_init.sh
+./scripts/generate_env.sh
 ```
 
-This script will:
-- Check if Vault is running
-- Initialize Vault if not already initialized
-- Unseal Vault if sealed
-- Enable the KV-v2 secrets engine at 'secret/'
-- Write your secrets to Vault:
-  - WALLET_KEY (your Ethereum private key)
-  - SMTP_PASSWORD (for email alerts)
-  - SLACK_WEBHOOK_URL (for Slack alerts)
-  - ALERT_THRESHOLD_ETH (profit threshold for alerts)
+This script:
+- Reads non-secret variables from .env.multi-chain.template
+- Fetches secret values from Vault
+- Creates a secure .env.multi-chain file
 
-Verify that your secrets were stored correctly:
+## 4. Containerization & Orchestration
+
+Build and push the Docker image:
 
 ```bash
-vault kv get secret/on1builder
-```
-
-### 4. Export Required Environment Variables
-
-```bash
-export VAULT_ADDR="http://127.0.0.1:8200"
-export VAULT_TOKEN="root-token"  # or the token from vault_init.sh
-export HTTP_ENDPOINT="https://mainnet.infura.io/v3/your-infura-key"
-export WALLET_KEY="your-ethereum-private-key"
-export SMTP_PASSWORD="your-smtp-password"
-export SLACK_WEBHOOK_URL="your-slack-webhook-url"
-```
-
-These environment variables are required for the deployment script to work. The VAULT_ADDR and VAULT_TOKEN are used to connect to Vault. The HTTP_ENDPOINT is used to connect to the Ethereum mainnet.
-
-### 5. Build and Push Docker Image
-
-```bash
-chmod +x scripts/build_and_push.sh
 ./scripts/build_and_push.sh
 ```
 
-This script will:
-- Build the Docker image using Dockerfile.prod
-- Tag the image as on1builder:prod
-- Push the image to your Docker registry
-
-### 6. Deploy with Docker Compose
-
-#### Single-Chain Deployment
+Deploy the containers:
 
 ```bash
-chmod +x deploy_prod.sh
-./deploy_prod.sh
+sudo cp deploy/on1builder.service /etc/systemd/system/on1builder.service
+sudo systemctl daemon-reload
+sudo systemctl start on1builder
+sudo systemctl enable on1builder
 ```
 
-This script will:
-- Validate all required environment variables
-- Login to and unseal Vault
-- Write secrets to Vault
-- Build and push the Docker image
-- Start the application with docker-compose -f docker-compose.prod.yml up -d
-- Wait for the application to start
-- Check the health endpoint
-- Check the metrics endpoint
-- Set up cron jobs
-- Import the Grafana dashboard
-- Trigger a test alert
-
-During the deployment, you will be prompted to confirm receipt of a test alert in your Slack channel.
-
-#### Multi-Chain Deployment
-
-For deploying with multi-chain support:
+Or use Docker Compose directly:
 
 ```bash
-# Set the CHAINS environment variable
-export CHAINS="1,137"  # Ethereum Mainnet and Polygon Mainnet
-
-# Deploy with multi-chain support
-chmod +x deploy_prod.sh
-./deploy_prod.sh --multi-chain
-```
-
-Alternatively, you can use the multi-chain Docker Compose file directly:
-
-```bash
-# Set required environment variables
-export VAULT_ADDR="http://127.0.0.1:8200"
-export VAULT_TOKEN="root-token"
-export CHAINS="1,137"
-export GO_LIVE=true
-
-# Deploy with multi-chain Docker Compose file
 docker-compose -f docker-compose.multi-chain.yml up -d
 ```
 
-The multi-chain deployment will:
-- Initialize Vault with secrets for each chain
-- Start the application with multi-chain support
-- Monitor all configured chains simultaneously
-- Provide metrics for each chain separately
+## 5. Secure Deployment
 
-### 7. Verify Deployment
-
-After the deployment is complete, verify that everything is working correctly:
+For a fully automated deployment, use the secure deployment script:
 
 ```bash
-# Health check
-curl -f http://localhost:5001/healthz
-
-# Metrics check
-curl http://localhost:5001/metrics | grep expected_profit_eth
-
-# Grafana dashboard
-open http://localhost:3000
+./secure_deploy_multi_chain.sh --go-live
 ```
 
-## Environment Variables
+This script:
+- Verifies prerequisites
+- Sets up Vault
+- Generates environment files
+- Builds and pushes Docker images
+- Starts containers
+- Verifies the deployment
+- Imports Grafana dashboards
+- Triggers a test alert
 
-The following environment variables are required for production deployment:
+## 6. Verification & Monitoring
 
-### Required Environment Variables
-
-- `VAULT_ADDR`: URL of the HashiCorp Vault instance
-- `VAULT_TOKEN`: Token for authenticating with Vault
-- `WALLET_KEY`: Ethereum wallet private key
-- `SMTP_PASSWORD`: Password for the SMTP server
-- `SLACK_WEBHOOK_URL`: Webhook URL for Slack notifications
-- `HTTP_ENDPOINT`: Ethereum RPC endpoint URL
-
-### Optional Environment Variables
-
-- `WEBSOCKET_ENDPOINT`: Ethereum WebSocket endpoint URL
-- `DRY_RUN`: Set to "false" for production
-- `GO_LIVE`: Set to "true" for production
-- `VAULT_PATH`: Path in Vault where secrets are stored (default: "secret/on1builder")
-- `MAX_TRANSACTION_VALUE`: Maximum transaction value in ETH (default: 1.0)
-- `MAX_DAILY_TRANSACTIONS`: Maximum number of transactions per day (default: 10)
-- `MIN_PROFIT_POTENTIAL`: Minimum profit potential in ETH (default: 0.01)
-- `ALERT_THRESHOLD_ETH`: Threshold for profit alerts in ETH (default: 0.01)
-- `SMTP_SERVER`: SMTP server address (default: smtp.gmail.com)
-- `SMTP_PORT`: SMTP server port (default: 587)
-- `SMTP_USERNAME`: Username for the SMTP server
-- `ALERT_FROM_EMAIL`: Email address to send alerts from
-- `ALERT_TO_EMAIL`: Email address to send alerts to
-- `GRAFANA_ADMIN_USER`: Grafana admin username (default: admin)
-- `GRAFANA_ADMIN_PASSWORD`: Grafana admin password (default: admin)
-
-## Maintenance Tasks
-
-### Updating the Application
-
-To update the application:
-
-1. Pull the latest changes:
-   ```bash
-   git pull
-   ```
-
-2. Run the deployment script:
-   ```bash
-   ./deploy_prod.sh
-   ```
-
-### Backing Up Vault
-
-Regularly back up Vault data:
+Verify the deployment:
 
 ```bash
-docker-compose -f docker-compose.prod.yml exec vault vault operator raft snapshot save /vault/data/backup.snap
-docker cp on1builder_vault_1:/vault/data/backup.snap ./backup.snap
+./scripts/verify_live.sh
 ```
 
-### Rotating Secrets
+Access the Grafana dashboard at http://localhost:3000 with the default credentials:
+- Username: admin
 
-Regularly rotate secrets:
+Efter körning av deploy_prod.sh – se även [Post-Deployment Checklist](post_deployment_checklist.md) för löpande drift.
+Efter körning av deploy_prod.sh – se även [Post-Deployment Checklist](post_deployment_checklist.md) för löpande drift.
+- Password: admin
 
-1. Generate new secrets (wallet key, API keys, etc.)
-2. Update the secrets in Vault:
-   ```bash
-   curl -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data":{"WALLET_KEY":"new-key"}}' $VAULT_ADDR/v1/$VAULT_PATH
-   ```
+## 7. Maintenance & Security
 
-3. Restart the application:
-   ```bash
-   docker-compose -f docker-compose.prod.yml restart app
-   ```
+Set up automated maintenance tasks:
+
+```bash
+./scripts/cron_setup.sh
+```
+
+This script sets up cron jobs for:
+- Daily PnL summary
+- Gas price alerts
+- Faucet balance checks
+- Monthly wallet key rotation
+- Weekly wallet key backups
 
 ## Troubleshooting
 
-### Container Fails to Start
-
-Check the container logs:
+If you encounter issues during deployment, check the logs:
 
 ```bash
-docker-compose -f docker-compose.prod.yml logs app
+# Check ON1Builder logs
+docker-compose -f docker-compose.multi-chain.yml logs app
+
+# Check Vault logs
+sudo journalctl -u vault
+
+# Check ON1Builder service logs
+sudo journalctl -u on1builder
 ```
 
-### Health Check Fails
+For more detailed troubleshooting, see the [Troubleshooting Guide](docs/TROUBLESHOOTING.md).
 
-Check the health check endpoint:
-
-```bash
-curl http://localhost:5001/healthz
-```
-
-Common issues:
-- Vault is not accessible
-- Ethereum RPC is not accessible
-- GO_LIVE is not set to true
-
-### Transactions Not Being Executed
-
-Check the application logs:
-
-```bash
-docker-compose -f docker-compose.prod.yml logs app
-```
-
-Common issues:
-- Insufficient funds in wallet
-- Gas price too high
-- No profitable opportunities found
-
-### Alerts Not Being Sent
-
-Check the alert configuration:
-
-```bash
-docker-compose -f docker-compose.prod.yml exec app python -c "from alerts import AlertManager; print(AlertManager().send_alert('Test', 'INFO'))"
-```
-
-Common issues:
-- SMTP server not accessible
-- Slack webhook URL invalid
-- Alert threshold too high
-
-## Security Considerations
-
-See [SECURITY.md](SECURITY.md) for a comprehensive security checklist and best practices.
+Efter körning av deploy_prod.sh – se även [Post-Deployment Checklist](post_deployment_checklist.md) för löpande drift.
