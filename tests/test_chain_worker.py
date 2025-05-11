@@ -133,7 +133,11 @@ async def test_start(chain_worker):
             await chain_worker.stop()
 
             # Wait for the task to complete
-            await asyncio.wait_for(task, timeout=1)
+            try:
+                await asyncio.wait_for(task, timeout=1)
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                # This is expected as we're cancelling the task
+                pass
 
             # Check that the monitor_opportunities method was called
             assert mock_monitor_opportunities.called

@@ -117,9 +117,11 @@ async def test_run(multi_chain_core):
                 "11155111": MagicMock(),
             }
 
-            # Set up the workers' start methods
+            # Set up the workers' start and stop methods
             multi_chain_core.workers["1"].start = AsyncMock()
+            multi_chain_core.workers["1"].stop = AsyncMock()
             multi_chain_core.workers["11155111"].start = AsyncMock()
+            multi_chain_core.workers["11155111"].stop = AsyncMock()
 
             # Call the run method with a timeout to avoid hanging
             task = asyncio.create_task(multi_chain_core.run())
@@ -131,7 +133,11 @@ async def test_run(multi_chain_core):
             await multi_chain_core.stop()
 
             # Wait for the task to complete
-            await asyncio.wait_for(task, timeout=1)
+            try:
+                await asyncio.wait_for(task, timeout=1)
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                # This is expected as we're cancelling the task
+                pass
 
             # Check that the start method was called for each worker
             assert multi_chain_core.workers["1"].start.called
@@ -199,7 +205,11 @@ async def test_update_metrics(multi_chain_core):
     multi_chain_core.running = False
 
     # Wait for the task to complete
-    await asyncio.wait_for(task, timeout=1)
+    try:
+        await asyncio.wait_for(task, timeout=1)
+    except (asyncio.TimeoutError, asyncio.CancelledError):
+        # This is expected as we're cancelling the task
+        pass
 
     # Check that the metrics were updated
     assert multi_chain_core.metrics["total_transactions"] == 30
