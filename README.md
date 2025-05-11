@@ -1,248 +1,286 @@
 # ON1Builder
 
-![ON1Builder Logo](https://github.com/user-attachments/assets/59e03abe-67ee-4195-9030-63f49c48e46f)
+ON1Builder is a powerful tool for building, testing, and deploying Ethereum trading strategies.
 
-[![Built with Python 3.12](https://img.shields.io/badge/Built%20with-Python%203.12-blue?logo=python)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+## Features
 
-[![Last Commit](https://img.shields.io/github/last-commit/John0n1/ON1Builder?display_timestamp=committer&logo=GitHub&color=white)](https://github.com/John0n1/ON1Builder/commits/main)
+- **Real Transaction Execution**: Execute real transactions on Ethereum mainnet and testnets
+- **Multi-Chain Support**: Run on multiple EVM-compatible chains simultaneously
+- **Secure Secret Management**: Store sensitive information in HashiCorp Vault
+- **Comprehensive Monitoring**: Prometheus metrics and Grafana dashboard
+- **Alerting**: Slack and email alerts for profits and failures
+- **Risk Management**: Slippage protection, gas price optimization, and profit thresholds
+- **Dockerized Deployment**: Easy deployment with Docker Compose
+- **CI/CD Integration**: GitHub Actions workflow for automated testing and deployment
+- **Extensive Documentation**: API documentation, deployment guide, and security checklist
 
+## Quick Start
 
-**ON1Builder** is an advanced Ethereum MEV (Maximal Extractable Value) orchestrator. It continuously monitors the mempool, evaluates pending transactions, and automatically executes profitable strategies including flashloan arbitrage, front-running, back-running, and sandwich attacks. Built with modularity, resilience, and performance in mind.
+### Prerequisites
 
----
+- Docker and Docker Compose
+- Ethereum wallet with funds
+- Infura or Alchemy API key
+- Slack webhook URL (optional)
+- SMTP server for email alerts (optional)
 
-## Table of Contents
+### Installation
 
-1. [Key Features](#key-features)  
-2. [Prerequisites](#prerequisites)  
-3. [Geth & Prysm Setup](#geth--prysm-setup)  
-4. [Installation](#installation)  
-5. [Configuration](#configuration)  
-6. [Running ON1Builder](#running-on1builder)  
-7. [Monitoring & Metrics](#monitoring--metrics)  
-8. [Component Reference](#component-reference)  
-9. [Security Best Practices](#security-best-practices)  
-10. [Troubleshooting](#troubleshooting)  
-11. [Extending & Custom Strategies](#extending--custom-strategies)  
-12. [Roadmap](#roadmap)  
-13. [License](#license)  
-
----
-
-[![](https://mermaid.ink/img/pako:eNqNVttu4zYQ_RWCwC52ldi5OIljtw2Q9WZbA_Y2SBws2roIaGkscy2RKkmlceMA-ZD2tR-WL-mQukSylbZ6sEXyzMzhmYv9QH0ZAO3TeSR_9xdMGTL5OBUke3Q6CxVLFmQ8uh2xFSjyy5SSKf21RJC9iAtg6lZBqEBrLgVCPG_M_AUekBGeCS5Cz_t2pvbO3rW9RHEfbmOMGrW_ylnEZ96OZxTjFnYbMMPavr7z3pdRQARTkb1mn2_ekO-Kh9wMyR4ZSGGUjF62M2BJ_2b4Gv1PEdPLm6Hj7N7fiplOvtlBtmfX0l-CaQ9_RHvPa-JTY4Ik5jxMFTMowqtUMtRrdGo-HKnaTqkiiLucKPnpfDx6_z_IKSBXqTA8hn_hpuC2AG1xG2OKLCLPb7bIGWmDlZMmZIdI5S9Am4yvs3_xgIwwll5pA7GuOIY4kTIaS8GNVJn72lYeJMHLYY20zD2ZAwQ1ctc2IoSrz2Ccg8o6t1bAxRzZQQzCkMjWJaiaj4liQjPfEi_vubGX-5qlPAqw7jQPhf2yqlc9fZbCh9JHucqthV0THzsE6ndgczAvNyhWBX-ulyTES20kRWGN1qSr7hTK2Z5DouNRzfj8w_AKQo7ZWjnTyjo3xB2i0U896PnlMCvLzKpY5TZxGhneukNNpLJQt7lDbD5aEY-50f9ZrRf3BpRgWw39BWadq8uBC3thFqAgjQlueF4-Gt55IZgFlmGiVjquDJFLqwCS0Wj7gQsmnB4DycX34C-lfR8PyPPT3y81P1hgjddD2aoXNiMZwvMthAfkwKtUev0mQQh68xr50CGtFka7urieYPgv19hvrdZZ2WaFu_pYabVbZ2sNxmAjaCJnX8E364rNKxYJMwuNsvhSYKsKo9fV5L9qhoKRJawsukhyQasImXGutWsDoNKODacbTdaAKFuoyXfRKE3Eqs3QcF651vZZVaAytSofj1xgiWac81FWF8G6WD8__ZkoOeeGzSIg5v756S_yWwoprLcVqWw4W7gHPzWIbFRnY9NZuLmy3tSqCelmCY4ff4mp3dCvCR87GYn9cV43adpkg_I1VVkDtGjrQuWSkPMTrASLuY-jT5O3xE2y9XbeKpSclcNp7Ks7GaXxtkW5dOgfJpNLHMhRhIzLSVHQKfWsc21Oef08X7gDN06mgu7SUPGA9ucs0rBLY1Axs2v6YG2mFGdNjOO2j68BXmtKp-IRjRImfpYypn2jUjRTMg0XpZM0wdTAR87wd_wFgtMV1EBiwdJ-p3Pac05o_4He0_5hp9M-Oe0e7Z8eHXUPT45PDnfpivZbB732wcl-t3fQ6XX3e3jUfdylf7jA-23E9_A52u-ddo6Pe51dCoG9-Dj7C-k7QenjP4JCRs4?type=png)](https://mermaid.live/edit#pako:eNqNVttu4zYQ_RWCwC52ldi5OIljtw2Q9WZbA_Y2SBws2roIaGkscy2RKkmlceMA-ZD2tR-WL-mQukSylbZ6sEXyzMzhmYv9QH0ZAO3TeSR_9xdMGTL5OBUke3Q6CxVLFmQ8uh2xFSjyy5SSKf21RJC9iAtg6lZBqEBrLgVCPG_M_AUekBGeCS5Cz_t2pvbO3rW9RHEfbmOMGrW_ylnEZ96OZxTjFnYbMMPavr7z3pdRQARTkb1mn2_ekO-Kh9wMyR4ZSGGUjF62M2BJ_2b4Gv1PEdPLm6Hj7N7fiplOvtlBtmfX0l-CaQ9_RHvPa-JTY4Ik5jxMFTMowqtUMtRrdGo-HKnaTqkiiLucKPnpfDx6_z_IKSBXqTA8hn_hpuC2AG1xG2OKLCLPb7bIGWmDlZMmZIdI5S9Am4yvs3_xgIwwll5pA7GuOIY4kTIaS8GNVJn72lYeJMHLYY20zD2ZAwQ1ctc2IoSrz2Ccg8o6t1bAxRzZQQzCkMjWJaiaj4liQjPfEi_vubGX-5qlPAqw7jQPhf2yqlc9fZbCh9JHucqthV0THzsE6ndgczAvNyhWBX-ulyTES20kRWGN1qSr7hTK2Z5DouNRzfj8w_AKQo7ZWjnTyjo3xB2i0U896PnlMCvLzKpY5TZxGhneukNNpLJQt7lDbD5aEY-50f9ZrRf3BpRgWw39BWadq8uBC3thFqAgjQlueF4-Gt55IZgFlmGiVjquDJFLqwCS0Wj7gQsmnB4DycX34C-lfR8PyPPT3y81P1hgjddD2aoXNiMZwvMthAfkwKtUev0mQQh68xr50CGtFka7urieYPgv19hvrdZZ2WaFu_pYabVbZ2sNxmAjaCJnX8E364rNKxYJMwuNsvhSYKsKo9fV5L9qhoKRJawsukhyQasImXGutWsDoNKODacbTdaAKFuoyXfRKE3Eqs3QcF651vZZVaAytSofj1xgiWac81FWF8G6WD8__ZkoOeeGzSIg5v756S_yWwoprLcVqWw4W7gHPzWIbFRnY9NZuLmy3tSqCelmCY4ff4mp3dCvCR87GYn9cV43adpkg_I1VVkDtGjrQuWSkPMTrASLuY-jT5O3xE2y9XbeKpSclcNp7Ks7GaXxtkW5dOgfJpNLHMhRhIzLSVHQKfWsc21Oef08X7gDN06mgu7SUPGA9ucs0rBLY1Axs2v6YG2mFGdNjOO2j68BXmtKp-IRjRImfpYypn2jUjRTMg0XpZM0wdTAR87wd_wFgtMV1EBiwdJ-p3Pac05o_4He0_5hp9M-Oe0e7Z8eHXUPT45PDnfpivZbB732wcl-t3fQ6XX3e3jUfdylf7jA-23E9_A52u-ddo6Pe51dCoG9-Dj7C-k7QenjP4JCRs4)
-
-
-## Key Features
-
-- **Mempool Monitoring**  
-  - Filter- or poll-based detection of pending transactions  
-  - Priority queuing based on gas price and custom heuristics  
-- **MEV Strategy Suite**  
-  - **Flashloan Arbitrage** via Aave v3  
-  - **Front-Running**: basic, aggressive, predictive, volatility-based  
-  - **Back-Running**: price-dip, flashloan-enabled, high-volume  
-  - **Sandwich Attacks**: atomic sandwich orchestration  
-- **Reinforcement Learning**  
-  - Softmax-based selection with exploration/exploitation  
-  - Continuous Q-learning weight updates from live execution metrics  
-- **Robust Nonce Management**  
-  - Caching with TTL, lock-protected refresh, pending-tx tracking  
-  - Automatic recovery from out-of-sync nonces  
-- **Dynamic SafetyNet**  
-  - Real-time gas/slippage tuning, profit verification, network congestion assessment  
-- **MarketMonitor ML Pipeline**  
-  - Historical price ingestion, EMA features, linear regression model for price prediction  
-- **High-Availability Core**  
-  - Async TaskGroup orchestration, memory leak detection, component health checks  
-
----
-
-- **MainCore** bootstraps config, providers, components, and supervises tasks.  
-- Components communicate via typed async queues and share configuration objects.  
-- Graceful shutdown on SIGINT/SIGTERM; emergency exit support.
-
----
-
-## Prerequisites
-
-- **OS**: Linux (Ubuntu 20.04+) or macOS  
-- **Python**: 3.10+ with `venv` support  
-- **Ethereum Clients**: Geth (for execution) & Prysm (for consensus if running your own beacon chain)  
-- **API Keys**: Etherscan, Infura, CoinGecko, CoinMarketCap, CryptoCompare  
-
----
-
-## Geth & Prysm Setup
-
-### Geth (Execution Client)
-
-1. **Install**  
-   ```bash
-   sudo apt-get update && sudo apt-get install -y software-properties-common
-   sudo add-apt-repository -y ppa:ethereum/ethereum
-   sudo apt-get update && sudo apt-get install -y geth
-   ```
-2. **Configure**  
-   - Create data directory: `mkdir -p ~/ethereum/mainnet`  
-   - `geth --http --http.addr 0.0.0.0 --http.api eth,net,web3 --datadir ~/ethereum/mainnet`
-3. **Sync**  
-   ```bash
-   geth --syncmode "snap" --http --http.corsdomain "*" --http.api engine, admin, web3,txpool --datadir ~/ethereum/mainnet --ipcpath on1builder/geth.ipc
-   ```
-
-### Prysm (Consensus Client)
-
-1. **Install**  
-   ```bash
-   curl https://raw.githubusercontent.com/prysmaticlabs/prysm/master/prysm.sh | bash -s -- --auto-install
-   ```
-2. **Run Beacon Node**  
-   ```bash
-   prysm/beacon-chain.sh --datadir ~/ethereum/beacon \
-     --http-web3provider=http://127.0.0.1:8545 \
-     --monitoring-host=0.0.0.0 --monitoring-port=8080
-   ```
-3. **Run Validator (optional)**  
-   ```bash
-   prysm/validator.sh --datadir ~/ethereum/validator --beacon-rpc-provider=127.0.0.1:4000
-   ```
-
----
-
-## Installation
-
-1. **Clone & Enter Directory**  
+1. Clone the repository:
    ```bash
    git clone https://github.com/John0n1/ON1Builder.git
    cd ON1Builder
    ```
-2. **Python Environment**  
+
+2. Create a `.env` file with your configuration:
    ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-3. **Dependencies**  
-   ```bash
-   pip install --upgrade pip
-   pip install -r requirements.txt
+   # Ethereum RPC endpoints
+   HTTP_ENDPOINT=https://sepolia.infura.io/v3/your-infura-key
+   WEBSOCKET_ENDPOINT=wss://sepolia.infura.io/ws/v3/your-infura-key
+
+   # Wallet configuration
+   WALLET_ADDRESS=0xYourWalletAddress
+
+   # Execution control
+   DRY_RUN=true
+   GO_LIVE=false
    ```
 
----
+3. Start the application:
+   ```bash
+   docker-compose up -d
+   ```
+
+4. Check the application status:
+   ```bash
+   curl http://localhost:5001/healthz
+   ```
+
+## Production Deployment
+
+For production deployment on Ethereum mainnet, follow these steps:
+
+1. Install prerequisites (macOS):
+   ```bash
+   brew install --cask docker
+   brew install docker-compose
+   brew tap hashicorp/tap
+   brew install hashicorp/tap/vault
+   ```
+
+2. Start Vault in dev mode for testing:
+   ```bash
+   vault server -dev -dev-root-token-id="root-token" &
+   export VAULT_ADDR="http://127.0.0.1:8200"
+   export VAULT_TOKEN="root-token"
+   ```
+
+3. Initialize Vault and store secrets:
+   ```bash
+   cd /path/to/ON1Builder
+   chmod +x scripts/vault_init.sh
+   ./scripts/vault_init.sh
+   vault kv get secret/on1builder  # Verify secrets
+   ```
+
+4. Export required environment variables:
+   ```bash
+   export VAULT_ADDR="http://127.0.0.1:8200"
+   export VAULT_TOKEN="root-token"  # or the token from vault_init.sh
+   export HTTP_ENDPOINT="https://mainnet.infura.io/v3/your-infura-key"
+   export WALLET_KEY="your-ethereum-private-key"
+   export SMTP_PASSWORD="your-smtp-password"
+   export SLACK_WEBHOOK_URL="your-slack-webhook-url"
+   ```
+
+5. Build and push the Docker image:
+   ```bash
+   chmod +x scripts/build_and_push.sh
+   ./scripts/build_and_push.sh
+   ```
+
+6. Deploy with Docker Compose:
+   ```bash
+   chmod +x deploy_prod.sh
+   ./deploy_prod.sh
+   ```
+
+7. Verify the deployment:
+   ```bash
+   # Health check
+   curl -f http://localhost:5001/healthz
+
+   # Metrics check
+   curl http://localhost:5001/metrics | grep expected_profit_eth
+
+   # Grafana dashboard
+   open http://localhost:3000
+
+   # Slack alert
+   # Confirm receipt of test alert in Slack channel
+   ```
+
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Configuration
 
-1. **Copy Template**  
-   ```bash
-   cp template.env .env
+ON1Builder can be configured using environment variables or a `.env` file:
+
+### Core Configuration
+
+- `HTTP_ENDPOINT`: Ethereum RPC endpoint URL
+- `WEBSOCKET_ENDPOINT`: Ethereum WebSocket endpoint URL
+- `WALLET_ADDRESS`: Ethereum wallet address
+- `DRY_RUN`: Set to "true" to simulate transactions without sending them
+- `GO_LIVE`: Set to "true" to send real transactions
+
+### Vault Configuration
+
+- `VAULT_ADDR`: URL of the HashiCorp Vault instance
+- `VAULT_TOKEN`: Token for authenticating with Vault
+- `VAULT_PATH`: Path in Vault where secrets are stored
+
+### Alert Configuration
+
+- `ALERT_THRESHOLD_ETH`: Threshold for profit alerts in ETH
+- `SMTP_SERVER`: SMTP server address
+- `SMTP_PORT`: SMTP server port
+- `SMTP_USERNAME`: Username for the SMTP server
+- `SMTP_PASSWORD`: Password for the SMTP server
+- `ALERT_FROM_EMAIL`: Email address to send alerts from
+- `ALERT_TO_EMAIL`: Email address to send alerts to
+- `SLACK_WEBHOOK_URL`: Webhook URL for Slack notifications
+
+### Transaction Configuration
+
+- `MAX_GAS_PRICE_GWEI`: Maximum gas price in Gwei
+- `SLIPPAGE_DEFAULT`: Default slippage tolerance
+- `MIN_PROFIT`: Minimum profit threshold in ETH
+- `MAX_TRANSACTION_VALUE`: Maximum transaction value in ETH
+- `MAX_DAILY_TRANSACTIONS`: Maximum number of transactions per day
+
+For a complete list of configuration options, see [config.yaml](config.yaml).
+
+## Multi-Chain Support
+
+ON1Builder supports running on multiple EVM-compatible chains simultaneously. To enable multi-chain support:
+
+1. Configure the chains in `config_multi_chain.yaml` or using environment variables:
+   ```yaml
+   # Multi-chain settings
+   CHAINS: "1,11155111,137"
+
+   # Chain-specific settings for Ethereum Mainnet (Chain ID: 1)
+   CHAIN_1_CHAIN_NAME: "Ethereum Mainnet"
+   CHAIN_1_HTTP_ENDPOINT: "https://mainnet.infura.io/v3/your-infura-key"
+   CHAIN_1_WEBSOCKET_ENDPOINT: "wss://mainnet.infura.io/ws/v3/your-infura-key"
+   CHAIN_1_WALLET_ADDRESS: "0xYourMainnetWalletAddress"
+
+   # Chain-specific settings for Sepolia Testnet (Chain ID: 11155111)
+   CHAIN_11155111_CHAIN_NAME: "Sepolia Testnet"
+   CHAIN_11155111_HTTP_ENDPOINT: "https://sepolia.infura.io/v3/your-infura-key"
+   CHAIN_11155111_WEBSOCKET_ENDPOINT: "wss://sepolia.infura.io/ws/v3/your-infura-key"
+   CHAIN_11155111_WALLET_ADDRESS: "0xYourSepoliaWalletAddress"
+
+   # Chain-specific settings for Polygon Mainnet (Chain ID: 137)
+   CHAIN_137_CHAIN_NAME: "Polygon Mainnet"
+   CHAIN_137_HTTP_ENDPOINT: "https://polygon-rpc.com"
+   CHAIN_137_WEBSOCKET_ENDPOINT: "wss://polygon-rpc.com"
+   CHAIN_137_WALLET_ADDRESS: "0xYourPolygonWalletAddress"
    ```
-2. **Edit `.env`**  
-   - RPC endpoints (`HTTP_ENDPOINT`, `WEBSOCKET_ENDPOINT`, `IPC_ENDPOINT`)  
-   - Wallet (`WALLET_ADDRESS`, `WALLET_KEY`)  
-   - API keys (`ETHERSCAN_API_KEY`, `INFURA_API_KEY`, etc.)  
-   - Paths to ABIs and JSON utils  
 
-3. **Verify JSON Resources**  
-   - `utils/token_addresses.json`  
-   - `utils/token_symbols.json`  
-   - `abi/*.json`  
+2. Set the `CHAINS` environment variable in your `.env` file:
+   ```bash
+   CHAINS=1,11155111,137
+   ```
 
----
+3. Run the bot in dry-run mode:
+   ```bash
+   ON1Builder --dry-run
+   ```
 
-## Running ON1Builder
+4. For production deployment with multi-chain support:
+   ```bash
+   GO_LIVE=true docker-compose -f docker-compose.multi-chain.yml up -d
+   ```
 
-- **Start**  
-  ```bash
-  python3 main.py
-  ```
-- **Stop**  
-  - Ctrl+C or kill the process  
-- **Flask UI & Metrics** (optional)  
-  ```bash
-  python3 app.py
-  # Visit: http://localhost:5000
-  ```  
-  - `/metrics` JSON endpoint  
-  - WebSocket logs on UI  
+5. Verify that the metrics endpoint shows data for all chains:
+   ```bash
+   curl http://localhost:5001/metrics | grep expected_profit_eth
+   ```
 
----
+The multi-chain support allows you to monitor and trade on multiple EVM-compatible chains simultaneously, with chain-specific configuration and metrics.
 
-## Monitoring & Metrics
+## API Endpoints
 
-- **Built-in HTTP server** via `FlaskUI`  
-  - **GET** `/status` – bot & component health  
-  - **GET** `/metrics` – real-time performance:  
-    - transaction success rate  
-    - avg execution time  
-    - profitability  
-    - gas usage & slippage  
-    - mempool congestion  
-- **Console Logs**: colored, leveled via `logger_on1.py`  
-- **Memory Watchdog**: tracemalloc diffs every `MEMORY_CHECK_INTERVAL`  
+ON1Builder provides the following API endpoints:
 
----
+- `GET /healthz`: Health check endpoint
+- `GET /metrics`: Prometheus metrics endpoint
+- `GET /status`: Current status of the bot
+- `POST /start`: Start the bot
+- `POST /stop`: Stop the bot
+- `POST /api/test-alert`: Send a test alert
+- `POST /api/simulate-transaction`: Simulate a transaction
 
-## Component Reference
+For detailed API documentation, see [DOCS/API.md](DOCS/API.md).
 
-| Component         | Responsibility                                               |
-|-------------------|--------------------------------------------------------------|
-| **Configuration** | Load env vars, resolve paths, validate keys & addresses      |
-| **APIConfig**     | Multi-API price/volume fetch with rate-limiting & caching    |
-| **SafetyNet**     | Profit/gas/slippage checks, network congestion monitoring    |
-| **MarketMonitor** | Historical data ingestion, ML model training & prediction    |
-| **NonceCore**     | Nonce caching, locked refresh, pending tx tracking           |
-| **TxpoolMonitor**| Pending tx capture, priority queuing, basic profitability   |
-| **StrategyNet**   | Reinforcement learning strategy selection & weight updates   |
-| **TransactionCore**| Build, sign, simulate, send transactions with retries       |
-| **MainCore**      | Orchestrates init, run loop, health & memory monitoring      |
-| **FlaskUI**       | Optional HTTP & WebSocket interface for logs & metrics       |
+## Security
 
----
+ON1Builder takes security seriously. For security best practices and a comprehensive security checklist, see [SECURITY.md](SECURITY.md).
 
-## Security Best Practices
+## Development
 
-- **Never commit `.env`** or private keys to VCS  
-- **Use secure key management** (vault, HSM) in production  
-- **Run as non-root** user with minimal permissions  
-- **Monitor gas price spikes** and adjust `MAX_GAS_PRICE_GWEI`  
-- **Rate-limit flashloan usage** to avoid attacking yourself  
-- **Audit smart contracts** and ABI versions carefully  
+### Prerequisites
 
----
+- Python 3.9+
+- Node.js 14+
+- Ethereum wallet with testnet funds
 
-## Troubleshooting
+### Setup
 
-- **Connection errors**  
-  - Check RPC URLs, firewall rules, peer sync status  
-- **Nonce mismatches**  
-  - Inspect logs from NonceCore; manually reset with `--reset-nonce` flag  
-- **Strategy starvation**  
-  - Tune `exploration_rate`, weight decay, threshold values  
-- **Model training failures**  
-  - Ensure `training_data.csv` has ≥ `MIN_TRAINING_SAMPLES`; check CSV format  
+1. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
----
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Extending & Custom Strategies
+3. Install the package in development mode:
+   ```bash
+   pip install -e .
+   ```
 
-1. **Add new methods** in `transaction_core.py` following existing signatures  
-2. **Register** them in `StrategyNet._strategy_registry`  
-3. **Tune** hyperparameters in `StrategyConfiguration`  
-4. **Rebuild & redeploy**  
+### Running Tests
 
----
+```bash
+pytest
+```
 
-## Roadmap
+### Building Documentation
 
-- **Cross-chain MEV**: support BSC, Polygon, Arbitrum  
-- **Advanced ML**: switch to neural-network price predictors  
-- **Dashboard Integration**: Grafana + Prometheus metrics  
-- **Automated Liquidity Provision** & limit-order MEV  
+```bash
+cd docs
+make html
+```
 
----
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-This project is released under the **MIT License**.  
-See [LICENSE](LICENSE) for full text.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## Acknowledgements
+
+- [Ethereum Foundation](https://ethereum.org/)
+- [Web3.py](https://web3py.readthedocs.io/)
+- [HashiCorp Vault](https://www.vaultproject.io/)
+- [Prometheus](https://prometheus.io/)
+- [Grafana](https://grafana.com/)
+- [Docker](https://www.docker.com/)
